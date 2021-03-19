@@ -15,20 +15,29 @@ MqttBroker::MqttBroker(uint16_t port)
 {
 }
 
-MqttCnx::MqttCnx(MqttBroker* parent, WiFiClient& new_client)
+MqttClient::MqttClient(MqttBroker* parent, WiFiClient& new_client)
 	: parent(parent),
 	mqtt_connected(false)
 {
 	client = new_client ? new WiFiClient(new_client) : nullptr;
-	clientAlive();
+	alive = millis()+5000;	// client expires after 5s if no CONNECT msg
 }
 
-MqttCnx::~MqttCnx()
+MqttClient::MqttClient(MqttBroker* parent)
+	: parent(parent)
+{
+		client = nullptr;
+
+		parent->addClient(this);
+}
+
+MqttClient::~MqttClient()
 {
 	close();
+	parent->removeClient(this);
 }
 
-void MqttCnx::close()
+void MqttClient::close()
 {
 	if (client)
 	{
@@ -38,13 +47,32 @@ void MqttCnx::close()
 	}
 }
 
+void MqttBroker::addClient(MqttClient* client)
+{
+		clients.push_back(client);
+}
+
+void MqttBroker::removeClient(MqttClient* remove)
+{
+  for(auto it=clients.begin(); it!=clients.end(); it++)
+	{
+		auto client=*it;
+		if (client==remove)
+		{
+			clients.erase(it);
+			return;
+		}
+	}
+	Serial << "Error cannot remove client" << endl;	// TODO should not occur
+}
+
 void MqttBroker::loop()
 {
   WiFiClient client = server.available();
   
   if (client)
 	{
-		clients.push_back(new MqttCnx(this, client));
+		addClient(new MqttClient(this, client));
 		Serial << "New client (" << clients.size() << ')' << endl;
 	}
 
@@ -58,7 +86,7 @@ void MqttBroker::loop()
 		else
 		{
       Serial << "Client " << client->id().c_str() << "  Disconnected" << endl;
-			clients.erase(it);
+			// Note: deleting a client not added by the broker itself will probably crash later.
 			delete client;
 			break;
     }
@@ -67,6 +95,7 @@ void MqttBroker::loop()
 
 void MqttBroker::publish(const Topic& topic, MqttMessage& msg)
 {
+	Serial << "  publish" << __LINE__ << endl;
 	for(auto client: clients)
 		client->publish(topic, msg);
 }
@@ -87,7 +116,7 @@ void MqttMessage::getString(char* &buffer, uint16_t& len)
 	buffer+=2;
 }
 
-void MqttCnx::clientAlive()
+void MqttClient::clientAlive()
 {
 	if (keep_alive)
 	{
@@ -97,7 +126,7 @@ void MqttCnx::clientAlive()
 		alive=0;
 }
 
-void MqttCnx::loop()
+void MqttClient::loop()
 {
 	if (alive && (millis() > alive))
 	{
@@ -115,7 +144,7 @@ void MqttCnx::loop()
 	}
 }
 
-void MqttCnx::processMessage()
+void MqttClient::processMessage()
 {
 	std::string error;
 	std::string s;
@@ -186,7 +215,7 @@ void MqttCnx::processMessage()
 			message.getString(payload, len);	// Topic
 			outstring("Subscribes", payload, len);
 
-			subscriptions.insert(Topic(payload, len));
+			subscribe(Topic(payload, len));
 			bclose = false;
 			// TODO SUBACK
 			break;
@@ -241,14 +270,40 @@ bool Topic::matches(const Topic& topic) const
 	return false;
 }
 
-void MqttCnx::publish(const Topic& topic, MqttMessage& msg)
+// publish from local client to a broker
+void MqttClient::publish(const Topic& topic, const char* payload, size_t pay_length)
 {
+	Serial << "  publish" << __LINE__ << endl;
+	message.create(MqttMessage::Publish);
+	message.add(topic);
+	message.add(payload, pay_length);
+	if (parent)
+		parent->publish(topic, message);
+	else if (client)
+		publish(topic, message);
+	else
+		Serial << "  Should not happen" << endl;
+}
+
+// republish a received publish if it matches any in subscriptions
+void MqttClient::publish(const Topic& topic, MqttMessage& msg)
+{
+	Serial << "  publish " << topic.c_str() << __LINE__ << endl;
 	for(const auto& subscription: subscriptions)
 	{
+		Serial << "    check " << subscription.c_str() << __LINE__ << endl;
 		if (subscription.matches(topic))
 		{
-			// Serial << "Republishing " << topic.str().c_str() << " to " << clientId.c_str() << endl;
-			msg.sendTo(this);
+			Serial << "    matche !" << endl;
+			if (client)
+			{
+				// Serial << "Republishing " << topic.str().c_str() << " to " << clientId.c_str() << endl;
+				msg.sendTo(this);
+			}
+			else if (callback)
+			{
+				callback(topic, nullptr, 0);	// TODO 
+			}
 		}
 	}
 }
@@ -311,6 +366,11 @@ void MqttMessage::incoming(char in_byte)
 	}
 }
 
+void MqttMessage::add(const char* p, size_t len)
+{
+	while(len--) incoming(*p);
+}
+
 void MqttMessage::encodeLength(char* msb, int length)
 {
 	do
@@ -322,7 +382,7 @@ void MqttMessage::encodeLength(char* msb, int length)
 	} while (length);
 };
 
-void MqttMessage::sendTo(MqttCnx* client)
+void MqttMessage::sendTo(MqttClient* client)
 {
 	if (curr-buffer-2 >= 0)
 	{
