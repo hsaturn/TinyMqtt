@@ -34,6 +34,7 @@ MqttClient::MqttClient(MqttBroker* parent)
 MqttClient::~MqttClient()
 {
 	close();
+	delete client;
 	parent->removeClient(this);
 }
 
@@ -42,8 +43,6 @@ void MqttClient::close()
 	if (client)
 	{
 		client->stop();
-		delete client;
-		client = nullptr;
 	}
 }
 
