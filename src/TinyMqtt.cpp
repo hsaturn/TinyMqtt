@@ -93,11 +93,29 @@ void MqttBroker::loop()
 	}
 }
 
-void MqttBroker::publish(const Topic& topic, MqttMessage& msg)
+// Should be called for inside and outside incoming publishes (all)
+void MqttBroker::publish(const MqttClient* source, const Topic& topic, MqttMessage& msg)
 {
-	Serial << "  publish" << __LINE__ << endl;
 	for(auto client: clients)
-		client->publish(topic, msg);
+	{
+		bool doit = false;
+		if (broker && broker->connected())	// Connected: R2 R3 R5 R6
+		{
+			if (!client->isLocal())	// R2 go outside allowed
+				doit = true;
+			else // R3 any client to outside allowed
+				doit = true;
+		}
+		else // Disconnected: R3 R4 R5
+		{
+			if (!source->isLocal()) // R3
+			  doit = true;
+			else if (client->isLocal())	// R4 local -> local
+				doit = true;
+		}
+
+		if (doit) client->publish(topic, msg);	// goes outside R2
+	}
 }
 
 bool MqttBroker::compareString(
@@ -234,7 +252,7 @@ void MqttClient::processMessage()
 				if (qos) payload+=2;	// ignore packet identifier if any
 				// TODO reset DUP
 				// TODO reset RETAIN
-				parent->publish(published, message);
+				parent->publish(this, published, message);
 				// TODO should send PUBACK
 				bclose = false;
 			}
@@ -270,15 +288,14 @@ bool Topic::matches(const Topic& topic) const
 	return false;
 }
 
-// publish from local client to a broker
+// publish from local client
 void MqttClient::publish(const Topic& topic, const char* payload, size_t pay_length)
 {
-	Serial << "  publish" << __LINE__ << endl;
 	message.create(MqttMessage::Publish);
 	message.add(topic);
 	message.add(payload, pay_length);
 	if (parent)
-		parent->publish(topic, message);
+		parent->publish(this, topic, message);
 	else if (client)
 		publish(topic, message);
 	else
@@ -288,16 +305,12 @@ void MqttClient::publish(const Topic& topic, const char* payload, size_t pay_len
 // republish a received publish if it matches any in subscriptions
 void MqttClient::publish(const Topic& topic, MqttMessage& msg)
 {
-	Serial << "  publish " << topic.c_str() << __LINE__ << endl;
 	for(const auto& subscription: subscriptions)
 	{
-		Serial << "    check " << subscription.c_str() << __LINE__ << endl;
 		if (subscription.matches(topic))
 		{
-			Serial << "    matche !" << endl;
 			if (client)
 			{
-				// Serial << "Republishing " << topic.str().c_str() << " to " << clientId.c_str() << endl;
 				msg.sendTo(this);
 			}
 			else if (callback)

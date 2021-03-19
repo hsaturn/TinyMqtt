@@ -125,6 +125,8 @@ class MqttClient
 		void subscribe(Topic topic) { subscriptions.insert(topic); }
 		void unsubscribe(Topic& topic);
 
+		bool isLocal() const { return client==nullptr; }
+
 	private:
 		friend class MqttBroker;
 		MqttClient(MqttBroker* parent, WiFiClient& client);
@@ -146,8 +148,33 @@ class MqttClient
 		CallBack callback;
 };
 
+/***********************************************
+ * R1 - accept external cnx
+ * R2 - allows all clients pusblish to go outside
+ * R3 - allows ext publish to all clients
+ * R4 - allows local publish to local clients
+ * R5 - tries to connect elsewhere (*)
+ * R6 - disconnect external clients
+ * ---------------------------------------------
+ *  (*) single client or ip range
+ * ---------------------------------------------
+ *
+ * =============================================+
+ *              | connected     | not connected |
+ * -------------+---------------+---------------+
+ * proxy broker | R2 R3 R5 R6   | R3 R4 R5      |
+ * normal broker| R2 R3 R5 R6   | R1 R3 R4 R5   |
+ * -------------+---------------+---------------+
+ *
+ */
 class MqttBroker
 {
+	enum State
+	{
+		Disconnected,	// Also the initial state
+		Connecting,		// connect and sends a fake publish to avoid circular cnx
+		Connected,		// this->broker is connected and circular cnx avoided
+	};
 	public:
 		MqttBroker(uint16_t port);
 
@@ -155,6 +182,9 @@ class MqttBroker
 		void loop();
 
 		uint8_t port() const { return server.port(); }
+
+		void connect(std::string host, uint32_t port=1883);
+		bool connected() const { return state == Connected; }
 
 	private:
 		friend class MqttClient;
@@ -166,7 +196,7 @@ class MqttBroker
 		{ return compareString(auth_password, password, len); }
 
 
-		void publish(const Topic& topic, MqttMessage& msg);
+		void publish(const MqttClient* source, const Topic& topic, MqttMessage& msg);
 
 		// For clients that are added not by the broker itself
 		void addClient(MqttClient* client);
@@ -178,4 +208,7 @@ class MqttBroker
 
 		const char* auth_user = "guest";
 		const char* auth_password = "guest";
+		State state = Disconnected;
+
+		MqttClient* broker = nullptr;
 };
