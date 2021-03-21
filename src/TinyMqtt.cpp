@@ -174,10 +174,10 @@ bool MqttBroker::compareString(
 	return *good==0;
 }
 
-void MqttMessage::getString(char* &buffer, uint16_t& len)
+void MqttMessage::getString(const char* &buff, uint16_t& len)
 {
-	len = (buffer[0]<<8)|(buffer[1]);
-	buffer+=2;
+	len = (buff[0]<<8)|(buff[1]);
+	buff+=2;
 }
 
 void MqttClient::clientAlive(uint32_t more_seconds)
@@ -226,7 +226,7 @@ void MqttClient::processMessage()
 	std::string s;
 	// Serial << "---> INCOMING " << _HEX(message.type()) << ", mem=" << ESP.getFreeHeap() << endl;
   auto header = message.getVHeader();
-  char* payload;
+  const char* payload;
   uint16_t len;
 	bool bclose=true;
 
@@ -420,15 +420,14 @@ void MqttClient::publish(const Topic& topic, MqttMessage& msg)
 
 void MqttMessage::reset()
 {
-	curr=buffer;
-	*curr=0;	// Type Unknown
+	buffer.clear();
 	state=FixedHeader;
 	size=0;
 }
 
 void MqttMessage::incoming(char in_byte)
 {
-	*curr++ = in_byte;
+	buffer += in_byte;
 	switch(state)
 	{
 		case FixedHeader:
@@ -443,7 +442,7 @@ void MqttMessage::incoming(char in_byte)
 			}
 			else if ((in_byte & 0x80) == 0)
 			{
-				vheader = curr;
+				vheader = buffer.length();
 				if (size==0)
 					state = Complete;
 				else
@@ -464,15 +463,14 @@ void MqttMessage::incoming(char in_byte)
 			break;
 		case Complete:
 		default:
-			curr--;
 			Serial << "Spurious " << _HEX(in_byte) << endl;
-			state = Error;
+			reset();
 			break;
 	}
-	if (curr-buffer > 250)
+	if (buffer.length() > 256)	// TODO magic 256 ?
 	{
-		debug("Spurious byte " << _HEX(in_byte));
-		curr=buffer;
+		debug("Too long");
+		reset();
 	}
 }
 
@@ -496,29 +494,26 @@ void MqttMessage::encodeLength(char* msb, int length)
 
 void MqttMessage::sendTo(MqttClient* client)
 {
-	if (curr-buffer-2 >= 0)
+	if (buffer.size()>2)
 	{
-		encodeLength(buffer+1, curr-buffer-2);
+		encodeLength(&buffer[1], buffer.size()-2);
 		// hexdump("snd");
-		client->write(buffer, curr-buffer);
+		client->write(&buffer[0], buffer.size());
 	}
 	else
 	{
 		Serial << "??? Invalid send" << endl;
-		Serial << (long)end() << "-" << (long)buffer << endl;
 	}
 }
 
 void MqttMessage::hexdump(const char* prefix) const
 {
 	if (prefix) Serial << prefix << ' ';
-	Serial << (long)buffer << "-" << (long)curr << " : ";
-		const char* p=buffer;
-		while(p!=curr)
+	Serial << "size(" << buffer.size() << ") : ";
+		for(const char chr: buffer)
 		{
-			if (*p<16) Serial << '0';
-			Serial << _HEX(*p) << ' ';
-			p++;
+			if (chr<16) Serial << '0';
+			Serial << _HEX(chr) << ' ';
 		}
 		Serial << endl;
 }

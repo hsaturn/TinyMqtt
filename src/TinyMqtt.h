@@ -51,15 +51,15 @@ class MqttMessage
 		void add(const char* p, size_t len);
 		void add(const std::string& s) { add(s.c_str(), s.length()); }
 		void add(const Topic& t) { add(t.str()); }
-		char* getVHeader() const { return vheader; }
-		char* end() const { return curr; }
-		uint16_t length() const { return curr-buffer; }
+		const char* end() const { return &buffer[0]+buffer.size(); }
+		const char* getVHeader() const { return &buffer[vheader]; }
+		uint16_t length() const { return buffer.size(); }
 
 		void reset();
 
 		// buff is MSB/LSB/STRING
 		// output buff+=2, len=length(str)
-		void getString(char* &buff, uint16_t& len);
+		static void getString(const char* &buff, uint16_t& len);
 
 
 		Type type() const
@@ -69,9 +69,9 @@ class MqttMessage
 
 		void create(Type type)
 		{
-			buffer[0]=type;
-			curr=buffer+2;
-			vheader=curr;
+			buffer=(char)type;
+			buffer+='\0';
+			vheader=2;
 			size=0;
 			state=Create;
 		}
@@ -81,9 +81,8 @@ class MqttMessage
 	private:
 		void encodeLength(char* msb, int length);
 
-	  char buffer[256];	// TODO why 256 ? (should be replaced by a std::string)
-		char* vheader;
-		char* curr;
+		std::string buffer;
+		uint8_t vheader;
 		uint16_t size;	// bytes left to receive
 		State state;
 };
@@ -169,26 +168,6 @@ class MqttClient
 		CallBack callback = nullptr;
 };
 
-/***********************************************
- * R1 - accept external cnx
- * R2 - allows all clients pusblish to go outside
- * R3 - allows ext publish to all clients
- * R4 - allows local publish to local clients
- * R5 - tries to connect elsewhere (*)
- * R6 - disconnect external clients
- * R7 - allows all publish to go everywhere
- * ---------------------------------------------
- *  (*) single client or ip range
- * ---------------------------------------------
- *
- * ================================================+
- *              | connected     | not connected    |
- * -------------+---------------+------------------+
- * proxy broker | R2 R3 R5 R6   |    R5 R7         |
- * normal broker| R2 R3 R5 R6   | R1 R5 R7         |
- * -------------+---------------+------------------+
- *
- */
 class MqttBroker
 {
 	enum State
