@@ -3,7 +3,7 @@
 #include <map>
 
 /** 
-  * Local broker that accept connections
+  * Console allowing to make any kind of test.
   *
   * pros - Reduces internal latency (when publish is received by the same ESP)
   *      - Reduces wifi traffic
@@ -25,10 +25,12 @@
 
 std::string topic="sensor/temperature";
 
-MqttBroker broker(1883);
-
 void onPublish(const MqttClient* srce, const Topic& topic, const char* payload, size_t length)
 { Serial << "--> " << srce->id().c_str() << ": ======> received " << topic.c_str() << endl; }
+
+std::map<std::string, MqttClient*> clients;
+std::map<std::string, MqttBroker*> brokers;
+
 
 void setup()
 {
@@ -46,7 +48,21 @@ void setup()
 
   Serial << "Connected to " << ssid << "IP address: " << WiFi.localIP() << endl;
 
-	broker.begin();
+	MqttBroker* broker = new MqttBroker(1883);
+	broker->begin();
+	brokers["broker"] = broker;
+}
+
+int getint(std::string& str, const int if_empty=0, char sep=' ')
+{
+	std::string sword;
+	while(str.length() && str[0]!=sep)
+	{
+		sword += str[0]; str.erase(0,1);
+	}
+	while(str[0]==sep) str.erase(0,1);
+	if (if_empty and sword.length()==0) sword=if_empty;
+	return atoi(sword.c_str());
 }
 
 std::string getword(std::string& str, const char* if_empty=nullptr, char sep=' ')
@@ -128,7 +144,7 @@ class automatic
 						autop->bon=false;
 					else if (s=="interval")
 					{
-						int32_t i=atol(getword(cmd).c_str());
+						int32_t i=getint(cmd);
 						if (i)
 							autop->interval(atol(s.c_str()));
 						else
@@ -181,35 +197,12 @@ bool compare(std::string s, const char* cmd)
 	return strncmp(cmd, s.c_str(), s.length())==0;
 }
 
-std::map<std::string, MqttClient*> clients;
-
 using ClientFunction = void(*)(std::string& cmd, MqttClient* publish);
-
-void clientCommand(std::string& cmd, ClientFunction func, bool canBeNull=false)
-{
-	std::string s=getword(cmd);
-	bool found = clients.find(s) != clients.end();
-
-	if (canBeNull && found==false)
-	{
-		cmd += ' ' + s;
-	}
-
-	if (found or canBeNull)
-	{
-		MqttClient* publish = publish = clients[s];
-		func(cmd, publish);
-	}
-	else
-	{
-		Serial << "client not found (" << s.c_str() << ")" << endl;
-		cmd="";
-	}
-}
 
 void loop()
 {
-	broker.loop();
+	for(auto it: brokers)
+		it.second->loop();
 
 	for(auto it: clients)
 		it.second->loop();
@@ -223,7 +216,7 @@ void loop()
 
 		if (c==10 or c==14)
 		{
-			Serial << "------------------------------------------------------" << endl;
+			Serial << "----------------[ " << cmd.c_str() << " ]--------------" << endl;
 			static std::string last_cmd;
 			if (cmd=="!")
 				cmd=last_cmd;
@@ -232,93 +225,169 @@ void loop()
 			while(cmd.length())
 			{
 				std::string s;
+				MqttBroker* broker = nullptr;
+				MqttClient* client = nullptr;
 
 				// client.function notation
 				// ("a.fun " becomes "fun a ")
 				if (cmd.find('.') != std::string::npos)
 				{
-					std::string copy(cmd);
-					s=getword(copy, nullptr, '.');
+					s=getword(cmd, nullptr, '.');
 
 					if (clients.find(s) != clients.end())
 					{
-						std::string s2 = getword(copy);
-						cmd=s2+' '+s+' '+copy;
+						client = clients[s];
+					}
+					else if (brokers.find(s) != brokers.end())
+					{
+						broker = brokers[s];
 					}
 					else
 					{
-						Serial << "Unknown client (" << s.c_str() << ")" << endl;
+						Serial << "Unknown class (" << s.c_str() << ")" << endl;
 						cmd="";
 					}
 				}
 				
 				s = getword(cmd);
-				if (compare(s,"connect"))
+				if (broker)
 				{
-					clientCommand(cmd, [](std::string& cmd, MqttClient* publish)
-							{ publish->connect(getword(cmd,"192.168.1.40").c_str(), 1883);
-							  Serial << (publish->connected() ? "connected." : "not connected") << endl;
-							});
+					if (compare(s,"connect"))
+				  {
+						Serial << "NYI" << endl;
+				  }
+					else if (compare(s, "view"))
+					{
+						broker->dump();
+					}
+			  }
+				else if (client)
+				{
+					if (compare(s,"connect"))
+					{
+						client->connect(getword(cmd,"192.168.1.40").c_str(), 1883);
+						Serial << (client->connected() ? "connected." : "not connected") << endl;
+					}
+					else if (compare(s,"publish"))
+					{
+						client->publish(getword(cmd, topic.c_str()));
+					}
+					else if (compare(s,"subscribe"))
+					{
+						client->subscribe(getword(cmd, topic.c_str()));
+					}
+					else if (compare(s, "view"))
+					{
+						client->dump();
+					}
 				}
-				else if (compare(s,"publish"))
+				if (compare(s, "delete"))
 				{
-					clientCommand(cmd, [](std::string& cmd, MqttClient* publish)
-							{ publish->publish(getword(cmd, topic.c_str())); });
-				}
-				else if (compare(s,"subscribe"))
-				{
-					clientCommand(cmd, [](std::string& cmd, MqttClient* publish)
-							{ publish->subscribe(getword(cmd, topic.c_str())); });
-				}
-				else if (compare(s, "view"))
-				{
-					clientCommand(cmd, [](std::string& cmd, MqttClient* publish)
-							{ publish->dump(); });
+					if (client==nullptr && broker==nullptr)
+					{
+						s = getword(cmd);
+						if (clients.find(s) != clients.end())
+						{
+							client = clients[s];
+						}
+						else if (brokers.find(s) != brokers.end())
+						{
+							broker = brokers[s];
+						}
+						else
+							Serial << "Unable to find (" << s.c_str() << ")" << endl;
+					}
+					if (client)
+					{
+						clients.erase(s);
+						for (auto it: clients)
+						{
+							if (it.second != client) continue;
+							Serial << "deleted" << endl;
+							clients.erase(it.first);
+							break;
+						}
+						cmd += " ls";
+					}
+					else if (broker)
+					{
+						for(auto it: brokers)
+						{
+							Serial << (int32_t)it.second << '/' << (int32_t)broker << endl;
+							if (broker != it.second) continue;
+							Serial << "deleted" << endl;
+							brokers.erase(it.first);
+							break;
+						}
+						cmd += " ls";
+					}
+					else
+						Serial << "Nothing to delete" << endl;
 				}
 				else if (compare(s, "auto"))
 				{
-					clientCommand(cmd, [](std::string& cmd, MqttClient* publish)
-							{ automatic::command(publish, cmd);
-							if (publish == nullptr)
-							cmd.clear();
-							}, true);
+					automatic::command(client, cmd);
+					if (client == nullptr)
+						cmd.clear();
 				}
-				else if (compare(s, "new"))
+				else if (compare(s, "broker"))
 				{
 					std::string id=getword(cmd);
-					if (id.length())
+					if (id.length() or brokers.find(id)!=brokers.end())
 					{
-						MqttClient* client = new MqttClient(&broker);
+						int port=getint(cmd, 0);
+						if (port)
+						{
+							MqttBroker* broker = new MqttBroker(port);
+							broker->begin();
+
+							brokers[id] = broker;
+							Serial << "new broker (" << id.c_str() << ")" << endl;
+						}
+						else
+							Serial << "Missing port" << endl;
+					}
+					else
+						Serial << "Missing or existing broker name (" << id.c_str() << ")" << endl;
+					cmd+=" ls";
+				}
+				else if (compare(s, "client"))
+				{
+					std::string id=getword(cmd);
+					if (id.length() or clients.find(id)!=clients.end())
+					{
+						MqttBroker* broker = nullptr;
+
+						// TODO cmd line broker name
+						if (brokers.size()==1) broker = brokers.begin()->second;
+						Serial << "broker=" << (int32_t)broker << endl;
+						delay(500);
+
+						MqttClient* client = new MqttClient(broker);
 						client->id(id);
 						clients[id]=client;
 						client->setCallback(onPublish);
 						client->subscribe(topic);
+						Serial << "new client (" << id.c_str() << ")" << endl;
 					}
 					else
-						Serial << "missing id" << endl;
+						Serial << "Missing or existing client name" << endl;
 					cmd+=" ls";
 				}
-				else if (compare(s, "delete"))
+				else if (compare(s, "ls") or compare(s, "view"))
 				{
-					s = getword(cmd);
-					auto it=clients.find(s);
-					if (it != clients.end())
-					{
-						delete it->second;
-						clients.erase(it);
-						cmd+=" ls";
-					}
-					else
-						Serial << "Unknown client (" << s.c_str() << ")" << endl;
-				}
-				else if (compare(s, "ls"))
-				{
-					Serial << "main  : " << clients.size() << " client/s." << endl;
+					Serial << "--< " << clients.size() << " client/s. >--" << endl;
 					for(auto it: clients)
 					{
 						Serial << "  "; it.second->dump();
 					}
-					broker.dump();
+
+					Serial << "--< " << brokers.size() << " brokers/s. >--" << endl;
+					for(auto it: brokers)
+					{
+						Serial << " ==[ Broker: " << it.first.c_str() << " ]== ";
+						it.second->dump();
+					}
 				}
 				else if (compare(s, "reset"))
 					ESP.restart();
@@ -327,11 +396,17 @@ void loop()
 				else if (compare(s,"help"))
 				{
 					Serial << "syntax:" << endl;
-					Serial << "    new/delete $id" << endl;
-					Serial << "    connect $id [ip]" << endl;
-					Serial << "    subscribe $id [topic]" << endl;
-					Serial << "    publish $id [topic]" << endl;
-					Serial << "    view $id " << endl;
+					Serial << "  MqttBroker:" << endl;
+					Serial << "    broker {name} {port} : create a new broker" << endl;
+					Serial << endl;
+					Serial << "  MqttClient:" << endl;
+					Serial << "    client {name} : create a client then" << endl;
+					Serial << "      name.connect  [ip]" << endl;
+					Serial << "      name.subscribe [topic]" << endl;
+					Serial << "      name.publish [topic]" << endl;
+					Serial << "      name.view" << endl;
+					Serial << "      name.delete" << endl;
+
 					automatic::help();
 					Serial << endl;
 					Serial << "    help" << endl;
@@ -340,8 +415,6 @@ void loop()
 					Serial << endl;
 					Serial << "  $id : name of the client." << endl;
 					Serial << "  default topic is '" << topic.c_str() << "'" << endl;
-					Serial << endl;
-					Serial << "   'function client args' can be written 'client.function args'" << endl;
 					Serial << endl;
 				}
 				else
