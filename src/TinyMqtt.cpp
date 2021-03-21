@@ -20,6 +20,14 @@ MqttBroker::MqttBroker(uint16_t port) : server(port)
 {
 }
 
+MqttBroker::~MqttBroker()
+{
+	while(clients.size())
+	{
+		delete clients[0];
+	}
+}
+
 MqttClient::MqttClient(MqttBroker* parent, WiFiClient& new_client)
 	: parent(parent)
 {
@@ -32,7 +40,7 @@ MqttClient::MqttClient(MqttBroker* parent)
 {
 		client = nullptr;
 
-		parent->addClient(this);
+		if (parent) parent->addClient(this);
 }
 
 MqttClient::~MqttClient()
@@ -61,9 +69,9 @@ void MqttClient::connect(std::string broker, uint16_t port)
 {
 	debug("cnx: closing");
 	close();
-	debug("cnx: closed");
 	if (client) delete client;
 	client = new WiFiClient;
+	debug("Trying to connect to " << broker.c_str() << ':' << port);
 	if (client->connect(broker.c_str(), port))
 	{
 	  debug("cnx: connecting");
@@ -467,9 +475,9 @@ void MqttMessage::incoming(char in_byte)
 			reset();
 			break;
 	}
-	if (buffer.length() > 256)	// TODO magic 256 ?
+	if (buffer.length() > MaxBufferLength)	// TODO magic 256 ?
 	{
-		debug("Too long");
+		debug("Too long " << state);
 		reset();
 	}
 }

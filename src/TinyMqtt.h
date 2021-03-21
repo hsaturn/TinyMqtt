@@ -4,7 +4,6 @@
 #include <string>
 #include "StringIndexer.h"
 
-#define MaxBufferLength 255
 
 class Topic : public IndexedString
 {
@@ -21,6 +20,7 @@ class Topic : public IndexedString
 class MqttClient;
 class MqttMessage
 {
+	const uint16_t MaxBufferLength = 255;
 	public:
 		enum Type
 		{
@@ -161,7 +161,12 @@ class MqttClient
 		uint32_t keep_alive;
 		uint32_t alive;
 		MqttMessage message;
+
+		// TODO	having a pointer on MqttBroker may produce larger binaries
+		// due to unecessary function linked if ever parent is not used
+		// (this is the case when MqttBroker isn't used except here)
 		MqttBroker* parent=nullptr;		// connection to local broker
+
 		WiFiClient* client=nullptr;		// connection to mqtt client or to remote broker
 		std::set<Topic>	subscriptions;
 		std::string clientId;
@@ -179,6 +184,7 @@ class MqttBroker
 	public:
 	  // TODO limit max number of clients
 		MqttBroker(uint16_t port);
+		~MqttBroker();
 
 		void begin() { server.begin(); }
 		void loop();
@@ -190,7 +196,7 @@ class MqttBroker
 
 		void dump()
 		{
-			Serial << "broker: " << clients.size() << " client/s" << endl;
+			Serial << clients.size() << " client/s" << endl;
 			for(auto client: clients)
 			{
 				Serial << "  ";
