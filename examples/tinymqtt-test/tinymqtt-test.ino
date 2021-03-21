@@ -49,14 +49,14 @@ void setup()
 	broker.begin();
 }
 
-std::string getword(std::string& str, const char* if_empty=nullptr)
+std::string getword(std::string& str, const char* if_empty=nullptr, char sep=' ')
 {
 	std::string sword;
-	while(str.length() && str[0]!=' ')
+	while(str.length() && str[0]!=sep)
 	{
 		sword += str[0]; str.erase(0,1);
 	}
-	while(str[0]==' ') str.erase(0,1);
+	while(str[0]==sep) str.erase(0,1);
 	if (if_empty and sword.length()==0) return if_empty;
 	return sword;
 }
@@ -224,13 +224,41 @@ void loop()
 		if (c==10 or c==14)
 		{
 			Serial << "------------------------------------------------------" << endl;
+			static std::string last_cmd;
+			if (cmd=="!")
+				cmd=last_cmd;
+			else
+				last_cmd=cmd;
 			while(cmd.length())
 			{
-				std::string s = getword(cmd);
+				std::string s;
+
+				// client.function notation
+				// ("a.fun " becomes "fun a ")
+				if (cmd.find('.') != std::string::npos)
+				{
+					std::string copy(cmd);
+					s=getword(copy, nullptr, '.');
+
+					if (clients.find(s) != clients.end())
+					{
+						std::string s2 = getword(copy);
+						cmd=s2+' '+s+' '+copy;
+					}
+					else
+					{
+						Serial << "Unknown client (" << s.c_str() << ")" << endl;
+						cmd="";
+					}
+				}
+				
+				s = getword(cmd);
 				if (compare(s,"connect"))
 				{
 					clientCommand(cmd, [](std::string& cmd, MqttClient* publish)
-							{ publish->connect(getword(cmd,"192.168.1.40").c_str(), 1883); });
+							{ publish->connect(getword(cmd,"192.168.1.40").c_str(), 1883);
+							  Serial << (publish->connected() ? "connected." : "not connected") << endl;
+							});
 				}
 				else if (compare(s,"publish"))
 				{
@@ -294,6 +322,8 @@ void loop()
 				}
 				else if (compare(s, "reset"))
 					ESP.restart();
+				else if (compare(s, "ip"))
+					Serial << "IP: " << WiFi.localIP() << endl;
 				else if (compare(s,"help"))
 				{
 					Serial << "syntax:" << endl;
@@ -305,16 +335,20 @@ void loop()
 					automatic::help();
 					Serial << endl;
 					Serial << "    help" << endl;
-					Serial << "    ls" << endl;
-					Serial << "    reset" << endl;
+					Serial << "    ls / ip / reset" << endl;
+					Serial << "    !  repeat last command" << endl;
 					Serial << endl;
 					Serial << "  $id : name of the client." << endl;
 					Serial << "  default topic is '" << topic.c_str() << "'" << endl;
 					Serial << endl;
+					Serial << "   'function client args' can be written 'client.function args'" << endl;
+					Serial << endl;
 				}
 				else
 				{
-					Serial << "Unknown command (" << s.c_str() << ")" << endl;
+					while(s[0]==' ') s.erase(0,1);
+					if (s.length())
+						Serial << "Unknown command (" << s.c_str() << ")" << endl;
 				}
 			}
 		}
