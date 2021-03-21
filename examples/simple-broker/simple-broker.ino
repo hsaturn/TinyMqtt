@@ -1,9 +1,7 @@
-#include <ESP8266WiFi.h>
 #include "TinyMqtt.h"   // https://github.com/hsaturn/TinyMqtt
 #include <Streaming.h>  // https://github.com/janelia-arduino/Streaming
 
-const char *ssid = ;      // Put here your wifi SSID ("ssid")
-const char *password = ;  // Put here your Wifi password ("pwd")
+#include <my_credentials.h>
 
 #define PORT 1883
 MqttBroker broker(PORT);

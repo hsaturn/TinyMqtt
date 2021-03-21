@@ -18,6 +18,14 @@ ESP 8266 is a small and very capable Mqtt Broker and Client
 - zeroconf, this is a strange but very powerful mode where
   all brokers tries to connect together on the same local network.
 
+## TODO List
+* Use [Async library](https://github.com/me-no-dev/ESPAsyncTCP)
+* Implement zeroconf mode (needs async)
+* Add a max_clients in MqttBroker. Used with zeroconf, there will be
+no need for having tons of clients (also RAM is the problem with many clients)
+* Test what is the real max number of clients for broker. As far as I saw, 3k is needed per client which would make more than 10 clients critical.
+* MqttMessage uses a buffer 256 bytes which is usually far than needed.
+
 ## Quickstart
 
 * install [Streaming library](https://github.com/janelia-arduino/Streaming)
@@ -39,6 +47,8 @@ ESP 8266 is a small and very capable Mqtt Broker and Client
 
 ## Standalone mode (zeroconf)
 -> The zeroconf mode is not yet implemented
+zerofonf clients to connect to broker on local network.
+
 In Zeroconf mode, each ESP is a a broker and scans the local network.
 After a while one ESP naturally becomes a 'master' and all ESP are connected together.
 No problem if the master dies, a new master will be choosen soon.

@@ -2,6 +2,12 @@
 #include <sstream>
 #include <Streaming.h>
 
+#if 1
+#define debug(what) { Serial << __LINE__ << ' ' << what << endl; delay(100); }
+#else
+#define debug(what) {}
+#endif
+
 void outstring(const char* prefix, const char*p, uint16_t len)
 {
 	return;
@@ -10,14 +16,12 @@ void outstring(const char* prefix, const char*p, uint16_t len)
 	Serial << '\'' << endl;
 }
 
-MqttBroker::MqttBroker(uint16_t port)
-	: server(port)
+MqttBroker::MqttBroker(uint16_t port) : server(port)
 {
 }
 
 MqttClient::MqttClient(MqttBroker* parent, WiFiClient& new_client)
-	: parent(parent),
-	mqtt_connected(false)
+	: parent(parent)
 {
 	client = new_client ? new WiFiClient(new_client) : nullptr;
 	alive = millis()+5000;	// client expires after 5s if no CONNECT msg
@@ -35,14 +39,47 @@ MqttClient::~MqttClient()
 {
 	close();
 	delete client;
-	parent->removeClient(this);
 }
 
 void MqttClient::close()
 {
+	debug("close " << id().c_str());
+	mqtt_connected = false;
 	if (client)
 	{
 		client->stop();
+	}
+
+	if (parent)
+	{
+		parent->removeClient(this);
+		parent=nullptr;
+	}
+}
+
+void MqttClient::connect(std::string broker, uint16_t port)
+{
+	debug("cnx: closing");
+	close();
+	debug("cnx: closed");
+	if (client) delete client;
+	client = new WiFiClient;
+	if (client->connect(broker.c_str(), port))
+	{
+	  debug("cnx: connecting");
+		message.create(MqttMessage::Type::Connect);
+		message.add("MQTT",4);
+		message.add(0x4);	// Mqtt protocol version 3.1.1
+		message.add(0x0);	// Connect flags         TODO user / name
+
+		keep_alive = 1;
+		message.add(0x00); // keep_alive
+		message.add((char)keep_alive);
+		message.add(clientId);
+	  debug("cnx: mqtt connecting");
+		message.sendTo(this);
+	  debug("cnx: mqtt sent " << (int32_t)parent);
+		clientAlive(0);
 	}
 }
 
@@ -58,11 +95,13 @@ void MqttBroker::removeClient(MqttClient* remove)
 		auto client=*it;
 		if (client==remove)
 		{
+			debug("Remove " << clients.size());
 			clients.erase(it);
+			debug("Client removed " << clients.size());
 			return;
 		}
 	}
-	Serial << "Error cannot remove client" << endl;	// TODO should not occur
+	debug("Error cannot remove client");	// TODO should not occur
 }
 
 void MqttBroker::loop()
@@ -72,19 +111,21 @@ void MqttBroker::loop()
   if (client)
 	{
 		addClient(new MqttClient(this, client));
-		Serial << "New client (" << clients.size() << ')' << endl;
+		debug("New client (" << clients.size() << ')');
 	}
 
-  for(auto it=clients.begin(); it!=clients.end(); it++)
+  // for(auto it=clients.begin(); it!=clients.end(); it++)
+	// use index because size can change during the loop
+	for(int i=0; i<clients.size(); i++)
 	{
-		auto client=*it;
+		auto client = clients[i];
     if(client->connected())
     {
 			client->loop();
 		}
 		else
 		{
-      Serial << "Client " << client->id().c_str() << "  Disconnected" << endl;
+      debug("Client " << client->id().c_str() << "  Disconnected, parent=" << (int32_t)client->parent);
 			// Note: deleting a client not added by the broker itself will probably crash later.
 			delete client;
 			break;
@@ -92,28 +133,34 @@ void MqttBroker::loop()
 	}
 }
 
-// Should be called for inside and outside incoming publishes (all)
 void MqttBroker::publish(const MqttClient* source, const Topic& topic, MqttMessage& msg)
 {
+	debug("publish ");
+	int i=0;
 	for(auto client: clients)
 	{
+		i++;
+		Serial << "brk_" << (broker && broker->connected() ? "con" : "dis") <<
+			 "	srce=" << (source->isLocal() ? "loc" : "rem") << " clt#" << i << ", local=" << client->isLocal() << ", con=" << client->connected();
 		bool doit = false;
 		if (broker && broker->connected())	// Connected: R2 R3 R5 R6
 		{
-			if (!client->isLocal())	// R2 go outside allowed
+			//    ext broker -> clients or
+			// or clients -> ext broker
+			if (source == broker)	// broker -> clients
 				doit = true;
-			else // R3 any client to outside allowed
-				doit = true;
+			else									// clients -> broker
+				broker->publish(topic, msg);
 		}
-		else // Disconnected: R3 R4 R5
+		else // Disconnected: R7
 		{
-			if (!source->isLocal()) // R3
-			  doit = true;
-			else if (client->isLocal())	// R4 local -> local
-				doit = true;
+			// All is allowed
+			doit = true;
 		}
+		Serial << ", doit=" << doit << ' ';
 
-		if (doit) client->publish(topic, msg);	// goes outside R2
+		if (doit) client->publish(topic, msg);
+		debug("");
 	}
 }
 
@@ -133,11 +180,11 @@ void MqttMessage::getString(char* &buffer, uint16_t& len)
 	buffer+=2;
 }
 
-void MqttClient::clientAlive()
+void MqttClient::clientAlive(uint32_t more_seconds)
 {
 	if (keep_alive)
 	{
-		alive=millis()+1000*(keep_alive+5);
+		alive=millis()+1000*(keep_alive+more_seconds);
 	}
 	else
 		alive=0;
@@ -147,8 +194,20 @@ void MqttClient::loop()
 {
 	if (alive && (millis() > alive))
 	{
-		Serial << "timeout client" << endl;
-		close();
+		if (parent)
+		{
+			debug("timeout client");
+			close();
+		}
+		else
+		{
+			uint16_t pingreq = MqttMessage::Type::PingReq;
+			client->write((uint8_t*)(&pingreq), 2);
+			clientAlive(0);
+
+			// TODO when many MqttClient passes through a local browser
+			// there is no need to send one PingReq per instance.
+		}
 	}
 
 	while(client && client->available()>0)
@@ -174,19 +233,45 @@ void MqttClient::processMessage()
 	switch(message.type() & 0XF0)
 	{
 		case MqttMessage::Type::Connect:
-			if (mqtt_connected) break;
+			if (mqtt_connected)
+			{
+				debug("already connected");
+				break;
+			}
 			payload = header+10;
-			flags = header[7];
+			mqtt_flags = header[7];
 			keep_alive = (header[8]<<8)|(header[9]);
-			if (strncmp("MQTT", header+2,4)) break;
-			if (header[6]!=0x04) break;	// Level 3.1.1
+			if (strncmp("MQTT", header+2,4))
+			{
+				debug("bad mqtt header");
+				break;
+			}
+			if (header[6]!=0x04)
+			{
+				debug("unknown level");
+				break;	// Level 3.1.1
+			}
 
 			// ClientId
 			message.getString(payload, len);
+			debug("client id len=" << len);
+			if (len>30)
+			{
+				Serial << '(';
+				for(int i=0; i<30; i++)
+				{
+					if (i%5==0) Serial << ' ';
+					char c=*(header+i);
+					Serial << (c < 32 ? '.' : c);
+				}
+				Serial << " )" << endl;
+				debug("Bad client id length");
+				break;
+			}
 			clientId = std::string(payload, len);
 			payload += len;
 
-			if (flags & FlagWill)	// Will topic
+			if (mqtt_flags & FlagWill)	// Will topic
 			{
 				message.getString(payload, len);	// Will Topic
 				outstring("WillTopic", payload, len);
@@ -196,13 +281,14 @@ void MqttClient::processMessage()
 				outstring("WillMessage", payload, len);
 				payload += len;
 			}
-			if (flags & FlagUserName)
+			// FIXME forgetting credential is allowed (security hole)
+			if (mqtt_flags & FlagUserName)
 			{
 				message.getString(payload, len);
 				if (!parent->checkUser(payload, len)) break;
 				payload += len;
 			}
-			if (flags & FlagPassword)
+			if (mqtt_flags & FlagPassword)
 			{
 				message.getString(payload, len);
 				if (!parent->checkPassword(payload, len)) break;
@@ -220,10 +306,17 @@ void MqttClient::processMessage()
 			break;
 
 		case MqttMessage::Type::PingReq:
-			message.create(MqttMessage::Type::PingResp);
-			message.add(0);
-			message.sendTo(this);
-			bclose = false;
+			if (!mqtt_connected) break;
+			if (client)
+			{
+				uint16_t pingreq = MqttMessage::Type::PingResp;
+				client->write((uint8_t*)(&pingreq), 2);
+			  bclose = false;
+			}
+			else
+			{
+				debug("internal pingreq ?");
+			}
 			break;
 
 		case MqttMessage::Type::Subscribe:
@@ -251,6 +344,7 @@ void MqttClient::processMessage()
 				if (qos) payload+=2;	// ignore packet identifier if any
 				// TODO reset DUP
 				// TODO reset RETAIN
+				debug("publishing to parent");
 				parent->publish(this, published, message);
 				// TODO should send PUBACK
 				bclose = false;
@@ -275,7 +369,7 @@ void MqttClient::processMessage()
   }
 	else
 	{
-		clientAlive();
+		clientAlive(5);
 	}
 	message.reset();
 }
@@ -304,19 +398,23 @@ void MqttClient::publish(const Topic& topic, const char* payload, size_t pay_len
 // republish a received publish if it matches any in subscriptions
 void MqttClient::publish(const Topic& topic, MqttMessage& msg)
 {
+	debug("mqttclient publish " << subscriptions.size());
 	for(const auto& subscription: subscriptions)
 	{
+		Serial << " client=" << (int32_t)client << ", topic " << topic.str().c_str() << ' ';
 		if (subscription.matches(topic))
 		{
+			Serial << " match/send";
 			if (client)
 			{
 				msg.sendTo(this);
 			}
 			else if (callback)
 			{
-				callback(topic, nullptr, 0);	// TODO 
+				callback(this, topic, nullptr, 0);	// TODO 
 			}
 		}
+		Serial << endl;
 	}
 }
 
@@ -373,14 +471,16 @@ void MqttMessage::incoming(char in_byte)
 	}
 	if (curr-buffer > 250)
 	{
-		Serial << "Too much incoming bytes." << endl;
+		debug("Spurious byte " << _HEX(in_byte));
 		curr=buffer;
 	}
 }
 
 void MqttMessage::add(const char* p, size_t len)
 {
-	while(len--) incoming(*p);
+	incoming(len>>8);
+	incoming(len & 0xFF);
+	while(len--) incoming(*p++);
 }
 
 void MqttMessage::encodeLength(char* msb, int length)

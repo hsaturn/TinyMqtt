@@ -81,7 +81,7 @@ class MqttMessage
 	private:
 		void encodeLength(char* msb, int length);
 
-	  char buffer[256];	// TODO 256 ?
+	  char buffer[256];	// TODO why 256 ? (should be replaced by a std::string)
 		char* vheader;
 		char* curr;
 		uint16_t size;	// bytes left to receive
@@ -91,14 +91,14 @@ class MqttMessage
 class MqttBroker;
 class MqttClient
 {
-	using CallBack = void (*)(const Topic& topic, const char* payload, size_t payload_length);
+	using CallBack = void (*)(const MqttClient* source, const Topic& topic, const char* payload, size_t payload_length);
 	enum Flags
 	{
 		FlagUserName = 128,
 		FlagPassword = 64,
 		FlagWillRetain = 32,	// unsupported
 		FlagWillQos = 16 | 8, // unsupported
-		FlagWill = 4,			// unsupported
+		FlagWill = 4,			    // unsupported
 		FlagCleanSession = 2,	// unsupported
 		FlagReserved = 1
 	};
@@ -107,11 +107,15 @@ class MqttClient
 
 		~MqttClient();
 
+		void connect(MqttBroker* parent);
+		void connect(std::string broker, uint16_t port);
+
 		bool connected() { return client==nullptr || client->connected(); }
 		void write(const char* buf, size_t length)
 		{ if (client) client->write(buf, length); }
 
 		const std::string& id() const { return clientId; }
+		void id(std::string& new_id) { clientId = new_id; }
 
 		void loop();
 		void close();
@@ -125,7 +129,24 @@ class MqttClient
 		void subscribe(Topic topic) { subscriptions.insert(topic); }
 		void unsubscribe(Topic& topic);
 
-		bool isLocal() const { return client==nullptr; }
+		// connected to local broker
+		// TODO seems to be useless
+		bool isLocal() const { return client == nullptr; }
+
+		void dump()
+		{
+			Serial << "MqttClient (" << clientId.c_str() << ") p=" << (int32_t) parent
+				<< " c=" << (int32_t)client << (connected() ? " ON " : " OFF"); 
+			Serial << " [";
+			bool c=false;
+			for(auto s: subscriptions)
+			{
+				Serial << (c?", ": "")<< s.str().c_str();
+				c=true;
+			}
+			Serial << "]" << endl;
+		}
+
 
 	private:
 		friend class MqttBroker;
@@ -133,19 +154,19 @@ class MqttClient
 		// republish a received publish if topic matches any in subscriptions
 		void publish(const Topic& topic, MqttMessage& msg);
 
-		void clientAlive();
+		void clientAlive(uint32_t more_seconds);
 		void processMessage();
 
-		char flags;
+		bool mqtt_connected = false;
+		char mqtt_flags;
 		uint32_t keep_alive;
 		uint32_t alive;
-		bool mqtt_connected;
-		WiFiClient* client;		// nullptr if this client is local
 		MqttMessage message;
-		MqttBroker* parent;
+		MqttBroker* parent=nullptr;		// connection to local broker
+		WiFiClient* client=nullptr;		// connection to mqtt client or to remote broker
 		std::set<Topic>	subscriptions;
 		std::string clientId;
-		CallBack callback;
+		CallBack callback = nullptr;
 };
 
 /***********************************************
@@ -155,16 +176,17 @@ class MqttClient
  * R4 - allows local publish to local clients
  * R5 - tries to connect elsewhere (*)
  * R6 - disconnect external clients
+ * R7 - allows all publish to go everywhere
  * ---------------------------------------------
  *  (*) single client or ip range
  * ---------------------------------------------
  *
- * =============================================+
- *              | connected     | not connected |
- * -------------+---------------+---------------+
- * proxy broker | R2 R3 R5 R6   | R3 R4 R5      |
- * normal broker| R2 R3 R5 R6   | R1 R3 R4 R5   |
- * -------------+---------------+---------------+
+ * ================================================+
+ *              | connected     | not connected    |
+ * -------------+---------------+------------------+
+ * proxy broker | R2 R3 R5 R6   |    R5 R7         |
+ * normal broker| R2 R3 R5 R6   | R1 R5 R7         |
+ * -------------+---------------+------------------+
  *
  */
 class MqttBroker
@@ -176,6 +198,7 @@ class MqttBroker
 		Connected,		// this->broker is connected and circular cnx avoided
 	};
 	public:
+	  // TODO limit max number of clients
 		MqttBroker(uint16_t port);
 
 		void begin() { server.begin(); }
@@ -185,6 +208,16 @@ class MqttBroker
 
 		void connect(std::string host, uint32_t port=1883);
 		bool connected() const { return state == Connected; }
+
+		void dump()
+		{
+			Serial << "broker: " << clients.size() << " client/s" << endl;
+			for(auto client: clients)
+			{
+				Serial << "  ";
+				client->dump();
+			}
+		}
 
 	private:
 		friend class MqttClient;
