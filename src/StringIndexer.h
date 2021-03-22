@@ -2,7 +2,7 @@
 #include <map>
 #include <string>
 #include <string.h>
-#include <Streaming.h>
+// #include <Streaming.h>
 #include <ESP8266WiFi.h>
 
 /***
@@ -36,7 +36,7 @@ class StringIndexer
 				{
 					strings[index].str = std::string(str, len);
 					strings[index].used++;
-					Serial << "Creating index " << index << " for (" << strings[index].str.c_str() << ") len=" << len << endl;
+					// Serial << "Creating index " << index << " for (" << strings[index].str.c_str() << ") len=" << len << endl;
 					return index;
 				}
 			}
@@ -66,7 +66,7 @@ class StringIndexer
 				if (it->second.used == 0)
 				{
 					strings.erase(it);
-					Serial << "Removing string(" << it->second.str.c_str() << ") size=" << strings.size() << endl;
+					// Serial << "Removing string(" << it->second.str.c_str() << ") size=" << strings.size() << endl;
 				}
 			}
 		}
