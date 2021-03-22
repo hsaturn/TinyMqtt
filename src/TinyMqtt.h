@@ -112,6 +112,7 @@ class MqttClient
 	};
 	public:
 		MqttClient(MqttBroker*);
+		MqttClient() : MqttClient(nullptr) {};
 
 		~MqttClient();
 
