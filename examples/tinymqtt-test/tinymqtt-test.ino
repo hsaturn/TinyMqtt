@@ -250,37 +250,6 @@ void loop()
 				}
 				
 				s = getword(cmd);
-				if (broker)
-				{
-					if (compare(s,"connect"))
-				  {
-						Serial << "NYI" << endl;
-				  }
-					else if (compare(s, "view"))
-					{
-						broker->dump();
-					}
-			  }
-				else if (client)
-				{
-					if (compare(s,"connect"))
-					{
-						client->connect(getword(cmd,"192.168.1.40").c_str(), 1883);
-						Serial << (client->connected() ? "connected." : "not connected") << endl;
-					}
-					else if (compare(s,"publish"))
-					{
-						client->publish(getword(cmd, topic.c_str()));
-					}
-					else if (compare(s,"subscribe"))
-					{
-						client->subscribe(getword(cmd, topic.c_str()));
-					}
-					else if (compare(s, "view"))
-					{
-						client->dump();
-					}
-				}
 				if (compare(s, "delete"))
 				{
 					if (client==nullptr && broker==nullptr)
@@ -324,6 +293,41 @@ void loop()
 					else
 						Serial << "Nothing to delete" << endl;
 				}
+				else if (broker)
+				{
+					if (compare(s,"connect"))
+				  {
+						Serial << "NYI" << endl;
+				  }
+					else if (compare(s, "view"))
+					{
+						broker->dump();
+					}
+			  }
+				else if (client)
+				{
+					if (compare(s,"connect"))
+					{
+						client->connect(getword(cmd,"192.168.1.40").c_str(), 1883);
+						Serial << (client->connected() ? "connected." : "not connected") << endl;
+					}
+					else if (compare(s,"publish"))
+					{
+						auto ok=client->publish(getword(cmd, topic.c_str()));
+						if (ok != MqttOk)
+						{
+							Serial << "## ERROR " << ok << endl;
+						}
+					}
+					else if (compare(s,"subscribe"))
+					{
+						client->subscribe(getword(cmd, topic.c_str()));
+					}
+					else if (compare(s, "view"))
+					{
+						client->dump();
+					}
+				}
 				else if (compare(s, "auto"))
 				{
 					automatic::command(client, cmd);
@@ -356,19 +360,23 @@ void loop()
 					std::string id=getword(cmd);
 					if (id.length() or clients.find(id)!=clients.end())
 					{
-						MqttBroker* broker = nullptr;
 
-						// TODO cmd line broker name
-						if (brokers.size()==1) broker = brokers.begin()->second;
-						Serial << "broker=" << (int32_t)broker << endl;
-						delay(500);
-
-						MqttClient* client = new MqttClient(broker);
-						client->id(id);
-						clients[id]=client;
-						client->setCallback(onPublish);
-						client->subscribe(topic);
-						Serial << "new client (" << id.c_str() << ")" << endl;
+						s=getword(cmd);	// broker name
+						if (s=="" or brokers.find(s) != brokers.end())
+						{
+							MqttBroker* broker = nullptr;
+							if (s.length()) broker = brokers[s];
+							MqttClient* client = new MqttClient(broker);
+							client->id(id);
+							clients[id]=client;
+							client->setCallback(onPublish);
+							client->subscribe(topic);
+							Serial << "new client (" << id.c_str() << ", " << s.c_str() << ')' << endl;
+						}
+						else if (s.length())
+						{
+							Serial << " not found." << endl;
+						}
 					}
 					else
 						Serial << "Missing or existing client name" << endl;
@@ -400,7 +408,7 @@ void loop()
 					Serial << "    broker {name} {port} : create a new broker" << endl;
 					Serial << endl;
 					Serial << "  MqttClient:" << endl;
-					Serial << "    client {name} : create a client then" << endl;
+					Serial << "    client {name} {parent broker} : create a client then" << endl;
 					Serial << "      name.connect  [ip]" << endl;
 					Serial << "      name.subscribe [topic]" << endl;
 					Serial << "      name.publish [topic]" << endl;
