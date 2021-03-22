@@ -141,8 +141,10 @@ void MqttBroker::loop()
 	}
 }
 
-void MqttBroker::publish(const MqttClient* source, const Topic& topic, MqttMessage& msg)
+MqttError MqttBroker::publish(const MqttClient* source, const Topic& topic, MqttMessage& msg)
 {
+	MqttError retval = MqttOk;
+
 	debug("publish ");
 	int i=0;
 	for(auto client: clients)
@@ -158,7 +160,7 @@ void MqttBroker::publish(const MqttClient* source, const Topic& topic, MqttMessa
 			if (source == broker)	// broker -> clients
 				doit = true;
 			else									// clients -> broker
-				broker->publish(topic, msg);
+				retval=broker->publish(topic, msg);
 		}
 		else // Disconnected: R7
 		{
@@ -170,6 +172,7 @@ void MqttBroker::publish(const MqttClient* source, const Topic& topic, MqttMessa
 		if (doit) client->publish(topic, msg);
 		debug("");
 	}
+	return retval;
 }
 
 bool MqttBroker::compareString(
@@ -390,22 +393,25 @@ bool Topic::matches(const Topic& topic) const
 }
 
 // publish from local client
-void MqttClient::publish(const Topic& topic, const char* payload, size_t pay_length)
+MqttError MqttClient::publish(const Topic& topic, const char* payload, size_t pay_length)
 {
-	message.create(MqttMessage::Publish);
-	message.add(topic);
-	message.add(payload, pay_length);
+	MqttMessage msg;
+	msg.create(MqttMessage::Publish);
+	msg.add(topic);
+	msg.add(payload, pay_length);
 	if (parent)
-		parent->publish(this, topic, message);
+		return parent->publish(this, topic, msg);
 	else if (client)
-		publish(topic, message);
+		msg.sendTo(this);
 	else
-		Serial << "  Should not happen" << endl;
+		return MqttNowhereToSend;
 }
 
 // republish a received publish if it matches any in subscriptions
-void MqttClient::publish(const Topic& topic, MqttMessage& msg)
+MqttError MqttClient::publish(const Topic& topic, MqttMessage& msg)
 {
+	MqttError retval=MqttOk;
+
 	debug("mqttclient publish " << subscriptions.size());
 	for(const auto& subscription: subscriptions)
 	{
@@ -419,11 +425,12 @@ void MqttClient::publish(const Topic& topic, MqttMessage& msg)
 			}
 			else if (callback)
 			{
-				callback(this, topic, nullptr, 0);	// TODO 
+				callback(this, topic, nullptr, 0);	// TODO Payload
 			}
 		}
 		Serial << endl;
 	}
+	return retval;
 }
 
 void MqttMessage::reset()

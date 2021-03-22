@@ -4,6 +4,11 @@
 #include <string>
 #include "StringIndexer.h"
 
+enum MqttError
+{
+	MqttOk = 0,
+	MqttNowhereToSend=1,
+};
 
 class Topic : public IndexedString
 {
@@ -121,9 +126,9 @@ class MqttClient
 		void setCallback(CallBack fun) {callback=fun; };
 
 		// Publish from client to the world
-		void publish(const Topic&, const char* payload, size_t pay_length);
-		void publish(const Topic& t, const std::string& s) { publish(t,s.c_str(),s.length());}
-		void publish(const Topic& t) { publish(t, nullptr, 0);};
+		MqttError publish(const Topic&, const char* payload, size_t pay_length);
+		MqttError publish(const Topic& t, const std::string& s) { return publish(t,s.c_str(),s.length());}
+		MqttError publish(const Topic& t) { return publish(t, nullptr, 0);};
 
 		void subscribe(Topic topic) { subscriptions.insert(topic); }
 		void unsubscribe(Topic& topic);
@@ -151,7 +156,7 @@ class MqttClient
 		friend class MqttBroker;
 		MqttClient(MqttBroker* parent, WiFiClient& client);
 		// republish a received publish if topic matches any in subscriptions
-		void publish(const Topic& topic, MqttMessage& msg);
+		MqttError publish(const Topic& topic, MqttMessage& msg);
 
 		void clientAlive(uint32_t more_seconds);
 		void processMessage();
@@ -214,7 +219,7 @@ class MqttBroker
 		{ return compareString(auth_password, password, len); }
 
 
-		void publish(const MqttClient* source, const Topic& topic, MqttMessage& msg);
+		MqttError publish(const MqttClient* source, const Topic& topic, MqttMessage& msg);
 
 		// For clients that are added not by the broker itself
 		void addClient(MqttClient* client);
