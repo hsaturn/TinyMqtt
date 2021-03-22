@@ -27,6 +27,8 @@ no need for having tons of clients (also RAM is the problem with many clients)
 * MqttMessage uses a buffer 256 bytes which is usually far than needed.
 * MqttClient auto reconnection
 * MqttClient auto re-subscribe
+* MqttClient does not callback payload...
+* MqttClient user/password
 
 ## Quickstart
 
