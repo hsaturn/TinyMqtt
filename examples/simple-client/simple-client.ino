@@ -16,6 +16,9 @@
 
 #include <my_credentials.h>
 
+static float temp=19;
+static MqttClient client;
+
 void setup() 
 {
   Serial.begin(115200);
@@ -29,8 +32,18 @@ void setup()
 	{ delay(500); Serial << '.'; }
 
   Serial << "Connected to " << ssid << "IP address: " << WiFi.localIP() << endl;  
+
+	client.connect("192.168.1.40", 1883);	// Put here your broker ip / port
+
 }
 
 void loop()
 {
+	client.loop();
+
+	delay(1000);
+
+	temp += (random(100)>50 ? 0.1 : -0.1);
+	client.publish("sensor/temperature", String(temp));
+
 }
