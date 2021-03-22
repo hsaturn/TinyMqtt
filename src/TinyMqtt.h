@@ -134,6 +134,7 @@ class MqttClient
 
 		// Publish from client to the world
 		MqttError publish(const Topic&, const char* payload, size_t pay_length);
+		MqttError publish(const Topic& t, const String& s) { return publish(t, s.c_str(), s.length()); }
 		MqttError publish(const Topic& t, const std::string& s) { return publish(t,s.c_str(),s.length());}
 		MqttError publish(const Topic& t) { return publish(t, nullptr, 0);};
 
