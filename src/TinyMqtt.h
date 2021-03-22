@@ -57,7 +57,7 @@ class MqttMessage
 		MqttMessage(Type t) { create(t); }
 		void incoming(char byte);
 		void add(char byte) { incoming(byte); }
-		void add(const char* p, size_t len);
+		void add(const char* p, size_t len, bool addLength=true );
 		void add(const std::string& s) { add(s.c_str(), s.length()); }
 		void add(const Topic& t) { add(t.str()); }
 		const char* end() const { return &buffer[0]+buffer.size(); }

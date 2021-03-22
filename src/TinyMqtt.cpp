@@ -400,7 +400,7 @@ MqttError MqttClient::publish(const Topic& topic, const char* payload, size_t pa
 	MqttMessage msg;
 	msg.create(MqttMessage::Publish);
 	msg.add(topic);
-	msg.add(payload, pay_length);
+	msg.add(payload, pay_length, false);
 	if (parent)
 		return parent->publish(this, topic, msg);
 	else if (client)
@@ -491,10 +491,13 @@ void MqttMessage::incoming(char in_byte)
 	}
 }
 
-void MqttMessage::add(const char* p, size_t len)
+void MqttMessage::add(const char* p, size_t len, bool addLength)
 {
-	incoming(len>>8);
-	incoming(len & 0xFF);
+	if (addLength)
+	{
+		incoming(len>>8);
+		incoming(len & 0xFF);
+	}
 	while(len--) incoming(*p++);
 }
 
