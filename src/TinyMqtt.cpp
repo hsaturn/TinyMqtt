@@ -28,10 +28,11 @@ MqttBroker::~MqttBroker()
 	}
 }
 
+// private constructor used by broker only
 MqttClient::MqttClient(MqttBroker* parent, WiFiClient& new_client)
 	: parent(parent)
 {
-	client = new_client ? new WiFiClient(new_client) : nullptr;
+	client = new WiFiClient(new_client);
 	alive = millis()+5000;	// client expires after 5s if no CONNECT msg
 }
 
@@ -80,7 +81,7 @@ void MqttClient::connect(std::string broker, uint16_t port)
 		message.add(0x4);	// Mqtt protocol version 3.1.1
 		message.add(0x0);	// Connect flags         TODO user / name
 
-		keep_alive = 1;
+		keep_alive = 1;			// TODO not configurable
 		message.add(0x00); // keep_alive
 		message.add((char)keep_alive);
 		message.add(clientId);
@@ -127,7 +128,7 @@ void MqttBroker::loop()
 	for(int i=0; i<clients.size(); i++)
 	{
 		auto client = clients[i];
-    if(client->connected())
+    if (client->connected())
     {
 			client->loop();
 		}
@@ -209,8 +210,9 @@ void MqttClient::loop()
 		{
 			debug("timeout client");
 			close();
+			debug("closed");
 		}
-		else
+		else if (client && client->connected())
 		{
 			uint16_t pingreq = MqttMessage::Type::PingReq;
 			client->write((uint8_t*)(&pingreq), 2);

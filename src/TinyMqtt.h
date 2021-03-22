@@ -114,7 +114,9 @@ class MqttClient
 		void connect(MqttBroker* parent);
 		void connect(std::string broker, uint16_t port);
 
-		bool connected() { return client==nullptr || client->connected(); }
+		bool connected() { return
+			(parent!=nullptr and client==nullptr) or
+			(client and client->connected()); }
 		void write(const char* buf, size_t length)
 		{ if (client) client->write(buf, length); }
 
