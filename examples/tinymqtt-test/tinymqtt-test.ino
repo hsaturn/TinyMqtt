@@ -1,3 +1,4 @@
+#define TINY_MQTT_DEBUG
 #include <TinyMqtt.h>   // https://github.com/hsaturn/TinyMqtt
 #include <Streaming.h>  // https://github.com/janelia-arduino/Streaming
 #include <map>
@@ -360,7 +361,6 @@ void loop()
 					std::string id=getword(cmd);
 					if (id.length() or clients.find(id)!=clients.end())
 					{
-
 						s=getword(cmd);	// broker name
 						if (s=="" or brokers.find(s) != brokers.end())
 						{

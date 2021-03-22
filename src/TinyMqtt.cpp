@@ -2,12 +2,6 @@
 #include <sstream>
 #include <Streaming.h>
 
-#if TINY_MQTT_DEBUG
-#define debug(what) { Serial << __LINE__ << ' ' << what << endl; delay(100); }
-#else
-#define debug(what) {}
-#endif
-
 void outstring(const char* prefix, const char*p, uint16_t len)
 {
 	return;

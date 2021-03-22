@@ -4,8 +4,11 @@
 #include <string>
 #include "StringIndexer.h"
 
-#ifndef TINY_MQTT_DEBUG
-#define TINY_MQTT_DEBUG 0
+#ifdef TINY_MQTT_DEBUG
+  #include <Streaming.h>
+  #define debug(what) { Serial << __LINE__ << ' ' << what << endl; delay(100); }
+#else
+  #define debug(what) {}
 #endif
 
 enum MqttError
@@ -145,6 +148,7 @@ class MqttClient
 		// TODO seems to be useless
 		bool isLocal() const { return client == nullptr; }
 
+#ifdef TINY_MQTT_DEBUG
 		void dump()
 		{
 			Serial << "MqttClient (" << clientId.c_str() << ") p=" << (int32_t) parent
@@ -158,7 +162,7 @@ class MqttClient
 			}
 			Serial << "]" << endl;
 		}
-
+#endif
 
 	private:
 		friend class MqttBroker;
@@ -207,6 +211,7 @@ class MqttBroker
 		void connect(std::string host, uint32_t port=1883);
 		bool connected() const { return state == Connected; }
 
+#ifdef TINY_MQTT_DEBUG
 		void dump()
 		{
 			Serial << clients.size() << " client/s" << endl;
@@ -216,6 +221,7 @@ class MqttBroker
 				client->dump();
 			}
 		}
+#endif
 
 	private:
 		friend class MqttClient;
