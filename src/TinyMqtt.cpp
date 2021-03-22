@@ -2,7 +2,7 @@
 #include <sstream>
 #include <Streaming.h>
 
-#if 1
+#if TINY_MQTT_DEBUG
 #define debug(what) { Serial << __LINE__ << ' ' << what << endl; delay(100); }
 #else
 #define debug(what) {}

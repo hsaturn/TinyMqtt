@@ -4,6 +4,10 @@
 #include <string>
 #include "StringIndexer.h"
 
+#ifndef TINY_MQTT_DEBUG
+#define TINY_MQTT_DEBUG 0
+#endif
+
 enum MqttError
 {
 	MqttOk = 0,
