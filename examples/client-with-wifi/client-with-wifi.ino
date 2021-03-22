@@ -1,10 +1,8 @@
 #include <TinyMqtt.h>   // https://github.com/hsaturn/TinyMqtt
 #include <Streaming.h>  // https://github.com/janelia-arduino/Streaming
 
-// TODO should be renamed to most-complete setup
-
 /** 
-  * Local broker that accept connections
+  * Local broker that accept connections and two local clients
   *
   * pros - Reduces internal latency (when publish is received by the same ESP)
   *      - Reduces wifi traffic
@@ -31,11 +29,11 @@ MqttBroker broker(1883);
 MqttClient mqtt_a(&broker);
 MqttClient mqtt_b(&broker);
 
-void onPublishA(const Topic& topic, const char* payload, size_t length)
-{ Serial << "--> A Received " << topic.c_str() << endl; }
+void onPublishA(const MqttClient* source, const Topic& topic, const char* payload, size_t length)
+{ Serial << endl << "---------> A Received " << topic.c_str() << endl; }
 
-void onPublishB(const Topic& topic, const char* payload, size_t length)
-{ Serial << "--> B Received " << topic.c_str() << endl; }
+void onPublishB(const MqttClient* source, const Topic& topic, const char* payload, size_t length)
+{ Serial << endl << "---------> B Received " << topic.c_str() << endl; }
 
 void setup()
 {
@@ -67,7 +65,7 @@ void loop()
   mqtt_b.loop();
 
   // ============= client A publish ================
-	static const int intervalA = 50000;
+	static const int intervalA = 5000;  // publishes every 5s
 	static uint32_t timerA = millis() + intervalA;
 	
 	if (millis() > timerA)
@@ -78,7 +76,7 @@ void loop()
 	}
 
   // ============= client B publish ================
-	static const int intervalB = 30000;	// will send topic each 5000 ms
+	static const int intervalB = 7000;	// will send topic each 7s
 	static uint32_t timerB = millis() + intervalB;
 	
 	if (millis() > timerB)
