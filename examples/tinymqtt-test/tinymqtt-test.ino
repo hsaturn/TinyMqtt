@@ -225,6 +225,8 @@ void loop()
 				last_cmd=cmd;
 			while(cmd.length())
 			{
+				MqttError retval = MqttOk;
+
 				std::string s;
 				MqttBroker* broker = nullptr;
 				MqttClient* client = nullptr;
@@ -314,11 +316,7 @@ void loop()
 					}
 					else if (compare(s,"publish"))
 					{
-						auto ok=client->publish(getword(cmd, topic.c_str()));
-						if (ok != MqttOk)
-						{
-							Serial << "## ERROR " << ok << endl;
-						}
+						retval = client->publish(getword(cmd, topic.c_str()));
 					}
 					else if (compare(s,"subscribe"))
 					{
@@ -430,6 +428,11 @@ void loop()
 					while(s[0]==' ') s.erase(0,1);
 					if (s.length())
 						Serial << "Unknown command (" << s.c_str() << ")" << endl;
+				}
+
+				if (retval != MqttOk)
+				{
+					Serial << "## ERROR " << retval << endl;
 				}
 			}
 		}

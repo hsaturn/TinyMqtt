@@ -2,7 +2,6 @@
 #include <map>
 #include <string>
 #include <string.h>
-// #include <Streaming.h>
 #include <ESP8266WiFi.h>
 
 /***

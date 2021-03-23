@@ -3,9 +3,11 @@
 #include <set>
 #include <string>
 #include "StringIndexer.h"
+#include <MqttStreaming.h>
+
+#define TINY_MQTT_DEBUG
 
 #ifdef TINY_MQTT_DEBUG
-  #include <Streaming.h>
   #define debug(what) { Serial << __LINE__ << ' ' << what << endl; delay(100); }
 #else
   #define debug(what) {}
@@ -15,6 +17,7 @@ enum MqttError
 {
 	MqttOk = 0,
 	MqttNowhereToSend=1,
+	MqttInvalidMessage=2,
 };
 
 class Topic : public IndexedString
@@ -57,7 +60,7 @@ class MqttMessage
 		};
 
 		MqttMessage() { reset(); }
-		MqttMessage(Type t) { create(t); }
+		MqttMessage(Type t, uint8_t bits_d3_d0=0) { create(t); buffer[0] |= bits_d3_d0; }
 		void incoming(char byte);
 		void add(char byte) { incoming(byte); }
 		void add(const char* p, size_t len, bool addLength=true );
@@ -87,7 +90,7 @@ class MqttMessage
 			size=0;
 			state=Create;
 		}
-		void sendTo(MqttClient*);
+		MqttError sendTo(MqttClient*);
 		void hexdump(const char* prefix=nullptr) const;
 
 	private:
@@ -141,8 +144,8 @@ class MqttClient
 		MqttError publish(const Topic& t, const std::string& s) { return publish(t,s.c_str(),s.length());}
 		MqttError publish(const Topic& t) { return publish(t, nullptr, 0);};
 
-		void subscribe(Topic topic) { subscriptions.insert(topic); }
-		void unsubscribe(Topic& topic);
+		MqttError subscribe(Topic topic, uint8_t qos=0);
+		MqttError unsubscribe(Topic& topic);
 
 		// connected to local broker
 		// TODO seems to be useless

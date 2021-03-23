@@ -24,9 +24,9 @@ ESP 8266 is a small and very capable Mqtt Broker and Client
 * Add a max_clients in MqttBroker. Used with zeroconf, there will be
 no need for having tons of clients (also RAM is the problem with many clients)
 * Test what is the real max number of clients for broker. As far as I saw, 3k is needed per client which would make more than 10 clients critical.
-* MqttMessage uses a buffer 256 bytes which is usually far than needed.
-* MqttClient auto reconnection
+* ~~MqttMessage uses a buffer 256 bytes which is usually far than needed.~~
 * MqttClient auto re-subscribe
+* MqttClient auto reconnection
 * MqttClient does not callback payload...
 * MqttClient user/password
 
