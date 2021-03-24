@@ -347,9 +347,15 @@ if (message.type() != MqttMessage::Type::PingReq && message.type() != MqttMessag
 			break;
 
 		case MqttMessage::Type::Connack:
-			// if (!mqtt_connected) break;
 			// TODO what more on connack ?
 			mqtt_connected = true;
+			bclose = false;
+			break;
+
+		case MqttMessage::Type::Suback:
+		case MqttMessage::Type::Puback:
+			if (!mqtt_connected) break;
+			// Ignore acks
 			bclose = false;
 			break;
 
@@ -409,11 +415,15 @@ if (message.type() != MqttMessage::Type::PingReq && message.type() != MqttMessag
 				if (qos) payload+=2;	// ignore packet identifier if any
 				// TODO reset DUP
 				// TODO reset RETAIN
-				debug("publishing to parent");
 				if (parent)
+				{
+				  debug("publishing to parent");
 					parent->publish(this, published, message);
+				}
 				else if (callback && subscriptions.find(published)!=subscriptions.end())
+				{
 					callback(this, published, nullptr, 0);	// TODO send the real payload
+				}
 				// TODO should send PUBACK
 				bclose = false;
 			}
