@@ -1,6 +1,6 @@
 #define TINY_MQTT_DEBUG
-#include <TinyMqtt.h>   // https://github.com/hsaturn/TinyMqtt
-#include <Streaming.h>  // https://github.com/janelia-arduino/Streaming
+#include <TinyMqtt.h>       // https://github.com/hsaturn/TinyMqtt
+#include <MqttStreaming.h>
 #include <map>
 
 /** 

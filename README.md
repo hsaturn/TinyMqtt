@@ -33,7 +33,6 @@ no need for having tons of clients (also RAM is the problem with many clients)
 
 ## Quickstart
 
-* install [Streaming library](https://github.com/janelia-arduino/Streaming)
 * install [TinyMqtt library](https://github.com/hsaturn/TinyMqtt)
 * modify <libraries/TinyMqtt/src/my_credentials.h> (wifi setup)
 

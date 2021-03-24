@@ -1,6 +1,5 @@
 #include "TinyMqtt.h"
 #include <sstream>
-#include <Streaming.h>
 
 void outstring(const char* prefix, const char*p, uint16_t len)
 {

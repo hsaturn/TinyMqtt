@@ -1,5 +1,4 @@
 #include <TinyMqtt.h>   // https://github.com/hsaturn/TinyMqtt
-#include <Streaming.h>  // https://github.com/janelia-arduino/Streaming
 
 /** 
   * Local broker that accept connections and two local clients

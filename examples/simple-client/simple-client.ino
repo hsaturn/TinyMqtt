@@ -1,6 +1,5 @@
 #include <ESP8266WiFi.h>
 #include "TinyMqtt.h"   // https://github.com/hsaturn/TinyMqtt
-#include <Streaming.h>  // https://github.com/janelia-arduino/Streaming
 
 /** Simple Client
   *
