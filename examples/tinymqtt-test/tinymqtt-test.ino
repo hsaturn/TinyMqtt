@@ -54,15 +54,15 @@ void setup()
 	brokers["broker"] = broker;
 }
 
-int getint(std::string& str, const int if_empty=0, char sep=' ')
+int getint(std::string& str, const int if_empty=0)
 {
 	std::string sword;
-	while(str.length() && str[0]!=sep)
+	while(str.length() && str[0]>='0' && str[0]<='9')
 	{
 		sword += str[0]; str.erase(0,1);
 	}
-	while(str[0]==sep) str.erase(0,1);
-	if (if_empty and sword.length()==0) sword=if_empty;
+	while(str[0]==' ') str.erase(0,1);
+	if (if_empty and sword.length()==0) return if_empty;
 	return atoi(sword.c_str());
 }
 
@@ -78,6 +78,7 @@ std::string getword(std::string& str, const char* if_empty=nullptr, char sep=' '
 	return sword;
 }
 
+// publish at regular interval
 class automatic
 {
 	public:
@@ -189,6 +190,7 @@ class automatic
 		std::string topic_;
 		bool bon=false;
 		static std::map<MqttClient*, automatic*> autos;
+		float temp=19;
 };
 std::map<MqttClient*, automatic*> automatic::autos;
 
@@ -311,12 +313,14 @@ void loop()
 				{
 					if (compare(s,"connect"))
 					{
-						client->connect(getword(cmd,"192.168.1.40").c_str(), 1883);
+						client->connect(getword(cmd,"192.168.1.40").c_str(), getint(cmd, 1883), getint(cmd, 60));
 						Serial << (client->connected() ? "connected." : "not connected") << endl;
 					}
 					else if (compare(s,"publish"))
 					{
-						retval = client->publish(getword(cmd, topic.c_str()));
+						while (cmd[0]==' ') cmd.erase(0,1);
+						retval = client->publish(getword(cmd, topic.c_str()), cmd.c_str(), cmd.length());
+						cmd="";	// remove payload
 					}
 					else if (compare(s,"subscribe"))
 					{
@@ -407,9 +411,9 @@ void loop()
 					Serial << endl;
 					Serial << "  MqttClient:" << endl;
 					Serial << "    client {name} {parent broker} : create a client then" << endl;
-					Serial << "      name.connect  [ip]" << endl;
+					Serial << "      name.connect  [ip] [port] [alive]" << endl;
 					Serial << "      name.subscribe [topic]" << endl;
-					Serial << "      name.publish [topic]" << endl;
+					Serial << "      name.publish [topic][payload]" << endl;
 					Serial << "      name.view" << endl;
 					Serial << "      name.delete" << endl;
 

@@ -1,0 +1,11 @@
+// vim: ts=30
+Exemple of commands that can be sent via the serial monitor to tinymqtt-test
+----------------------------------------------------------------------------
+
+client a	starts a client (not connected no internal broker)
+a.connect [server][port][alive]	connects the client, default port=1883
+a.publish topic [payload]	send a topic with a payload
+a.subscribe topic	subscribes to a topic
+delete a	destroy the client
+
+
