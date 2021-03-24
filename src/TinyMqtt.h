@@ -154,15 +154,21 @@ class MqttClient
 #ifdef TINY_MQTT_DEBUG
 		void dump()
 		{
+			uint32_t ms=millis();
 			Serial << "MqttClient (" << clientId.c_str() << ") p=" << (int32_t) parent
 				<< " c=" << (int32_t)client << (connected() ? " ON " : " OFF"); 
+			Serial << ", alive=" << (uint32_t)alive << '/' << ms << ", ka=" << keep_alive;
+			Serial << " cnx " << (client && client->connected());
 			Serial << " [";
+		  message.hexdump("entrant msg");
 			bool c=false;
 			for(auto s: subscriptions)
 			{
 				Serial << (c?", ": "")<< s.str().c_str();
 				c=true;
 			}
+
+			
 			Serial << "]" << endl;
 		}
 #endif
