@@ -42,7 +42,11 @@ void loop()
 
 	delay(1000);
 
-	temp += (random(100)>50 ? 0.1 : -0.1);
+	auto rnd=random(100);
+
+	if (rnd > 66) temp += 0.1;
+	else if (rnd < 33) temp -= 0.1;
+
 	client.publish("sensor/temperature", String(temp));
 
 }
