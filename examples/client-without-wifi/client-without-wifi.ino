@@ -14,10 +14,10 @@ MqttBroker broker(1883);
 MqttClient mqtt_a(&broker);
 MqttClient mqtt_b(&broker);
 
-void onPublishA(const Topic& topic, const char* payload, size_t length)
+void onPublishA(const MqttClient* srce, const Topic& topic, const char* payload, size_t length)
 { Serial << "--> A Received " << topic.c_str() << endl; }
 
-void onPublishB(const Topic& topic, const char* payload, size_t length)
+void onPublishB(const MqttClient* srce, const Topic& topic, const char* payload, size_t length)
 { Serial << "--> B Received " << topic.c_str() << endl; }
 
 void setup()
