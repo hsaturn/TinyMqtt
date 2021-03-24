@@ -59,7 +59,7 @@ void MqttClient::close()
 	}
 }
 
-void MqttClient::connect(std::string broker, uint16_t port)
+void MqttClient::connect(std::string broker, uint16_t port, uint16_t ka)
 {
 	debug("cnx: closing");
 	close();
@@ -74,7 +74,7 @@ void MqttClient::connect(std::string broker, uint16_t port)
 		message.add(0x4);	// Mqtt protocol version 3.1.1
 		message.add(0x0);	// Connect flags         TODO user / name
 
-		keep_alive = 1;			// TODO not configurable
+		keep_alive = ka;			// TODO not configurable
 		message.add(0x00); // keep_alive
 		message.add((char)keep_alive);
 		message.add(clientId);

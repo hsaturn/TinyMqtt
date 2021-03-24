@@ -123,7 +123,7 @@ class MqttClient
 		~MqttClient();
 
 		void connect(MqttBroker* parent);
-		void connect(std::string broker, uint16_t port);
+		void connect(std::string broker, uint16_t port, uint16_t ka=10);
 
 		bool connected() { return
 			(parent!=nullptr and client==nullptr) or
