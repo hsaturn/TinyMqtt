@@ -78,6 +78,71 @@ std::string getword(std::string& str, const char* if_empty=nullptr, char sep=' '
 	return sword;
 }
 
+std::map<std::string, std::string> vars;
+
+std::set<std::string> commands = {
+	"auto", "broker", "client", "connect",
+	"create", "delete", "help", "interval",
+	"ls", "ip", "off", "on", "set",
+	"publish", "reset", "subscribe", "view"
+};
+
+void getCommand(std::string& search)
+{
+	while(search[0]==' ') search.erase(0,1);
+	if (search.length()==0) return;
+	std::string matches;
+	int count=0;
+	for(std::string cmd: commands)
+	{
+		if (cmd.substr(0, search.length()) == search)
+		{
+			if (count) matches +=", ";
+			count++;
+			matches += cmd;
+		}
+	}
+	if (count==1)
+		search = matches;
+	else if (count>1)
+	{
+		Serial << "Ambiguous command: " << matches << endl;
+		search="";
+	}
+}
+
+void replace(const char* d, std::string& str, std::string srch, std::string to)
+{
+	if (d[0] && d[1])
+	{
+		srch=d[0]+srch+d[1];
+		to=d[0]+to+d[1];
+
+		size_t pos = 0;
+		while((pos=str.find(srch, pos)) != std::string::npos)
+		{
+			str.erase(pos, srch.length());
+			str.insert(pos, to);
+			pos += to.length();
+		}
+	}
+}
+
+void replaceVars(std::string& cmd)
+{
+	cmd = ' '+cmd+' ';
+
+	for(auto it: vars)
+	{
+		replace("..", cmd, it.first, it.second);
+		replace(". ", cmd, it.first, it.second);
+		replace(" .", cmd, it.first, it.second);
+		replace("  ", cmd, it.first, it.second);
+	}
+	cmd.erase(0, cmd.find_first_not_of(" "));
+	cmd.erase(cmd.find_last_not_of(" ")+1);
+}
+
 // publish at regular interval
 class automatic
 {
@@ -180,6 +245,7 @@ class automatic
 		{
 					Serial << "    auto [$id] on/off" << endl;
 					Serial << "    auto [$id] view" << endl;
+					Serial << "    auto [$id] interval [s]" << endl;
 					Serial << "    auto [$id] create [millis] [topic]" << endl;
 		}
 
@@ -219,12 +285,16 @@ void loop()
 
 		if (c==10 or c==14)
 		{
+
 			Serial << "----------------[ " << cmd.c_str() << " ]--------------" << endl;
 			static std::string last_cmd;
 			if (cmd=="!")
 				cmd=last_cmd;
 			else
 				last_cmd=cmd;
+
+			replaceVars(cmd);
+			Serial << "---------------@[ " << cmd.c_str() << " ]--------------" << endl;
 			while(cmd.length())
 			{
 				MqttError retval = MqttOk;
@@ -235,27 +305,34 @@ void loop()
 
 				// client.function notation
 				// ("a.fun " becomes "fun a ")
-				if (cmd.find('.') != std::string::npos)
+				if (cmd.find('.') != std::string::npos && 
+						cmd.find('.') < cmd.find(' '))
 				{
 					s=getword(cmd, nullptr, '.');
 
-					if (clients.find(s) != clients.end())
+					if (s.length())
 					{
-						client = clients[s];
-					}
-					else if (brokers.find(s) != brokers.end())
-					{
-						broker = brokers[s];
-					}
-					else
-					{
-						Serial << "Unknown class (" << s.c_str() << ")" << endl;
-						cmd="";
+						if (clients.find(s) != clients.end())
+						{
+							client = clients[s];
+						}
+						else if (brokers.find(s) != brokers.end())
+						{
+							broker = brokers[s];
+						}
+						else
+						{
+							Serial << "Unknown class (" << s.c_str() << ")" << endl;
+							cmd="";
+						}
 					}
 				}
 				
 				s = getword(cmd);
-				if (compare(s, "delete"))
+				if (s.length()) getCommand(s);
+				if (s.length()==0)
+				{}
+				else if (compare(s, "delete"))
 				{
 					if (client==nullptr && broker==nullptr)
 					{
@@ -384,6 +461,32 @@ void loop()
 						Serial << "Missing or existing client name" << endl;
 					cmd+=" ls";
 				}
+				else if (compare(s, "set"))
+				{
+					std::string name(getword(cmd));
+					if (name.length()==0)
+					{
+						for(auto it: vars)
+						{
+							Serial << "  " << it.first << " -> " << it.second << endl;
+						}
+					}
+					else if (commands.find(name) != commands.end())
+					{
+						Serial << "Reserved keyword (" << name << ")" << endl;
+						cmd.clear();
+					}
+					else
+					{
+						if (cmd.length())
+						{
+							vars[name] = cmd;
+							cmd.clear();
+						}
+						else if (vars.find(name) != vars.end())
+							vars.erase(vars.find(name));
+					}
+				}
 				else if (compare(s, "ls") or compare(s, "view"))
 				{
 					Serial << "--< " << clients.size() << " client/s. >--" << endl;
@@ -421,6 +524,7 @@ void loop()
 					Serial << endl;
 					Serial << "    help" << endl;
 					Serial << "    ls / ip / reset" << endl;
+					Serial << "    set [name][value]" << endl;
 					Serial << "    !  repeat last command" << endl;
 					Serial << endl;
 					Serial << "  $id : name of the client." << endl;
