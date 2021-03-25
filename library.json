@@ -6,7 +6,7 @@
         "type": "git",
         "url": "https://github.com/hsaturn/TinyMqtt.git"
     },
-    "version": "0.5.0",
+    "version": "0.5.1",
     "exclude": "",
     "examples": "examples/*/*.ino",
     "frameworks": "arduino",
