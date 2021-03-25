@@ -69,18 +69,18 @@ void MqttClient::connect(std::string broker, uint16_t port, uint16_t ka)
 	if (client->connect(broker.c_str(), port))
 	{
 	  debug("cnx: connecting");
-		message.create(MqttMessage::Type::Connect);
-		message.add("MQTT",4);
-		message.add(0x4);	// Mqtt protocol version 3.1.1
-		message.add(0x0);	// Connect flags         TODO user / name
+		MqttMessage msg(MqttMessage::Type::Connect);
+		msg.add("MQTT",4);
+		msg.add(0x4);	// Mqtt protocol version 3.1.1
+		msg.add(0x0);	// Connect flags         TODO user / name
 
-		keep_alive = ka;			// TODO not configurable
-		message.add(0x00); // keep_alive
-		message.add((char)keep_alive);
-		message.add(clientId);
+		keep_alive = ka;
+		msg.add(0x00);			// keep_alive
+		msg.add((char)keep_alive);
+		msg.add(clientId);
 	  debug("cnx: mqtt connecting");
-		message.sendTo(this);
-		message.reset();
+		msg.sendTo(this);
+		msg.reset();
 	  debug("cnx: mqtt sent " << (int32_t)parent);
 
 		clientAlive(0);
@@ -339,21 +339,22 @@ if (message.type() != MqttMessage::Type::PingReq && message.type() != MqttMessag
 			Serial << "Connected client:" << clientId.c_str() << ", keep alive=" << keep_alive << '.' << endl;
 			bclose = false;
 			mqtt_connected=true;
-			// Reuse received msg
-			message.create(MqttMessage::Type::Connack);
-			message.add(0);	// Session present (not implemented)
-			message.add(0); // Connection accepted
-			message.sendTo(this);
+			{
+				MqttMessage msg(MqttMessage::Type::ConnAck);
+				msg.add(0);	// Session present (not implemented)
+				msg.add(0); // Connection accepted
+				msg.sendTo(this);
+			}
 			break;
 
-		case MqttMessage::Type::Connack:
+		case MqttMessage::Type::ConnAck:
 			// TODO what more on connack ?
 			mqtt_connected = true;
 			bclose = false;
 			break;
 
-		case MqttMessage::Type::Suback:
-		case MqttMessage::Type::Puback:
+		case MqttMessage::Type::SubAck:
+		case MqttMessage::Type::PubAck:
 			if (!mqtt_connected) break;
 			// Ignore acks
 			bclose = false;
@@ -429,11 +430,6 @@ if (message.type() != MqttMessage::Type::PingReq && message.type() != MqttMessag
 			}
 			break;
 
-		case MqttMessage::Type::PubAck:
-			if (!mqtt_connected) break;
-			bclose = false;
-			break;
-
 		default:
 			bclose=true;
 			break;
@@ -462,8 +458,7 @@ bool Topic::matches(const Topic& topic) const
 // publish from local client
 MqttError MqttClient::publish(const Topic& topic, const char* payload, size_t pay_length)
 {
-	MqttMessage msg;
-	msg.create(MqttMessage::Publish);
+	MqttMessage msg(MqttMessage::Publish);
 	msg.add(topic);
 	msg.add(payload, pay_length, false);
 	if (parent)

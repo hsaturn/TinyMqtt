@@ -41,11 +41,11 @@ class MqttMessage
 		{
 			Unknown   =    0,
 			Connect   = 0x10,
-			Connack   = 0x20,
+			ConnAck   = 0x20,
 			Publish   = 0x30,
 			PubAck    = 0x40,
 			Subscribe = 0x80,
-			Suback    = 0x90,
+			SubAck    = 0x90,
 			PingReq   = 0xC0,
 			PingResp  = 0xD0,
 		};
