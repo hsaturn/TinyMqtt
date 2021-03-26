@@ -296,7 +296,7 @@ if (message.type() != MqttMessage::Type::PingReq && message.type() != MqttMessag
 			// ClientId
 			message.getString(payload, len);
 			debug("client id len=" << len);
-			if (len>30)
+			if (len>60)
 			{
 				Serial << '(';
 				for(int i=0; i<30; i++)
