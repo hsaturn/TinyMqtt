@@ -26,8 +26,9 @@ no need for having tons of clients (also RAM is the problem with many clients)
 * Test what is the real max number of clients for broker. As far as I saw, 1k is needed per client which would make more than 30 clients critical.
 * ~~MqttMessage uses a buffer 256 bytes which is usually far than needed.~~
 * ~~MqttClient does not support more than one subscription at time~~
-* MqttClient auto re-subscribe
+* MqttClient auto re-subscribe (::resubscribe works bad on broker.emqx.io)
 * MqttClient auto reconnection
+* MqttClient unsubscribe
 * MqttClient does not callback payload...
 * MqttClient user/password
 
