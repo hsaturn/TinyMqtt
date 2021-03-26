@@ -293,8 +293,7 @@ void loop()
 			else
 				last_cmd=cmd;
 
-			replaceVars(cmd);
-			Serial << "---------------@[ " << cmd.c_str() << " ]--------------" << endl;
+			if (cmd.substr(0,3)!="set") replaceVars(cmd);
 			while(cmd.length())
 			{
 				MqttError retval = MqttOk;
