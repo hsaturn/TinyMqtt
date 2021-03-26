@@ -1,6 +1,7 @@
 #define TINY_MQTT_DEBUG
 #include <TinyMqtt.h>       // https://github.com/hsaturn/TinyMqtt
 #include <MqttStreaming.h>
+#include <sstream>
 #include <map>
 
 /** 
@@ -76,6 +77,46 @@ std::string getword(std::string& str, const char* if_empty=nullptr, char sep=' '
 	while(str[0]==sep) str.erase(0,1);
 	if (if_empty and sword.length()==0) return if_empty;
 	return sword;
+}
+
+bool isaddr(std::string s)
+{
+	if (s.length()==0 or s.length()>3) return false;
+	for(char c: s)
+		if (c<'0' or c>'9') return false;
+	return true;
+}
+
+std::string getip(std::string& str, const char* if_empty=nullptr, char sep=' ')
+{
+	std::string addr=getword(str, if_empty, sep);
+	std::string ip=addr;
+	std::vector<std::string> build;
+	bool ok=true;
+	while(ip.length())
+	{
+		std::string b=getword(ip,nullptr,'.');
+		if (isaddr(b) && build.size()<4)
+		{
+			build.push_back(b);
+		}
+		else
+			return addr;
+	}
+	IPAddress local=WiFi.localIP();
+	addr="";
+	while(build.size()!=4)
+	{
+		std::stringstream b;
+		b << (int)local[3-build.size()];
+		build.insert(build.begin(), b.str());
+	}
+	for(std::string s: build)
+	{
+		if (addr.length()) addr += '.';
+		addr += s;
+	}
+	return addr;
 }
 
 std::map<std::string, std::string> vars;
@@ -389,7 +430,7 @@ void loop()
 				{
 					if (compare(s,"connect"))
 					{
-						client->connect(getword(cmd,"192.168.1.40").c_str(), getint(cmd, 1883), getint(cmd, 60));
+						client->connect(getip(cmd,"192.168.1.40").c_str(), getint(cmd, 1883), getint(cmd, 60));
 						Serial << (client->connected() ? "connected." : "not connected") << endl;
 					}
 					else if (compare(s,"publish"))
