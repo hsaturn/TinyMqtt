@@ -311,6 +311,12 @@ using ClientFunction = void(*)(std::string& cmd, MqttClient* publish);
 
 void loop()
 {
+	static long count;
+	if (MqttClient::counter != count)
+	{
+		Serial << "# " << MqttClient::counter << endl;
+		count = MqttClient::counter;
+	}
 	for(auto it: brokers)
 		it.second->loop();
 

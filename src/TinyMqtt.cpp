@@ -522,8 +522,15 @@ void MqttMessage::incoming(char in_byte)
 				vheader = buffer.length();
 				if (size==0)
 					state = Complete;
+				else if (size > 500)	// TODO magic
+				{
+					state = Error;
+				}
 				else
+				{
+					buffer.reserve(size);
 					state = VariableHeader;
+				}
 			}
 			break;
 		case VariableHeader:
