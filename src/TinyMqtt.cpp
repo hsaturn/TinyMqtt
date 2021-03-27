@@ -236,6 +236,26 @@ void MqttClient::loop()
 	}
 }
 
+void MqttClient::resubscribe()
+{
+	// TODO resubscription limited to 256 bytes
+	if (subscriptions.size())
+	{
+		MqttMessage msg(MqttMessage::Type::Subscribe, 2);
+
+		// TODO manage packet identifier
+		msg.add(0);
+		msg.add(0);
+
+		for(auto topic: subscriptions)
+		{
+			msg.add(topic);
+			msg.add(0);		// TODO qos
+		}
+		msg.sendTo(this);	// TODO return value
+	}
+}
+
 MqttError MqttClient::subscribe(Topic topic, uint8_t qos)
 {
 	debug("subsribe(" << topic.c_str() << ")");
@@ -341,9 +361,9 @@ if (message.type() != MqttMessage::Type::PingReq && message.type() != MqttMessag
 			break;
 
 		case MqttMessage::Type::ConnAck:
-			// TODO what more on connack ?
 			mqtt_connected = true;
 			bclose = false;
+			resubscribe();
 			break;
 
 		case MqttMessage::Type::SubAck:
