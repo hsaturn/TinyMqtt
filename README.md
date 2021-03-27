@@ -6,10 +6,13 @@
 ![](https://img.shields.io/github/license/hsaturn/TinyMqtt)
 ![](https://img.shields.io/badge/Mqtt-%203.1.1-yellow)
 
-ESP 8266 is a small and very capable Mqtt Broker and Client
+ESP 8266 is a small, fast and capable Mqtt Broker and Client
 
 ## Features
 
+- Very (very !!) fast broker I saw it re-sent 1000 topics per second for two
+  clients that had subscribed (payload ~15 bytes). No topic lost.
+  The max I've seen was 2k msg/s (1 client 1 subscription)
 - Act as as a mqtt broker and/or a mqtt client
 - Mqtt 3.1.1 / Qos 0 supported
 - Standalone (can work without WiFi) (degraded/local mode)
@@ -28,9 +31,10 @@ no need for having tons of clients (also RAM is the problem with many clients)
 * ~~MqttClient does not support more than one subscription at time~~
 * MqttClient auto re-subscribe (::resubscribe works bad on broker.emqx.io)
 * MqttClient auto reconnection
-* MqttClient unsubscribe
-* MqttClient does not callback payload...
+* ~~MqttClient unsubscribe~~
+* MqttClient does not sent payload to callback...
 * MqttClient user/password
+* Wildcards (I may implement only # as I'm not interrested by a clever and cpu consuming matching)
 
 ## Quickstart
 

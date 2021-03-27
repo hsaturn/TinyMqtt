@@ -146,8 +146,10 @@ MqttError MqttBroker::publish(const MqttClient* source, const Topic& topic, Mqtt
 	for(auto client: clients)
 	{
 		i++;
+#if TINY_MQTT_DEBUG
 		Serial << "brk_" << (broker && broker->connected() ? "con" : "dis") <<
 			 "	srce=" << (source->isLocal() ? "loc" : "rem") << " clt#" << i << ", local=" << client->isLocal() << ", con=" << client->connected() << endl;
+#endif
 		bool doit = false;
 		if (broker && broker->connected())	// Broker is connected
 		{
@@ -166,7 +168,9 @@ MqttError MqttBroker::publish(const MqttClient* source, const Topic& topic, Mqtt
 			// All is allowed
 			doit = true;
 		}
+#if TINY_MQTT_DEBUG
 		Serial << ", doit=" << doit << ' ';
+#endif
 
 		if (doit) retval = client->publish(topic, msg);
 		debug("");
@@ -248,7 +252,7 @@ MqttError MqttClient::subscribe(Topic topic, uint8_t qos)
 		msg.add(0);
 		msg.add(0);
 		
-		msg.add(topic.str());
+		msg.add(topic);
 		msg.add(qos);
 		ret = msg.sendTo(this);
 		
@@ -257,15 +261,18 @@ MqttError MqttClient::subscribe(Topic topic, uint8_t qos)
 	return ret;
 }
 
+long MqttClient::counter=0;
+
 void MqttClient::processMessage()
 {
-	std::string error;
-	std::string s;
+	counter++;
+#if TINY_MQTT_DEBUG
 if (message.type() != MqttMessage::Type::PingReq && message.type() != MqttMessage::Type::PingResp)
 {
 	Serial << "---> INCOMING " << _HEX(message.type()) << " client(" << (int)client << ':' << clientId << ") mem=" << ESP.getFreeHeap() << endl;
-	message.hexdump("Incoming");
+	// message.hexdump("Incoming");
 }
+#endif
   auto header = message.getVHeader();
   const char* payload;
   uint16_t len;
@@ -295,20 +302,6 @@ if (message.type() != MqttMessage::Type::PingReq && message.type() != MqttMessag
 
 			// ClientId
 			message.getString(payload, len);
-			debug("client id len=" << len);
-			if (len>60)
-			{
-				Serial << '(';
-				for(int i=0; i<30; i++)
-				{
-					if (i%5==0) Serial << ' ';
-					char c=*(header+i);
-					Serial << (c < 32 ? '.' : c);
-				}
-				Serial << " )" << endl;
-				debug("Bad client id length");
-				break;
-			}
 			clientId = std::string(payload, len);
 			payload += len;
 
@@ -437,7 +430,7 @@ if (message.type() != MqttMessage::Type::PingReq && message.type() != MqttMessag
 	if (bclose)
 	{
 		Serial << "*************** Error msg 0x" << _HEX(message.type());
-		if (error.length()) Serial << ':' << error.c_str();
+		message.hexdump("-------ERROR ------");
 		Serial << endl;
 		close();
   }
@@ -477,10 +470,9 @@ MqttError MqttClient::publish(const Topic& topic, MqttMessage& msg)
 	debug("mqttclient publish " << subscriptions.size());
 	for(const auto& subscription: subscriptions)
 	{
-		Serial << " client=" << (int32_t)client << ", topic " << topic.str().c_str() << ' ';
 		if (subscription.matches(topic))
 		{
-			Serial << " match/send";
+			debug(" match client=" << (int32_t)client << ", topic " << topic.str().c_str() << ' ');
 			if (client)
 			{
 				retval = msg.sendTo(this);
@@ -490,7 +482,6 @@ MqttError MqttClient::publish(const Topic& topic, MqttMessage& msg)
 				callback(this, topic, nullptr, 0);	// TODO Payload
 			}
 		}
-		Serial << endl;
 	}
 	return retval;
 }
@@ -541,6 +532,7 @@ void MqttMessage::incoming(char in_byte)
 		case Complete:
 		default:
 			Serial << "Spurious " << _HEX(in_byte) << endl;
+			hexdump("spurious");
 			reset();
 			break;
 	}
@@ -578,7 +570,7 @@ MqttError MqttMessage::sendTo(MqttClient* client)
 	{
 		debug("sending " << buffer.size() << " bytes");
 		encodeLength(&buffer[1], buffer.size()-2);
-		hexdump("snd");
+		// hexdump("snd");
 		client->write(&buffer[0], buffer.size());
 	}
 	else

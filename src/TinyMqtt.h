@@ -5,11 +5,11 @@
 #include "StringIndexer.h"
 #include <MqttStreaming.h>
 
-#define TINY_MQTT_DEBUG
-
-#ifdef TINY_MQTT_DEBUG
+#if 0
   #define debug(what) { Serial << __LINE__ << ' ' << what << endl; delay(100); }
+  #define TINY_MQTT_DEBUG 1
 #else
+  #define TINY_MQTT_DEBUG 0
   #define debug(what) {}
 #endif
 
@@ -152,7 +152,6 @@ class MqttClient
 		// TODO seems to be useless
 		bool isLocal() const { return client == nullptr; }
 
-#ifdef TINY_MQTT_DEBUG
 		void dump()
 		{
 			uint32_t ms=millis();
@@ -160,9 +159,9 @@ class MqttClient
 				<< " c=" << (int32_t)client << (connected() ? " ON " : " OFF"); 
 			Serial << ", alive=" << (uint32_t)alive << '/' << ms << ", ka=" << keep_alive;
 			Serial << " cnx " << (client && client->connected());
-			Serial << " [";
 		  message.hexdump("entrant msg");
 			bool c=false;
+			Serial << " [";
 			for(auto s: subscriptions)
 			{
 				Serial << (c?", ": "")<< s.str().c_str();
@@ -172,9 +171,12 @@ class MqttClient
 			
 			Serial << "]" << endl;
 		}
-#endif
+
+		static long counter;	// Number of messages sent
 
 	private:
+		void resubscribe();
+
 		friend class MqttBroker;
 		MqttClient(MqttBroker* parent, WiFiClient& client);
 		// republish a received publish if topic matches any in subscriptions
@@ -221,7 +223,6 @@ class MqttBroker
 		void connect(std::string host, uint32_t port=1883);
 		bool connected() const { return state == Connected; }
 
-#ifdef TINY_MQTT_DEBUG
 		void dump()
 		{
 			Serial << clients.size() << " client/s" << endl;
@@ -231,7 +232,6 @@ class MqttBroker
 				client->dump();
 			}
 		}
-#endif
 
 	private:
 		friend class MqttClient;
