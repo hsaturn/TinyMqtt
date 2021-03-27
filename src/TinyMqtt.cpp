@@ -373,6 +373,7 @@ if (message.type() != MqttMessage::Type::PingReq && message.type() != MqttMessag
 			break;
 
 		case MqttMessage::Type::Subscribe:
+		case MqttMessage::Type::UnSubscribe:
 			{
 				if (!mqtt_connected) break;
 				payload = header+2;
@@ -384,7 +385,15 @@ if (message.type() != MqttMessage::Type::PingReq && message.type() != MqttMessag
 					debug( "  topic (" << std::string(payload, len) << ')');
 					outstring("Subscribes", payload, len);
 					// subscribe(Topic(payload, len));
-					subscriptions.insert(Topic(payload, len));
+					Topic topic(payload, len);
+					if ((message.type() & 0XF0) == MqttMessage::Type::Subscribe)
+						subscriptions.insert(topic);
+					else
+					{
+						auto it=subscriptions.find(topic);
+						if (it != subscriptions.end())
+							subscriptions.erase(it);
+					}
 					payload += len;
 					uint8_t qos = *payload++;
 					debug("  qos=" << qos);

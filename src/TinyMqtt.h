@@ -39,15 +39,16 @@ class MqttMessage
 	public:
 		enum Type
 		{
-			Unknown   =    0,
-			Connect   = 0x10,
-			ConnAck   = 0x20,
-			Publish   = 0x30,
-			PubAck    = 0x40,
-			Subscribe = 0x80,
-			SubAck    = 0x90,
-			PingReq   = 0xC0,
-			PingResp  = 0xD0,
+			Unknown     =    0,
+			Connect     = 0x10,
+			ConnAck     = 0x20,
+			Publish     = 0x30,
+			PubAck      = 0x40,
+			Subscribe   = 0x80,
+			SubAck      = 0x90,
+			UnSubscribe = 0xA0,
+			PingReq     = 0xC0,
+			PingResp    = 0xD0,
 		};
 		enum State
 		{
