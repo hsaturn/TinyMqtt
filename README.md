@@ -2,7 +2,7 @@
 
 ![](https://img.shields.io/github/v/release/hsaturn/TinyMqtt)
 ![](https://img.shields.io/github/issues/hsaturn/TinyMqtt)
-![](https://img.shields.io/badge/paltform-ESP8266-green)
+![](https://img.shields.io/badge/platform-ESP8266-green)
 ![](https://img.shields.io/github/license/hsaturn/TinyMqtt)
 ![](https://img.shields.io/badge/Mqtt-%203.1.1-yellow)
 
