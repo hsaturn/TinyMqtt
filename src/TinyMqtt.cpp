@@ -453,7 +453,9 @@ if (message.type() != MqttMessage::Type::PingReq && message.type() != MqttMessag
 				{
 					callback(this, published, nullptr, 0);	// TODO send the real payload
 				}
-				// TODO should send PUBACK
+				message.create(MqttMessage::Type::PubAck);
+				// TODO re-add packet identifier if any
+				message.sendTo(this);
 				bclose = false;
 			}
 			break;
@@ -616,7 +618,7 @@ void MqttMessage::encodeLength(char* msb, int length)
 
 MqttError MqttMessage::sendTo(MqttClient* client)
 {
-	if (buffer.size()>2)
+	if (buffer.size())
 	{
 		debug("sending " << buffer.size() << " bytes");
 		encodeLength(&buffer[1], buffer.size()-2);

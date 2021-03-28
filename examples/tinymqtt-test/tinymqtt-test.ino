@@ -16,11 +16,6 @@
   * cons - Takes more memory
 	*      - a bit hard to understand
 	*
-  * This sounds crazy: a mqtt mqtt that do not need a broker !
-  *  The use case arise when one ESP wants to publish topics and subscribe to them at the same time.
-  *  Without broker, the ESP won't react to its own topics.
-  *  
-  *  TinyMqtt mqtt allows this use case to work.
   */
 
 #include <my_credentials.h>
@@ -28,18 +23,26 @@
 std::string topic="sensor/temperature";
 
 void onPublish(const MqttClient* srce, const Topic& topic, const char* payload, size_t length)
-{ Serial << "--> " << srce->id().c_str() << ": ======> received " << topic.c_str() << endl; }
+{
+	Serial << "--> " << srce->id().c_str() << ": ======> received " << topic.c_str();
+	if (payload) Serial << ", payload[" << length << "]=[";
+	while(length--)
+	{
+		const char c=*payload++;
+		if (c!=10 and c!=13 and c <32) Serial << '?';
+		Serial << *payload++;
+	}
+	Serial<< endl;
+}
 
 std::map<std::string, MqttClient*> clients;
 std::map<std::string, MqttBroker*> brokers;
-
 
 void setup()
 {
   Serial.begin(115200);
 	delay(500);
 	Serial << endl << endl << endl
-	<< "Demo started. Type help for more..." << endl
 	<< "Connecting to '" << ssid << "' ";
 
   WiFi.mode(WIFI_STA);
@@ -49,6 +52,7 @@ void setup()
 	{ Serial << '-'; delay(500); }
 
   Serial << "Connected to " << ssid << "IP address: " << WiFi.localIP() << endl;
+	Serial << "Type help for more..." << endl;
 
 	MqttBroker* broker = new MqttBroker(1883);
 	broker->begin();
@@ -92,7 +96,6 @@ std::string getip(std::string& str, const char* if_empty=nullptr, char sep=' ')
 	std::string addr=getword(str, if_empty, sep);
 	std::string ip=addr;
 	std::vector<std::string> build;
-	bool ok=true;
 	while(ip.length())
 	{
 		std::string b=getword(ip,nullptr,'.');
