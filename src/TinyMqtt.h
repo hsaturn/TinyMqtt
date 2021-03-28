@@ -121,6 +121,7 @@ class MqttClient
 	};
 	public:
 		MqttClient(MqttBroker*);
+		MqttClient(MqttBroker* brk, const std::string& id) : MqttClient(brk) { clientId=id; }
 		MqttClient() : MqttClient(nullptr) {};
 
 		~MqttClient();
@@ -224,6 +225,8 @@ class MqttBroker
 
 		void connect(std::string host, uint32_t port=1883);
 		bool connected() const { return state == Connected; }
+
+		size_t clientsCount() const { return clients.size(); }
 
 		void dump()
 		{
