@@ -49,6 +49,7 @@ class MqttMessage
 			UnSubscribe = 0xA0,
 			PingReq     = 0xC0,
 			PingResp    = 0xD0,
+			Disconnect  = 0xE0
 		};
 		enum State
 		{
@@ -137,7 +138,7 @@ class MqttClient
 		void id(std::string& new_id) { clientId = new_id; }
 
 		void loop();
-		void close();
+		void close(bool bSendDisconnect=true);
 		void setCallback(CallBack fun) {callback=fun; };
 
 		// Publish from client to the world

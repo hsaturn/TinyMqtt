@@ -41,14 +41,20 @@ MqttClient::~MqttClient()
 {
 	close();
 	delete client;
+	Serial << "Client deleted" << endl;
 }
 
-void MqttClient::close()
+void MqttClient::close(bool bSendDisconnect)
 {
 	debug("close " << id().c_str());
 	mqtt_connected = false;
 	if (client)
 	{
+		if (bSendDisconnect and client->connected())
+		{
+			message.create(MqttMessage::Type::Disconnect);
+			message.sendTo(this);
+		}
 		client->stop();
 	}
 
@@ -450,6 +456,14 @@ if (message.type() != MqttMessage::Type::PingReq && message.type() != MqttMessag
 				// TODO should send PUBACK
 				bclose = false;
 			}
+			break;
+
+		case MqttMessage::Type::Disconnect:
+			// TODO should discard any will message
+			if (!mqtt_connected) break;
+			mqtt_connected = false;
+			close(false);
+			bclose=false;
 			break;
 
 		default:
