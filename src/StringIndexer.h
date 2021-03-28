@@ -104,7 +104,7 @@ class IndexedString
 
 		const std::string& str() const { return StringIndexer::str(index); }
 
-		const StringIndexer::index_t getIndex() const { return index; }
+		const StringIndexer::index_t& getIndex() const { return index; }
 
 	private:
 		StringIndexer::index_t index;

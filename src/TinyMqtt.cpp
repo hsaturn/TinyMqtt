@@ -126,7 +126,7 @@ void MqttBroker::loop()
 
   // for(auto it=clients.begin(); it!=clients.end(); it++)
 	// use index because size can change during the loop
-	for(int i=0; i<clients.size(); i++)
+	for(size_t i=0; i<clients.size(); i++)
 	{
 		auto client = clients[i];
     if (client->connected())
