@@ -1,10 +1,10 @@
 # TinyMqtt
 
-![](https://img.shields.io/github/v/release/hsaturn/TinyMqtt)
-![](https://img.shields.io/github/issues/hsaturn/TinyMqtt)
-![](https://img.shields.io/badge/platform-ESP8266-green)
-![](https://img.shields.io/github/license/hsaturn/TinyMqtt)
-![](https://img.shields.io/badge/Mqtt-%203.1.1-yellow)
+![Release](https://img.shields.io/github/v/release/hsaturn/TinyMqtt)
+![Issues](https://img.shields.io/github/issues/hsaturn/TinyMqtt)
+![Esp8266](https://img.shields.io/badge/platform-ESP8266-green)
+![Gpl 3.0](https://img.shields.io/github/license/hsaturn/TinyMqtt)
+![Mqtt 3.1.1](https://img.shields.io/badge/Mqtt-%203.1.1-yellow)
 
 ESP 8266 is a small, fast and capable Mqtt Broker and Client
 
