@@ -21,7 +21,7 @@ jobs:
         git clone https://github.com/bxparks/AceRoutine
         git clone https://github.com/bxparks/AUnit
         git clone https://github.com/bxparks/AceCommon
-    - name: Verify examples
+    - name: Verify tests
       run: |
         make -C examples
     - name: Verify tests
