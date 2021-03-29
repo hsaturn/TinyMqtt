@@ -96,8 +96,9 @@ test(local_unsubscribe)
 	MqttClient publisher(&broker);
 	publisher.publish("a/b");
 
-	// subscriber.unsubscribe("a/b");		TODO not yet implemented
+	subscriber.unsubscribe("a/b");
 
+	publisher.publish("a/b");
 	publisher.publish("a/b");
 
 	assertTrue(published[""]["a/b"] == 1);	// Only one publish has been received
@@ -119,7 +120,6 @@ test(local_nocallback_when_destroyed)
 
 	assertEqual(published.size(), (size_t)0);	// Only one publish has been received
 }
-
 
 //----------------------------------------------------------------------------
 // setup() and loop()
