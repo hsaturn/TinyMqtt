@@ -124,15 +124,15 @@ test(local_nocallback_when_destroyed)
 //----------------------------------------------------------------------------
 // setup() and loop()
 void setup() {
-  delay(1000);
-  Serial.begin(115200);
-  while(!Serial);
+	delay(1000);
+	Serial.begin(115200);
+	while(!Serial);
 
 	Serial.println("=============[ NO WIFI CONNECTION TinyMqtt TESTS ]========================");
 }
 
 void loop() {
-  aunit::TestRunner::run();
+	aunit::TestRunner::run();
 
 	if (Serial.available()) ESP.reset();
 }

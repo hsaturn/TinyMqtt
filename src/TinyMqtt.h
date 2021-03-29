@@ -222,9 +222,9 @@ class MqttBroker
 		void begin() { server.begin(); }
 		void loop();
 
-		uint8_t port() const { return server.port(); }
+		uint16_t port() const { return server.port(); }
 
-		void connect(std::string host, uint32_t port=1883);
+		void connect(std::string host, uint16_t port=1883);
 		bool connected() const { return state == Connected; }
 
 		size_t clientsCount() const { return clients.size(); }
