@@ -41,7 +41,6 @@ MqttClient::~MqttClient()
 {
 	close();
 	delete client;
-	Serial << "Client deleted" << endl;
 }
 
 void MqttClient::close(bool bSendDisconnect)
