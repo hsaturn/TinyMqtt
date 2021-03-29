@@ -26,6 +26,7 @@ ESP 8266 is a small, fast and capable Mqtt Broker and Client
 * Implement zeroconf mode (needs async)
 * Add a max_clients in MqttBroker. Used with zeroconf, there will be
 no need for having tons of clients (also RAM is the problem with many clients)
+* Why not a 'global' TinyMqtt::loop() instead of having to call loop for all broker/clients instances
 * Test what is the real max number of clients for broker. As far as I saw, 1k is needed per client which would make more than 30 clients critical.
 * ~~MqttMessage uses a buffer 256 bytes which is usually far than needed.~~
 * ~~MqttClient does not support more than one subscription at time~~
