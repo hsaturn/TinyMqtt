@@ -269,22 +269,40 @@ MqttError MqttClient::subscribe(Topic topic, uint8_t qos)
 
  	subscriptions.insert(topic);
 
-	if (parent==nullptr) // remote broker ?
+	if (parent==nullptr) // remote broker
 	{
-		debug("remote subscribe");
-		MqttMessage msg(MqttMessage::Type::Subscribe, 2);
-
-		// TODO manage packet identifier
-		msg.add(0);
-		msg.add(0);
-		
-		msg.add(topic);
-		msg.add(qos);
-		ret = msg.sendTo(this);
-		
-		// TODO we should wait (state machine) for SUBACK
+		return sendTopic(topic, MqttMessage::Type::Subscribe, qos);
 	}
 	return ret;
+}
+
+MqttError MqttClient::unsubscribe(Topic topic)
+{
+	auto it=subscriptions.find(topic);
+	if (it != subscriptions.end())
+	{
+		subscriptions.erase(it);
+		if (parent==nullptr) // remote broker
+		{
+			return sendTopic(topic, MqttMessage::Type::UnSubscribe, 0);
+		}
+	}
+	return MqttOk;
+}
+
+MqttError MqttClient::sendTopic(const Topic& topic, MqttMessage::Type type, uint8_t qos)
+{
+	MqttMessage msg(type, 2);
+
+	// TODO manage packet identifier
+	msg.add(0);
+	msg.add(0);
+
+	msg.add(topic);
+	msg.add(qos);
+
+	// TODO instead we should wait (state machine) for SUBACK / UNSUBACK ?
+	return msg.sendTo(this);
 }
 
 long MqttClient::counter=0;

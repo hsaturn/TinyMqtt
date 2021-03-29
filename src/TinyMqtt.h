@@ -149,7 +149,7 @@ class MqttClient
 		MqttError publish(const Topic& t) { return publish(t, nullptr, 0);};
 
 		MqttError subscribe(Topic topic, uint8_t qos=0);
-		MqttError unsubscribe(Topic& topic);
+		MqttError unsubscribe(Topic topic);
 
 		// connected to local broker
 		// TODO seems to be useless
@@ -178,6 +178,7 @@ class MqttClient
 		static long counter;	// Number of messages sent
 
 	private:
+		MqttError sendTopic(const Topic& topic, MqttMessage::Type type, uint8_t qos);
 		void resubscribe();
 
 		friend class MqttBroker;
