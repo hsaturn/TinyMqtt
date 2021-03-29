@@ -21,6 +21,7 @@ jobs:
         git clone https://github.com/bxparks/AceRoutine
         git clone https://github.com/bxparks/AUnit
         git clone https://github.com/bxparks/AceCommon
+        git clone https://github.com/hsaturn/EspMock
     - name: Verify tests
       run: |
         make -C tests
