@@ -120,9 +120,8 @@ class MqttClient
 		FlagReserved = 1
 	};
 	public:
-		MqttClient(MqttBroker*);
-		MqttClient(MqttBroker* brk, const std::string& id) : MqttClient(brk) { clientId=id; }
-		MqttClient() : MqttClient(nullptr) {};
+		MqttClient(MqttBroker* brk = nullptr, const std::string& id="");
+		MqttClient(const std::string& id) : MqttClient(nullptr, id){}
 
 		~MqttClient();
 

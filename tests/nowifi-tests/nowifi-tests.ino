@@ -3,9 +3,10 @@
 #include <map>
 
 /**
-  * TinyMqtt local unit tests.
+  * TinyMqtt nowifi unit tests.
 	*
 	* No wifi connection unit tests.
+    * Checks with a local broker. Clients must connect to the local client
 	**/
 
 using namespace std;
@@ -20,7 +21,7 @@ void onPublish(const MqttClient* srce, const Topic& topic, const char* payload, 
 		published[srce->id()][topic]++;
 }
 
-test(local_client_should_unregister_when_destroyed)
+test(nowifi_client_should_unregister_when_destroyed)
 {
 	assertEqual(broker.clientsCount(), (size_t)0);
 	{
@@ -30,7 +31,7 @@ test(local_client_should_unregister_when_destroyed)
 	assertEqual(broker.clientsCount(), (size_t)0);
 }
 
-test(local_connect)
+test(nowifi_connect)
 {
 	assertEqual(broker.clientsCount(), (size_t)0);
 
@@ -39,7 +40,7 @@ test(local_connect)
 	assertEqual(broker.clientsCount(), (size_t)1);
 }
 
-test(local_publish_should_be_dispatched)
+test(nowifi_publish_should_be_dispatched)
 {
 	published.clear();
 	assertEqual(broker.clientsCount(), (size_t)0);
@@ -59,7 +60,7 @@ test(local_publish_should_be_dispatched)
 	assertTrue(published[""]["a/c"] == 2);
 }
 
-test(local_publish_should_be_dispatched_to_local_clients)
+test(nowifi_publish_should_be_dispatched_to_nowifi_clients)
 {
 	published.clear();
 	assertEqual(broker.clientsCount(), (size_t)0);
@@ -84,7 +85,7 @@ test(local_publish_should_be_dispatched_to_local_clients)
 	assertTrue(published["B"]["a/c"] == 0);
 }
 
-test(local_unsubscribe)
+test(nowifi_unsubscribe)
 {
 	published.clear();
 	assertEqual(broker.clientsCount(), (size_t)0);
@@ -104,21 +105,23 @@ test(local_unsubscribe)
 	assertTrue(published[""]["a/b"] == 1);	// Only one publish has been received
 }
 
-test(local_nocallback_when_destroyed)
+test(nowifi_nocallback_when_destroyed)
 {
 	published.clear();
 	assertEqual(broker.clientsCount(), (size_t)0);
+
+	MqttClient publisher(&broker);
 
 	{
 		MqttClient subscriber(&broker);
 		subscriber.setCallback(onPublish);
 		subscriber.subscribe("a/b");
+		publisher.publish("a/b");
 	}
 
-	MqttClient publisher(&broker);
 	publisher.publish("a/b");
 
-	assertEqual(published.size(), (size_t)0);	// Only one publish has been received
+	assertEqual(published.size(), (size_t)1);	// Only one publish has been received
 }
 
 //----------------------------------------------------------------------------
