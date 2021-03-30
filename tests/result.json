@@ -1,2 +1,6 @@
-result: 0
-insert: "failed"
+{
+    "schemaVersion" : 1,
+    "label" : "tests",
+    "message" : "Message content",
+    "color": "red"
+}
