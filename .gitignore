@@ -1,2 +1,4 @@
 *~
 src/my_credentials.h
+*.o
+*.out
