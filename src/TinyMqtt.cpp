@@ -30,8 +30,8 @@ MqttClient::MqttClient(MqttBroker* parent, WiFiClient& new_client)
 	alive = millis()+5000;	// client expires after 5s if no CONNECT msg
 }
 
-MqttClient::MqttClient(MqttBroker* parent)
-	: parent(parent)
+MqttClient::MqttClient(MqttBroker* parent, const std::string& id)
+	: parent(parent), clientId(id)
 {
 		client = nullptr;
 

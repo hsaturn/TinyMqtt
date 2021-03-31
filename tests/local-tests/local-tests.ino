@@ -3,10 +3,12 @@
 #include <map>
 
 /**
-  * TinyMqtt nowifi unit tests.
+	* TinyMqtt local unit tests.
 	*
-	* No wifi connection unit tests.
-    * Checks with a local broker. Clients must connect to the local client
+	* Clients are connected to pseudo remote broker
+	* The remote will be 127.0.0.1:1883
+	* We are using 127.0.0.1 because this is simpler to test with a single ESP
+	* Also, this will allow to mock and thus run Action on github
 	**/
 
 using namespace std;
@@ -21,36 +23,39 @@ void onPublish(const MqttClient* srce, const Topic& topic, const char* payload, 
 		published[srce->id()][topic]++;
 }
 
-test(nowifi_client_should_unregister_when_destroyed)
+test(local_client_should_unregister_when_destroyed)
 {
 	assertEqual(broker.clientsCount(), (size_t)0);
 	{
-		MqttClient client(&broker);
-		assertEqual(broker.clientsCount(), (size_t)1);
+		MqttClient client;
+		assertEqual(broker.clientsCount(), (size_t)0);	// Ensure client is not yet connected
+		client.connect("127.0.0.1", 1883);
+		assertEqual(broker.clientsCount(), (size_t)1);	// Ensure client is now connected
 	}
 	assertEqual(broker.clientsCount(), (size_t)0);
 }
 
-test(nowifi_connect)
+#if 0
+test(local_connect)
 {
 	assertEqual(broker.clientsCount(), (size_t)0);
 
-	MqttClient client(&broker);
+	MqttClient client;
 	assertTrue(client.connected());
 	assertEqual(broker.clientsCount(), (size_t)1);
 }
 
-test(nowifi_publish_should_be_dispatched)
+test(local_publish_should_be_dispatched)
 {
 	published.clear();
 	assertEqual(broker.clientsCount(), (size_t)0);
 
-	MqttClient subscriber(&broker);
+	MqttClient subscriber;
 	subscriber.subscribe("a/b");
 	subscriber.subscribe("a/c");
 	subscriber.setCallback(onPublish);
 
-	MqttClient publisher(&broker);
+	MqttClient publisher;
 	publisher.publish("a/b");
 	publisher.publish("a/c");
 	publisher.publish("a/c");
@@ -60,21 +65,21 @@ test(nowifi_publish_should_be_dispatched)
 	assertTrue(published[""]["a/c"] == 2);
 }
 
-test(nowifi_publish_should_be_dispatched_to_nowifi_clients)
+test(local_publish_should_be_dispatched_to_local_clients)
 {
 	published.clear();
 	assertEqual(broker.clientsCount(), (size_t)0);
 
-	MqttClient subscriber_a(&broker, "A");
+	MqttClient subscriber_a("A");
 	subscriber_a.setCallback(onPublish);
 	subscriber_a.subscribe("a/b");
 	subscriber_a.subscribe("a/c");
 
-	MqttClient subscriber_b(&broker, "B");
+	MqttClient subscriber_b("B");
 	subscriber_b.setCallback(onPublish);
 	subscriber_b.subscribe("a/b");
 
-	MqttClient publisher(&broker);
+	MqttClient publisher;
 	publisher.publish("a/b");
 	publisher.publish("a/c");
 
@@ -85,16 +90,16 @@ test(nowifi_publish_should_be_dispatched_to_nowifi_clients)
 	assertTrue(published["B"]["a/c"] == 0);
 }
 
-test(nowifi_unsubscribe)
+test(local_unsubscribe)
 {
 	published.clear();
 	assertEqual(broker.clientsCount(), (size_t)0);
 
-	MqttClient subscriber(&broker);
+	MqttClient subscriber;
 	subscriber.setCallback(onPublish);
 	subscriber.subscribe("a/b");
 
-	MqttClient publisher(&broker);
+	MqttClient publisher;
 	publisher.publish("a/b");
 
 	subscriber.unsubscribe("a/b");
@@ -105,15 +110,14 @@ test(nowifi_unsubscribe)
 	assertTrue(published[""]["a/b"] == 1);	// Only one publish has been received
 }
 
-test(nowifi_nocallback_when_destroyed)
+test(local_nocallback_when_destroyed)
 {
 	published.clear();
 	assertEqual(broker.clientsCount(), (size_t)0);
 
-	MqttClient publisher(&broker);
-
+	MqttClient publisher;
 	{
-		MqttClient subscriber(&broker);
+		MqttClient subscriber;
 		subscriber.setCallback(onPublish);
 		subscriber.subscribe("a/b");
 		publisher.publish("a/b");
@@ -123,6 +127,7 @@ test(nowifi_nocallback_when_destroyed)
 
 	assertEqual(published.size(), (size_t)1);	// Only one publish has been received
 }
+#endif
 
 //----------------------------------------------------------------------------
 // setup() and loop()
