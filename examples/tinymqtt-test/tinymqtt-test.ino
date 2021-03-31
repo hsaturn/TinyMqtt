@@ -399,11 +399,11 @@ void loop()
 					}
 					if (client)
 					{
-						clients.erase(s);
 						for (auto it: clients)
 						{
 							if (it.second != client) continue;
 							Serial << "deleted" << endl;
+							delete (it.second);
 							clients.erase(it.first);
 							break;
 						}
@@ -413,9 +413,9 @@ void loop()
 					{
 						for(auto it: brokers)
 						{
-							Serial << (int32_t)it.second << '/' << (int32_t)broker << endl;
 							if (broker != it.second) continue;
 							Serial << "deleted" << endl;
+							delete (it.second);
 							brokers.erase(it.first);
 							break;
 						}

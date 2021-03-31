@@ -19,6 +19,7 @@ MqttBroker::~MqttBroker()
 	{
 		delete clients[0];
 	}
+	server.close();
 }
 
 // private constructor used by broker only
