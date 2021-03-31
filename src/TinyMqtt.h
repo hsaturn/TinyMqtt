@@ -120,9 +120,8 @@ class MqttClient
 		FlagReserved = 1
 	};
 	public:
-		MqttClient(MqttBroker*);
-		MqttClient(MqttBroker* brk, const std::string& id) : MqttClient(brk) { clientId=id; }
-		MqttClient() : MqttClient(nullptr) {};
+		MqttClient(MqttBroker* brk = nullptr, const std::string& id="");
+		MqttClient(const std::string& id) : MqttClient(nullptr, id){}
 
 		~MqttClient();
 
@@ -158,11 +157,10 @@ class MqttClient
 		void dump()
 		{
 			uint32_t ms=millis();
-			Serial << "MqttClient (" << clientId.c_str() << ") p=" << (uint32_t) parent
-				<< " c=" << (uint32_t)client << (connected() ? " ON " : " OFF");
-			Serial << ", alive=" << (uint32_t)alive << '/' << ms << ", ka=" << keep_alive;
+			Serial << "MqttClient (" << clientId.c_str() << ") " << (connected() ? " ON " : " OFF");
+			Serial << ", alive=" << alive << '/' << ms << ", ka=" << keep_alive;
 			Serial << (client && client->connected() ? "" : "dis") << "connected";
-		  message.hexdump("entrant msg");
+            message.hexdump("entrant msg");
 			bool c=false;
 			Serial << " [";
 			for(auto s: subscriptions)

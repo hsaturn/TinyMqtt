@@ -15,6 +15,16 @@ class StringIndexer
 		std::string str;
 		uint8_t used=0;
 		friend class StringIndexer;
+
+		#if EPOXY_DUINO
+		public:
+		// Workaround to avoid coredump in Indexer::release
+		// when destroying a Topic after the deletion of
+		// StringIndexer::strings map (which can occurs only with AUnit,
+		// never in the ESP itself, because ESP never ends)
+		// (I hate static vars)
+		~StringCounter() { used=255; }
+		#endif
 	};
 	public:
 		using index_t=uint8_t;
