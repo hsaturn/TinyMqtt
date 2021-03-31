@@ -157,9 +157,8 @@ class MqttClient
 		void dump()
 		{
 			uint32_t ms=millis();
-			Serial << "MqttClient (" << clientId.c_str() << ") p=" << (uint64_t) parent
-				<< " c=" << (uint64_t)client << (connected() ? " ON " : " OFF");
-			Serial << ", alive=" << (uint32_t)alive << '/' << ms << ", ka=" << keep_alive;
+			Serial << "MqttClient (" << clientId.c_str() << ") " << (connected() ? " ON " : " OFF");
+			Serial << ", alive=" << alive << '/' << ms << ", ka=" << keep_alive;
 			Serial << (client && client->connected() ? "" : "dis") << "connected";
 		  message.hexdump("entrant msg");
 			bool c=false;
