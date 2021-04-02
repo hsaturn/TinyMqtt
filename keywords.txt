@@ -9,13 +9,19 @@
 TinyMqtt    KEYWORD1
 
 MqttBroker  KEYWORD1
+connect		  KEYWORD2
+clientsCount KEYWORD2
 begin				KEYWORD2
 loop				KEYWORD2
+port				KEYWORD2
 
 MqttClient  KEYWORD1
+connect		  KEYWORD2
+connected	  KEYWORD2
 publish     KEYWORD2
 setCallback	KEYWORD2
 subscribe	  KEYWORD2
+unsubscribe	KEYWORD2
 
 Topic				KEYWORD1
 matches			KEYWORD2

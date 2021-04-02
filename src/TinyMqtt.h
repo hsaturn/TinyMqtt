@@ -131,8 +131,6 @@ class MqttClient
 		bool connected() { return
 			(parent!=nullptr and client==nullptr) or
 			(client and client->connected()); }
-		void write(const char* buf, size_t length)
-		{ if (client) client->write(buf, length); }
 
 		const std::string& id() const { return clientId; }
 		void id(std::string& new_id) { clientId = new_id; }
@@ -178,6 +176,8 @@ class MqttClient
 	private:
 		MqttError sendTopic(const Topic& topic, MqttMessage::Type type, uint8_t qos);
 		void resubscribe();
+		void write(const char* buf, size_t length)
+		{ if (client) client->write(buf, length); }
 
 		friend class MqttBroker;
 		MqttClient(MqttBroker* parent, WiFiClient& client);
