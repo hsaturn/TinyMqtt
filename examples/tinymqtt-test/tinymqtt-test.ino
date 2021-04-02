@@ -40,6 +40,7 @@ std::map<std::string, MqttBroker*> brokers;
 
 void setup()
 {
+	WiFi.persistent(false); // https://github.com/esp8266/Arduino/issues/1054 
   Serial.begin(115200);
 	delay(500);
 	Serial << endl << endl << endl
