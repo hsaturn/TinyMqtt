@@ -25,7 +25,7 @@ void onPublish(const MqttClient* srce, const Topic& topic, const char* payload, 
 
 test(indexer_empty)
 {
-  assertTrue(StringIndexer::count()==0);
+  assertEqual(StringIndexer::count(), 0);
 }
 
 test(indexer_strings_deleted_should_empty_indexer)
@@ -33,15 +33,15 @@ test(indexer_strings_deleted_should_empty_indexer)
   assertTrue(StringIndexer::count()==0);
 	{
 		IndexedString one("one");
-    assertTrue(StringIndexer::count()==1);
+    assertEqual(StringIndexer::count(), 1);
 		IndexedString two("two");
-    assertTrue(StringIndexer::count()==2);
+    assertEqual(StringIndexer::count(), 2);
 		IndexedString three("three");
-    assertTrue(StringIndexer::count()==3);
+    assertEqual(StringIndexer::count(), 3);
 		IndexedString four("four");
-    assertTrue(StringIndexer::count()==4);
+    assertEqual(StringIndexer::count(), 4);
 	}
-  assertTrue(StringIndexer::count()==0);
+  assertEqual(StringIndexer::count(), 0);
 }
 
 test(indexer_same_strings_count_as_one)
@@ -51,7 +51,7 @@ test(indexer_same_strings_count_as_one)
 	IndexedString three("one");
 	IndexedString fourt("one");
 
-	assertTrue(StringIndexer::count()==1);
+	assertEqual(StringIndexer::count(), 1);
 }
 
 test(indexer_size_of_indexed_string)
@@ -81,9 +81,9 @@ test(indexer_indexed_operator_eq)
 	{
 		IndexedString same = one;
 		assertTrue(one == same);
-		assertTrue(StringIndexer::count()==1);
+		assertEqual(StringIndexer::count(), 1);
   }
-	assertTrue(StringIndexer::count()==1);
+	assertEqual(StringIndexer::count(), 1);
 }
 
 test(indexer_get_string)
