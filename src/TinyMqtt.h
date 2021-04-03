@@ -120,13 +120,15 @@ class MqttClient
 		FlagReserved = 1
 	};
 	public:
-		MqttClient(MqttBroker* brk = nullptr, const std::string& id="");
+	  /** Constructor. If broker is not null, this is the adress of a local broker.
+		    If you want to connect elsewhere, leave broker null and use connect() **/
+		MqttClient(MqttBroker* broker = nullptr, const std::string& id="");
 		MqttClient(const std::string& id) : MqttClient(nullptr, id){}
 
 		~MqttClient();
 
 		void connect(MqttBroker* parent);
-		void connect(std::string broker, uint16_t port, uint16_t ka=10);
+		void connect(std::string broker, uint16_t port, uint16_t keep_alive = 10);
 
 		bool connected() { return
 			(parent!=nullptr and client==nullptr) or
@@ -135,8 +137,9 @@ class MqttClient
 		{ if (client) client->write(buf, length); }
 
 		const std::string& id() const { return clientId; }
-		void id(std::string& new_id) { clientId = new_id; }
+		// void id(std::string& new_id) { clientId = new_id; }
 
+		/** Should be called in main loop() */
 		void loop();
 		void close(bool bSendDisconnect=true);
 		void setCallback(CallBack fun) {callback=fun; };
@@ -173,7 +176,8 @@ class MqttClient
 			Serial << "]" << endl;
 		}
 
-		static long counter;	// Number of messages sent
+		/** Count the number of messages that have been sent **/
+		static long counter;
 
 	private:
 		MqttError sendTopic(const Topic& topic, MqttMessage::Type type, uint8_t qos);

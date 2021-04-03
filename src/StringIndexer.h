@@ -39,7 +39,7 @@ class StringIndexer
 					return it->first;
 				}
 			}
-			for(index_t index=0; index<255; index++)
+			for(index_t index=1; index; index++)
 			{
 				if (strings.find(index)==strings.end())
 				{
@@ -80,6 +80,8 @@ class StringIndexer
 			}
 		}
 
+		static uint16_t count() { return strings.size(); }
+
 	private:
 		static std::map<index_t, StringCounter> strings;
 };
@@ -98,6 +100,8 @@ class IndexedString
 			index=StringIndexer::strToIndex(str, len);
 		}
 
+		IndexedString(const std::string& str) : IndexedString(str.c_str(), str.length()) {};
+
 		~IndexedString() { StringIndexer::release(index); }
 
 		IndexedString& operator=(const IndexedString& source)
@@ -110,6 +114,11 @@ class IndexedString
 		friend bool operator<(const IndexedString& i1, const IndexedString& i2)
 		{
 			return i1.index < i2.index;
+		}
+
+		friend bool operator==(const IndexedString& i1, const IndexedString& i2)
+		{
+			return i1.index == i2.index;
 		}
 
 		const std::string& str() const { return StringIndexer::str(index); }
