@@ -72,6 +72,7 @@ class MqttMessage
 		const char* end() const { return &buffer[0]+buffer.size(); }
 		const char* getVHeader() const { return &buffer[vheader]; }
 		uint16_t length() const { return buffer.size(); }
+		void complete();
 
 		void reset();
 
@@ -85,6 +86,13 @@ class MqttMessage
 			return state == Complete ? static_cast<Type>(buffer[0]) : Unknown;
 		}
 
+		// shouldn't exist because it breaks constness :-(
+		// but this saves memory so ...
+		void changeType(Type type) const
+		{
+			buffer[0] = type;
+		}
+
 		void create(Type type)
 		{
 			buffer=(char)type;
@@ -93,13 +101,13 @@ class MqttMessage
 			size=0;
 			state=Create;
 		}
-		MqttError sendTo(MqttClient*);
+		MqttError sendTo(MqttClient*) const;
 		void hexdump(const char* prefix=nullptr) const;
 
 	private:
-		void encodeLength(char* msb, int length);
+		void encodeLength(char* msb, int length) const;
 
-		std::string buffer;
+		mutable std::string buffer;	// mutable -> sendTo()
 		uint8_t vheader;
 		uint16_t size;	// bytes left to receive
 		State state;
@@ -152,6 +160,7 @@ class MqttClient
 
 		MqttError subscribe(Topic topic, uint8_t qos=0);
 		MqttError unsubscribe(Topic topic);
+		bool isSubscribedTo(const Topic& topic) const;
 
 		// connected to local broker
 		// TODO seems to be useless
@@ -186,10 +195,10 @@ class MqttClient
 		friend class MqttBroker;
 		MqttClient(MqttBroker* parent, WiFiClient& client);
 		// republish a received publish if topic matches any in subscriptions
-		MqttError publish(const Topic& topic, MqttMessage& msg);
+		MqttError publishIfSubscribed(const Topic& topic, const MqttMessage& msg);
 
 		void clientAlive(uint32_t more_seconds);
-		void processMessage();
+		void processMessage(const MqttMessage* message);
 
 		bool mqtt_connected = false;
 		char mqtt_flags;
@@ -226,7 +235,7 @@ class MqttBroker
 
 		uint16_t port() const { return server.port(); }
 
-		void connect(std::string host, uint16_t port=1883);
+		void connect(const std::string& host, uint16_t port=1883);
 		bool connected() const { return state == Connected; }
 
 		size_t clientsCount() const { return clients.size(); }
@@ -251,7 +260,9 @@ class MqttBroker
 		{ return compareString(auth_password, password, len); }
 
 
-		MqttError publish(const MqttClient* source, const Topic& topic, MqttMessage& msg);
+		MqttError publish(const MqttClient* source, const Topic& topic, const MqttMessage& msg) const;
+
+		MqttError subscribe(const Topic& topic, uint8_t qos);
 
 		// For clients that are added not by the broker itself
 		void addClient(MqttClient* client);

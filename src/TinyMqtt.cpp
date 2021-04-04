@@ -98,6 +98,13 @@ void MqttBroker::addClient(MqttClient* client)
 		clients.push_back(client);
 }
 
+void MqttBroker::connect(const std::string& host, uint16_t port)
+{
+	if (broker == nullptr) broker = new MqttClient;
+	broker->connect(host, port);
+	broker->parent = this;	// Because connect removed the link
+}
+
 void MqttBroker::removeClient(MqttClient* remove)
 {
   for(auto it=clients.begin(); it!=clients.end(); it++)
@@ -105,6 +112,11 @@ void MqttBroker::removeClient(MqttClient* remove)
 		auto client=*it;
 		if (client==remove)
 		{
+			// TODO if this broker is connected to an external broker
+			// we have to unsubscribe remove's topics.
+			// (but doing this, check that other clients are not subscribed...)
+			// Unless -> we could receive useless messages
+			//        -> we are using (memory) one IndexedString plus its string for nothing.
 			debug("Remove " << clients.size());
 			clients.erase(it);
 			debug("Client removed " << clients.size());
@@ -118,6 +130,13 @@ void MqttBroker::loop()
 {
   WiFiClient client = server.available();
   
+	if (broker)
+	{
+		// TODO should monitor broker's activity.
+		// 1 When broker disconnect and reconnect we have to re-subscribe
+		broker->loop();
+	}
+
   if (client)
 	{
 		addClient(new MqttClient(this, client));
@@ -143,7 +162,15 @@ void MqttBroker::loop()
 	}
 }
 
-MqttError MqttBroker::publish(const MqttClient* source, const Topic& topic, MqttMessage& msg)
+MqttError MqttBroker::subscribe(const Topic& topic, uint8_t qos)
+{
+	if (broker && broker->connected())
+	{
+		return broker->subscribe(topic, qos);
+	}
+}
+
+MqttError MqttBroker::publish(const MqttClient* source, const Topic& topic, const MqttMessage& msg) const
 {
 	MqttError retval = MqttOk;
 
@@ -157,28 +184,27 @@ MqttError MqttBroker::publish(const MqttClient* source, const Topic& topic, Mqtt
 			 "	srce=" << (source->isLocal() ? "loc" : "rem") << " clt#" << i << ", local=" << client->isLocal() << ", con=" << client->connected() << endl;
 #endif
 		bool doit = false;
-		if (broker && broker->connected())	// Broker is connected
+		if (broker && broker->connected())	// this (MqttBroker) is connected (to a external broker)
 		{
-			//    ext broker -> clients or
-			// or clients -> ext broker
-			if (source == broker)	// broker -> clients
+			// ext_broker -> clients or clients -> ext_broker
+			if (source == broker)	// external broker -> internal clients
 				doit = true;
-			else									// clients -> broker
+			else									// external clients -> this broker
 			{
-				MqttError ret = broker->publish(topic, msg);
+				// As this broker is connected to another broker, simply forward the msg
+				MqttError ret = broker->publishIfSubscribed(topic, msg);
 				if (ret != MqttOk) retval = ret;
 			}
 		}
-		else // Disconnected: R7
+		else // Disconnected
 		{
-			// All is allowed
 			doit = true;
 		}
 #if TINY_MQTT_DEBUG
 		Serial << ", doit=" << doit << ' ';
 #endif
 
-		if (doit) retval = client->publish(topic, msg);
+		if (doit) retval = client->publishIfSubscribed(topic, msg);
 		debug("");
 	}
 	return retval;
@@ -237,7 +263,8 @@ void MqttClient::loop()
 		message.incoming(client->read());
 		if (message.type())
 		{
-			processMessage();
+			processMessage(&message);
+			message.reset();
 		}
 	}
 }
@@ -273,6 +300,10 @@ MqttError MqttClient::subscribe(Topic topic, uint8_t qos)
 	{
 		return sendTopic(topic, MqttMessage::Type::Subscribe, qos);
 	}
+	else
+	{
+		return parent->subscribe(topic, qos);
+	}
 	return ret;
 }
 
@@ -307,22 +338,22 @@ MqttError MqttClient::sendTopic(const Topic& topic, MqttMessage::Type type, uint
 
 long MqttClient::counter=0;
 
-void MqttClient::processMessage()
+void MqttClient::processMessage(const MqttMessage* mesg)
 {
 	counter++;
 #if TINY_MQTT_DEBUG
-if (message.type() != MqttMessage::Type::PingReq && message.type() != MqttMessage::Type::PingResp)
+if (mesg->type() != MqttMessage::Type::PingReq && mesg->type() != MqttMessage::Type::PingResp)
 {
-	Serial << "---> INCOMING " << _HEX(message.type()) << " client(" << (int)client << ':' << clientId << ") mem=" << ESP.getFreeHeap() << endl;
-	// message.hexdump("Incoming");
+	Serial << "---> INCOMING " << _HEX(mesg->type()) << " client(" << (int)client << ':' << clientId << ") mem=" << ESP.getFreeHeap() << endl;
+	// mesg->hexdump("Incoming");
 }
 #endif
-  auto header = message.getVHeader();
+  auto header = mesg->getVHeader();
   const char* payload;
   uint16_t len;
 	bool bclose=true;
 
-	switch(message.type() & 0XF0)
+	switch(mesg->type() & 0XF0)
 	{
 		case MqttMessage::Type::Connect:
 			if (mqtt_connected)
@@ -345,30 +376,30 @@ if (message.type() != MqttMessage::Type::PingReq && message.type() != MqttMessag
 			}
 
 			// ClientId
-			message.getString(payload, len);
+			mesg->getString(payload, len);
 			clientId = std::string(payload, len);
 			payload += len;
 
 			if (mqtt_flags & FlagWill)	// Will topic
 			{
-				message.getString(payload, len);	// Will Topic
+				mesg->getString(payload, len);	// Will Topic
 				outstring("WillTopic", payload, len);
 				payload += len;
 
-				message.getString(payload, len);	// Will Message
+				mesg->getString(payload, len);	// Will Message
 				outstring("WillMessage", payload, len);
 				payload += len;
 			}
 			// FIXME forgetting credential is allowed (security hole)
 			if (mqtt_flags & FlagUserName)
 			{
-				message.getString(payload, len);
+				mesg->getString(payload, len);
 				if (!parent->checkUser(payload, len)) break;
 				payload += len;
 			}
 			if (mqtt_flags & FlagPassword)
 			{
-				message.getString(payload, len);
+				mesg->getString(payload, len);
 				if (!parent->checkPassword(payload, len)) break;
 				payload += len;
 			}
@@ -423,14 +454,14 @@ if (message.type() != MqttMessage::Type::PingReq && message.type() != MqttMessag
 				payload = header+2;
 				
 				debug("subscribe loop");
-				while(payload < message.end())
+				while(payload < mesg->end())
 				{
-					message.getString(payload, len);	// Topic
+					mesg->getString(payload, len);	// Topic
 					debug( "  topic (" << std::string(payload, len) << ')');
 					outstring("Subscribes", payload, len);
 					// subscribe(Topic(payload, len));
 					Topic topic(payload, len);
-					if ((message.type() & 0XF0) == MqttMessage::Type::Subscribe)
+					if ((mesg->type() & 0XF0) == MqttMessage::Type::Subscribe)
 						subscriptions.insert(topic);
 					else
 					{
@@ -449,37 +480,43 @@ if (message.type() != MqttMessage::Type::PingReq && message.type() != MqttMessag
 			break;
 
 		case MqttMessage::Type::Publish:
-			if (!mqtt_connected) break;
+			if (mqtt_connected or client == nullptr)
 			{
-				uint8_t qos = message.type() & 0x6;
+				uint8_t qos = mesg->type() & 0x6;
 				payload = header;
-				message.getString(payload, len);
+				mesg->getString(payload, len);
 				Topic published(payload, len);
 				payload += len;
-				len=message.end()-payload;
 				// Serial << "Received Publish (" << published.str().c_str() << ") size=" << (int)len
-				// << '(' << std::string(payload, len).c_str() << ')'	<< " msglen=" << message.length() << endl; 
+				// << '(' << std::string(payload, len).c_str() << ')'	<< " msglen=" << mesg->length() << endl; 
 				if (qos) payload+=2;	// ignore packet identifier if any
+				len=mesg->end()-payload;
 				// TODO reset DUP
 				// TODO reset RETAIN
-				if (parent)
+
+				if (client==nullptr)	// internal MqttClient receives publish
+				{
+					if (callback and isSubscribedTo(published))
+					{
+						callback(this, published, payload, len);	// TODO send the real payload
+
+						mesg->changeType(MqttMessage::Type::PubAck);	// TODO constness design but saves memory & speed 
+						// TODO re-add packet identifier if any
+						mesg->sendTo(this);
+						mesg->changeType(MqttMessage::Type::Publish);	// mesg is const (...)
+					}
+				}
+				else if (parent) // from outside to inside
 				{
 				  debug("publishing to parent");
-					parent->publish(this, published, message);
+					parent->publish(this, published, *mesg);
 				}
-				else if (callback && subscriptions.find(published)!=subscriptions.end())
-				{
-					callback(this, published, nullptr, 0);	// TODO send the real payload
-				}
-				message.create(MqttMessage::Type::PubAck);
-				// TODO re-add packet identifier if any
-				message.sendTo(this);
 				bclose = false;
 			}
 			break;
 
 		case MqttMessage::Type::Disconnect:
-			// TODO should discard any will message
+			// TODO should discard any will msg
 			if (!mqtt_connected) break;
 			mqtt_connected = false;
 			close(false);
@@ -492,8 +529,9 @@ if (message.type() != MqttMessage::Type::PingReq && message.type() != MqttMessag
 	};
 	if (bclose)
 	{
-		Serial << "*************** Error msg 0x" << _HEX(message.type());
-		message.hexdump("-------ERROR ------");
+		Serial << "*************** Error msg 0x" << _HEX(mesg->type());
+		mesg->hexdump("-------ERROR ------");
+		dump();
 		Serial << endl;
 		close();
   }
@@ -501,7 +539,6 @@ if (message.type() != MqttMessage::Type::PingReq && message.type() != MqttMessag
 	{
 		clientAlive(parent ? 5 : 0);
 	}
-	message.reset();
 }
 
 bool Topic::matches(const Topic& topic) const
@@ -517,8 +554,11 @@ MqttError MqttClient::publish(const Topic& topic, const char* payload, size_t pa
 	MqttMessage msg(MqttMessage::Publish);
 	msg.add(topic);
 	msg.add(payload, pay_length, false);
+	msg.complete();
 	if (parent)
+	{
 		return parent->publish(this, topic, msg);
+	}
 	else if (client)
 		return msg.sendTo(this);
 	else
@@ -526,27 +566,31 @@ MqttError MqttClient::publish(const Topic& topic, const char* payload, size_t pa
 }
 
 // republish a received publish if it matches any in subscriptions
-MqttError MqttClient::publish(const Topic& topic, MqttMessage& msg)
+MqttError MqttClient::publishIfSubscribed(const Topic& topic, const MqttMessage& msg)
 {
 	MqttError retval=MqttOk;
 
 	debug("mqttclient publish " << subscriptions.size());
-	for(const auto& subscription: subscriptions)
+	if (isSubscribedTo(topic))
 	{
-		if (subscription.matches(topic))
+		if (client)
+			retval = msg.sendTo(this);
+		else
 		{
-			debug(" match client=" << (int32_t)client << ", topic " << topic.str().c_str() << ' ');
-			if (client)
-			{
-				retval = msg.sendTo(this);
-			}
-			else if (callback)
-			{
-				callback(this, topic, nullptr, 0);	// TODO Payload
-			}
+			processMessage(&msg);
+			// callback(this, topic, nullptr, 0);	// TODO Payload
 		}
 	}
 	return retval;
+}
+
+bool MqttClient::isSubscribedTo(const Topic& topic) const
+{
+	for(const auto& subscription: subscriptions)
+		if (subscription.matches(topic))
+			return true;
+
+	return false;
 }
 
 void MqttMessage::reset()
@@ -623,7 +667,7 @@ void MqttMessage::add(const char* p, size_t len, bool addLength)
 	while(len--) incoming(*p++);
 }
 
-void MqttMessage::encodeLength(char* msb, int length)
+void MqttMessage::encodeLength(char* msb, int length) const
 {
 	do
 	{
@@ -634,7 +678,13 @@ void MqttMessage::encodeLength(char* msb, int length)
 	} while (length);
 };
 
-MqttError MqttMessage::sendTo(MqttClient* client)
+void MqttMessage::complete()
+{
+		encodeLength(&buffer[1], buffer.size()-2);
+		state = Complete;
+}
+
+MqttError MqttMessage::sendTo(MqttClient* client) const
 {
 	if (buffer.size())
 	{

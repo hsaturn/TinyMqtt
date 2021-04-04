@@ -6,7 +6,7 @@
   * TinyMqtt nowifi unit tests.
 	*
 	* No wifi connection unit tests.
-    * Checks with a local broker. Clients must connect to the local client
+  * Checks with a local broker. Clients must connect to the local broker
 	**/
 
 using namespace std;
@@ -15,10 +15,15 @@ MqttBroker broker(1883);
 
 std::map<std::string, std::map<Topic, int>>	published;		// map[client_id] => map[topic] = count
 
+const char* lastPayload;
+size_t lastLength;
+
 void onPublish(const MqttClient* srce, const Topic& topic, const char* payload, size_t length)
 {
 	if (srce)
 		published[srce->id()][topic]++;
+  lastPayload = payload;
+	lastLength = length;
 }
 
 test(nowifi_client_should_unregister_when_destroyed)
@@ -60,7 +65,7 @@ test(nowifi_publish_should_be_dispatched)
 	assertEqual(published[""]["a/c"], 2);
 }
 
-test(nowifi_publish_should_be_dispatched_to_nowifi_clients)
+test(nowifi_publish_should_be_dispatched_to_clients)
 {
 	published.clear();
 	assertEqual(broker.clientsCount(), (size_t)0);
@@ -75,8 +80,8 @@ test(nowifi_publish_should_be_dispatched_to_nowifi_clients)
 	subscriber_b.subscribe("a/b");
 
 	MqttClient publisher(&broker);
-	publisher.publish("a/b");
-	publisher.publish("a/c");
+	publisher.publish("a/b");		// A and B should receive this
+	publisher.publish("a/c");		// A should receive this 
 
 	assertEqual(published.size(), (size_t)2);	// 2 clients have received something
 	assertEqual(published["A"]["a/b"], 1);
@@ -122,6 +127,25 @@ test(nowifi_nocallback_when_destroyed)
 	publisher.publish("a/b");
 
 	assertEqual(published.size(), (size_t)1);	// Only one publish has been received
+}
+
+test(nowifi_payload_nullptr)
+{
+  return; // FIXME
+	published.clear();
+
+	const char* payload="abcd";
+
+	MqttClient subscriber(&broker);
+	subscriber.setCallback(onPublish);
+	subscriber.subscribe("a/b");
+
+	MqttClient publisher(&broker);
+	publisher.publish("a/b", payload, strlen(payload));		// This publish is received
+
+  // coming from MqttClient::publish(...)
+  assertEqual(payload, lastPayload);
+	assertEqual(lastLength, (size_t)4);
 }
 
 //----------------------------------------------------------------------------

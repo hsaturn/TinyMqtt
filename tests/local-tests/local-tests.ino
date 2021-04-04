@@ -17,10 +17,15 @@ MqttBroker broker(1883);
 
 std::map<std::string, std::map<Topic, int>>	published;		// map[client_id] => map[topic] = count
 
+const char* lastPayload;
+size_t lastLength;
+
 void onPublish(const MqttClient* srce, const Topic& topic, const char* payload, size_t length)
 {
 	if (srce)
 		published[srce->id()][topic]++;
+  lastPayload = payload;
+	lastLength = length;
 }
 
 test(local_client_should_unregister_when_destroyed)
