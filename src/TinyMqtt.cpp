@@ -499,11 +499,6 @@ if (mesg->type() != MqttMessage::Type::PingReq && mesg->type() != MqttMessage::T
 					if (callback and isSubscribedTo(published))
 					{
 						callback(this, published, payload, len);	// TODO send the real payload
-
-						mesg->changeType(MqttMessage::Type::PubAck);	// TODO constness design but saves memory & speed 
-						// TODO re-add packet identifier if any
-						mesg->sendTo(this);
-						mesg->changeType(MqttMessage::Type::Publish);	// mesg is const (...)
 					}
 				}
 				else if (parent) // from outside to inside

@@ -145,7 +145,7 @@ class MqttClient
 		{ if (client) client->write(buf, length); }
 
 		const std::string& id() const { return clientId; }
-		// void id(std::string& new_id) { clientId = new_id; }
+		void id(std::string& new_id) { clientId = new_id; }
 
 		/** Should be called in main loop() */
 		void loop();
