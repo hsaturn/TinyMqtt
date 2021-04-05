@@ -202,7 +202,7 @@ class MqttClient
 
 		bool mqtt_connected = false;
 		char mqtt_flags;
-		uint32_t keep_alive;
+		uint32_t keep_alive = 60;
 		uint32_t alive;
 		MqttMessage message;
 
