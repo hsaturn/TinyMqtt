@@ -15,14 +15,16 @@ MqttBroker broker(1883);
 
 std::map<std::string, std::map<Topic, int>>	published;		// map[client_id] => map[topic] = count
 
-const char* lastPayload;
+char* lastPayload = nullptr;
 size_t lastLength;
 
 void onPublish(const MqttClient* srce, const Topic& topic, const char* payload, size_t length)
 {
 	if (srce)
 		published[srce->id()][topic]++;
-  lastPayload = payload;
+	
+	if (lastPayload) free(lastPayload);
+  lastPayload = strdup(payload);
 	lastLength = length;
 }
 
@@ -131,7 +133,6 @@ test(nowifi_nocallback_when_destroyed)
 
 test(nowifi_payload_nullptr)
 {
-  return; // FIXME
 	published.clear();
 
 	const char* payload="abcd";
