@@ -6,7 +6,7 @@
 	* TinyMqtt local unit tests.
 	*
 	* Clients are connected to pseudo remote broker
-	* The remote will be 127.0.0.1:1883
+	* The remote should be 127.0.0.1:1883 <--- But this does not work due to Esp network limitations
 	* We are using 127.0.0.1 because this is simpler to test with a single ESP
 	* Also, this will allow to mock and thus run Action on github
 	**/

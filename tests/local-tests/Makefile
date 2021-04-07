@@ -3,4 +3,5 @@
 
 APP_NAME := local-tests
 ARDUINO_LIBS := AUnit AceCommon AceTime TinyMqtt EspMock
-include ../../../EpoxyDuino/EpoxyDuino.mk
+ESP_LIBS = ESP8266WiFi
+include ../../../EspMock/EspMock.mk
