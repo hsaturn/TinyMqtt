@@ -126,7 +126,7 @@ std::string getip(std::string& str, const char* if_empty=nullptr, char sep=' ')
 std::map<std::string, std::string> vars;
 
 std::set<std::string> commands = {
-	"auto", "broker", "client", "connect",
+	"auto", "broker", "blink", "client", "connect",
 	"create", "delete", "help", "interval",
 	"ls", "ip", "off", "on", "set",
 	"publish", "reset", "subscribe", "view"
@@ -313,8 +313,36 @@ bool compare(std::string s, const char* cmd)
 
 using ClientFunction = void(*)(std::string& cmd, MqttClient* publish);
 
+uint32_t blink_ms_on[16];
+uint32_t blink_ms_off[16];
+uint32_t blink_next[16];
+bool blink_state[16];
+int16_t blink;
 void loop()
 {
+	auto ms=millis();
+	int8_t out=1;
+	int16_t blink_bits = blink;
+	while(blink_bits)
+	{
+		if (blink_ms_on[out] and ms > blink_next[out])
+		{
+			if (blink_state[out])
+			{
+				blink_next[out] += blink_ms_on[out];
+				digitalWrite(out, LOW);
+			}
+			else
+			{
+				blink_next[out] += blink_ms_off[out];
+				digitalWrite(abs(out), HIGH);
+			}
+			blink_state[out] = not blink_state[out];
+		}
+		blink_bits >>=1;
+		out++;
+	}
+
 	static long count;
 	if (MqttClient::counter != count)
 	{
@@ -458,6 +486,24 @@ void loop()
 						client->dump();
 					}
 				}
+				else if (compare(s, "blink"))
+				{
+					uint8_t blink_nr = getint(cmd, 0);
+					if (blink_nr)
+					{
+						blink_ms_on[blink_nr]=getint(cmd, blink_ms_on[blink_nr]);
+						blink_ms_off[blink_nr]=getint(cmd, blink_ms_on[blink_nr]);
+						pinMode(blink_nr, OUTPUT);
+						blink_next[blink_nr] = millis();
+						Serial << "Blink " << blink_nr << ' ' << (blink_ms_on[blink_nr] ? "on" : "off") << endl;
+						if (blink_ms_on[blink_nr])
+							blink |= 1<< (blink_nr-1);
+						else
+						{
+							blink &= ~(1<<(blink_nr-1));
+						}
+					}
+				}
 				else if (compare(s, "auto"))
 				{
 					automatic::command(client, cmd);
@@ -573,6 +619,7 @@ void loop()
 					automatic::help();
 					Serial << endl;
 					Serial << "    help" << endl;
+					Serial << "    blink [Dx on_ms off_ms]" << endl;
 					Serial << "    ls / ip / reset" << endl;
 					Serial << "    set [name][value]" << endl;
 					Serial << "    !  repeat last command" << endl;
