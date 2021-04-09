@@ -1,7 +1,7 @@
 {
     "name": "TinyMqtt",
     "keywords": "ethernet, mqtt, m2m, iot",
-    "description": "MQTT is a lightweight messaging protocol ideal for small devices. This library allows to send and receive MQTT messages. It does support MQTT 3.1.1 without QOS=0.",
+    "description": "MQTT is a lightweight messaging protocol ideal for small devices. This library allows to send and receive MQTT messages. It does support MQTT 3.1.1 with QOS=0.",
     "repository": {
         "type": "git",
         "url": "https://github.com/hsaturn/TinyMqtt.git"
