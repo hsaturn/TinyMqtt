@@ -469,25 +469,27 @@ if (mesg->type() != MqttMessage::Type::PingReq && mesg->type() != MqttMessage::T
 				if (!mqtt_connected) break;
 				payload = header+2;
 				
-				debug("subscribe loop");
+				debug("un/subscribe loop");
 				while(payload < mesg->end())
 				{
 					mesg->getString(payload, len);	// Topic
 					debug( "  topic (" << std::string(payload, len) << ')');
-					outstring("Subscribes", payload, len);
+					outstring("  un/subscribes", payload, len);
 					// subscribe(Topic(payload, len));
 					Topic topic(payload, len);
+					payload += len;
 					if ((mesg->type() & 0XF0) == MqttMessage::Type::Subscribe)
+					{
+						uint8_t qos = *payload++;
+						if (qos != 0) debug("Unsupported QOS" << qos << endl);
 						subscriptions.insert(topic);
+					}
 					else
 					{
 						auto it=subscriptions.find(topic);
 						if (it != subscriptions.end())
 							subscriptions.erase(it);
 					}
-					payload += len;
-					/* uint8_t qos =*/ *payload++;
-					debug("  qos=" << qos);
 				}
 				debug("end loop");
 				bclose = false;
