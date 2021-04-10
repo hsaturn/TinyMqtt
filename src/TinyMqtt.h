@@ -4,6 +4,10 @@
 #elif defined(ESP32)
 	#include <WiFi.h>
 	#include <AsyncTCP.h> // https://github.com/me-no-dev/AsyncTCP
+#elif defined(EPOXY_DUINO)
+	#include <ESPAsyncTCP.h>
+#else
+	#error "Unsupported platform"
 #endif
 #include <vector>
 #include <set>
