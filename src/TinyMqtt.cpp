@@ -498,6 +498,11 @@ if (mesg->type() != MqttMessage::Type::PingReq && mesg->type() != MqttMessage::T
 			}
 			break;
 
+		case MqttMessage::Type::UnSuback:
+			if (!mqtt_connected) break;
+			bclose = false;
+			break;
+
 		case MqttMessage::Type::Publish:
 			if (mqtt_connected or client == nullptr)
 			{

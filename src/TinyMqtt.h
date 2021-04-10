@@ -57,6 +57,7 @@ class MqttMessage
 			Subscribe   = 0x80,
 			SubAck      = 0x90,
 			UnSubscribe = 0xA0,
+			UnSuback		= 0xB0,
 			PingReq     = 0xC0,
 			PingResp    = 0xD0,
 			Disconnect  = 0xE0
