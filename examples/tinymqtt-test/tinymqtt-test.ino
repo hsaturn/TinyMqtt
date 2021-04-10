@@ -138,7 +138,7 @@ std::set<std::string> commands = {
 	"auto", "broker", "blink", "client", "connect",
 	"create", "delete", "help", "interval",
 	"ls", "ip", "off", "on", "set",
-	"publish", "reset", "subscribe", "view"
+	"publish", "reset", "subscribe", "unsubscribe", "view"
 };
 
 void getCommand(std::string& search)
@@ -492,6 +492,10 @@ void loop()
 					{
 						client->subscribe(getword(cmd, topic.c_str()));
 					}
+					else if (compare(s, "unsubscribe"))
+					{
+						client->unsubscribe(getword(cmd, topic.c_str()));
+					}
 					else if (compare(s, "view"))
 					{
 						client->dump();
@@ -622,7 +626,7 @@ void loop()
 					Serial << "  MqttClient:" << endl;
 					Serial << "    client {name} {parent broker} : create a client then" << endl;
 					Serial << "      name.connect  [ip] [port] [alive]" << endl;
-					Serial << "      name.subscribe [topic]" << endl;
+					Serial << "      name.[un]subscribe [topic]" << endl;
 					Serial << "      name.publish [topic][payload]" << endl;
 					Serial << "      name.view" << endl;
 					Serial << "      name.delete" << endl;
