@@ -1,11 +1,12 @@
 #pragma once
-#include <ESP8266WiFi.h>
 #include <ESPAsyncTCP.h>
 #include <vector>
 #include <set>
 #include <string>
 #include "StringIndexer.h"
 #include <MqttStreaming.h>
+
+// #define TINY_MQTT_DEBUG
 
 #ifdef TINY_MQTT_DEBUG
   #define debug(what) { Serial << __LINE__ << ' ' << what << endl; delay(100); }

@@ -139,7 +139,7 @@ void MqttBroker::onClient(void* broker_ptr, AsyncClient* client)
 	MqttBroker* broker = static_cast<MqttBroker*>(broker_ptr);
 
 	broker->addClient(new MqttClient(broker, client));
-	debug("New client #" << broker->clients->size());
+	debug("New client #" << broker->clients.size());
 }
 
 void MqttBroker::loop()
