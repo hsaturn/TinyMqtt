@@ -80,23 +80,15 @@ class MqttMessage
 		// output buff+=2, len=length(str)
 		static void getString(const char* &buff, uint16_t& len);
 
-
 		Type type() const
 		{
 			return state == Complete ? static_cast<Type>(buffer[0]) : Unknown;
 		}
 
-		// shouldn't exist because it breaks constness :-(
-		// but this saves memory so ...
-		void changeType(Type type) const
-		{
-			buffer[0] = type;
-		}
-
 		void create(Type type)
 		{
 			buffer=(char)type;
-			buffer+='\0';
+			buffer+='\0';		// reserved for msg length
 			vheader=2;
 			size=0;
 			state=Create;

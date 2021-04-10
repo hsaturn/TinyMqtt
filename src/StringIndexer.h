@@ -2,7 +2,6 @@
 #include <map>
 #include <string>
 #include <string.h>
-#include <ESP8266WiFi.h>
 
 /***
  * Allows to store up to 255 different strings with one byte class

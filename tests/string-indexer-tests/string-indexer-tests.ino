@@ -1,27 +1,13 @@
 #include <AUnit.h>
-#include <TinyMqtt.h>
+#include <StringIndexer.h>
 #include <map>
 
 /**
-	* TinyMqtt local unit tests.
+	* TinyMqtt / StringIndexer unit tests.
 	*
-	* Clients are connected to pseudo remote broker
-	* The remote will be 127.0.0.1:1883
-	* We are using 127.0.0.1 because this is simpler to test with a single ESP
-	* Also, this will allow to mock and thus run Action on github
 	**/
 
 using namespace std;
-
-MqttBroker broker(1883);
-
-std::map<std::string, std::map<Topic, int>>	published;		// map[client_id] => map[topic] = count
-
-void onPublish(const MqttClient* srce, const Topic& topic, const char* payload, size_t length)
-{
-	if (srce)
-		published[srce->id()][topic]++;
-}
 
 test(indexer_empty)
 {
