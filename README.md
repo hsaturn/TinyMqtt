@@ -2,7 +2,6 @@
 
 ![Release](https://img.shields.io/github/v/release/hsaturn/TinyMqtt)
 [![AUnit Tests](https://github.com/hsaturn/TinyMqtt/actions/workflows/aunit.yml/badge.svg)](https://github.com/hsaturn/TinyMqtt/actions/workflows/aunit.yml)
-
 ![Issues](https://img.shields.io/github/issues/hsaturn/TinyMqtt)
 ![Esp8266](https://img.shields.io/badge/platform-ESP8266-green)
 ![Gpl 3.0](https://img.shields.io/github/license/hsaturn/TinyMqtt)
