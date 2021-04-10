@@ -191,6 +191,8 @@ class MqttClient
 		static long counter;
 
 	private:
+
+		static void onConnect(void * client_ptr, AsyncClient*);
 		static void onData(void* client_ptr, AsyncClient*, void* data, size_t len);
 		MqttError sendTopic(const Topic& topic, MqttMessage::Type type, uint8_t qos);
 		void resubscribe();

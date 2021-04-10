@@ -72,33 +72,14 @@ void MqttClient::close(bool bSendDisconnect)
 void MqttClient::connect(std::string broker, uint16_t port, uint16_t ka)
 {
 	debug("cnx: closing");
+	keep_alive = ka;
 	close();
 	if (client) delete client;
 	client = new AsyncClient;
+	client->onData(onData, this);
+	client->onConnect(onConnect, this);
 	debug("Trying to connect to " << broker.c_str() << ':' << port);
-	// TODO This may return immediately !!!
-	// TODO so I have to add onConnect and move this code to onConnect
-	// TODO also, as this is async now, I must take care of
-	// TODO the broker that may disconnect and delete the client immediately
-	if (client->connect(broker.c_str(), port))
-	{
-	  debug("cnx: connecting");
-		MqttMessage msg(MqttMessage::Type::Connect);
-		msg.add("MQTT",4);
-		msg.add(0x4);	// Mqtt protocol version 3.1.1
-		msg.add(0x0);	// Connect flags         TODO user / name
-
-		keep_alive = ka;
-		msg.add(0x00);			// keep_alive
-		msg.add((char)keep_alive);
-		msg.add(clientId);
-	  debug("cnx: mqtt connecting");
-		msg.sendTo(this);
-		msg.reset();
-	  debug("cnx: mqtt sent " << (int32_t)parent);
-
-		clientAlive(0);
-	}
+	client->connect(broker.c_str(), port);
 }
 
 void MqttBroker::addClient(MqttClient* client)
@@ -263,10 +244,30 @@ void MqttClient::loop()
 			client->write((const char*)(&pingreq), 2);
 			clientAlive(0);
 
-			// TODO when many MqttClient passes through a local browser
+			// TODO when many MqttClient passes through a local broker
 			// there is no need to send one PingReq per instance.
 		}
 	}
+}
+
+void MqttClient::onConnect(void *mqttclient_ptr, AsyncClient*)
+{
+	MqttClient* mqtt = static_cast<MqttClient*>(mqttclient_ptr);
+	debug("cnx: connecting");
+	MqttMessage msg(MqttMessage::Type::Connect);
+	msg.add("MQTT",4);
+	msg.add(0x4);	// Mqtt protocol version 3.1.1
+	msg.add(0x0);	// Connect flags         TODO user / name
+
+	msg.add(0x00);			// keep_alive
+	msg.add((char)mqtt->keep_alive);
+	msg.add(mqtt->clientId);
+	debug("cnx: mqtt connecting");
+	msg.sendTo(mqtt);
+	msg.reset();
+	debug("cnx: mqtt sent " << (int32_t)mqtt->parent);
+
+	mqtt->clientAlive(0);
 }
 
 void MqttClient::onData(void* client_ptr, AsyncClient*, void* data, size_t len)
