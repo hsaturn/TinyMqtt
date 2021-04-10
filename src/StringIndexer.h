@@ -28,7 +28,7 @@ class StringIndexer
 	public:
 		using index_t=uint8_t;
 
-		static const index_t strToIndex(const char* str, uint8_t len)
+		static index_t strToIndex(const char* str, uint8_t len)
 		{
 			for(auto it=strings.begin(); it!=strings.end(); it++)
 			{
