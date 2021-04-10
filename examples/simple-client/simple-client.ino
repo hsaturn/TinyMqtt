@@ -1,9 +1,11 @@
-#include <ESP8266WiFi.h>
 #include "TinyMqtt.h"   // https://github.com/hsaturn/TinyMqtt
 
 /** Simple Client
   *
 	* This is the simplest Mqtt client configuration
+	*
+	* 1 - edit my_credentials.h to setup wifi essid/password
+	* 2 - change BROKER values (or keep emqx.io test broker)
 	*
 	* pro  - small memory footprint (both ram and flash)
 	*      - very simple to setup and use
@@ -12,6 +14,9 @@
   *      - stop working if broker is down
 	*      - local publishes takes more time (because they go outside)
 	*/
+
+const char* BROKER = "broker.emqx.io";
+const uint16_t BROKER_PORT = 1883;
 
 #include <my_credentials.h>
 
@@ -32,8 +37,7 @@ void setup()
 
   Serial << "Connected to " << ssid << "IP address: " << WiFi.localIP() << endl;  
 
-	client.connect("192.168.1.40", 1883);	// Put here your broker ip / port
-
+	client.connect(BROKER, BROKER_PORT);	// Put here your broker ip / port
 }
 
 void loop()

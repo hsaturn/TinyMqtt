@@ -1,6 +1,10 @@
 #pragma once
-#include <ESP8266WiFi.h>
-#include <ESPAsyncTCP.h>
+#ifdef ESP8266
+	#include <ESPAsyncTCP.h>
+#elif defined(ESP32)
+	#include <WiFi.h>
+	#include <AsyncTCP.h> // https://github.com/me-no-dev/AsyncTCP
+#endif
 #include <vector>
 #include <set>
 #include <string>
