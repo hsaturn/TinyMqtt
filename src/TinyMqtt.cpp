@@ -672,6 +672,7 @@ void MqttMessage::add(const char* p, size_t len, bool addLength)
 {
 	if (addLength)
 	{
+		buffer.reserve(buffer.length()+addLength+2);
 		incoming(len>>8);
 		incoming(len & 0xFF);
 	}

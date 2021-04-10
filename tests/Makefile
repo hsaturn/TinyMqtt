@@ -5,7 +5,7 @@ tests:
 		$(MAKE) -C $$(dirname $$i) -j; \
 	done
 
-runtests:
+runtests: tests
 	set -e; \
 	for i in *-tests/Makefile; do \
 		echo '==== Running:' $$(dirname $$i); \
