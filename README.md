@@ -48,7 +48,7 @@ After a while one ESP naturally becomes a 'master' and all ESP are connected tog
 No problem if the master dies, a new master will be choosen soon.
 
 ## TODO List
-* Use [Async library](https://github.com/me-no-dev/ESPAsyncTCP)
+* ~~Use [Async library](https://github.com/me-no-dev/ESPAsyncTCP)~~
 * Implement zeroconf mode (needs async)
 * Add a max_clients in MqttBroker. Used with zeroconf, there will be
 no need for having tons of clients (also RAM is the problem with many clients)
