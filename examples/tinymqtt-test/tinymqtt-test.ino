@@ -330,7 +330,7 @@ int16_t blink;
 void loop()
 {
 	auto ms=millis();
-	int8_t out=1;
+	int8_t out=0;
 	int16_t blink_bits = blink;
 	while(blink_bits)
 	{
@@ -503,8 +503,8 @@ void loop()
 				}
 				else if (compare(s, "blink"))
 				{
-					uint8_t blink_nr = getint(cmd, 0);
-					if (blink_nr)
+					int8_t blink_nr = getint(cmd, -1);
+					if (blink_nr >= 0)
 					{
 						blink_ms_on[blink_nr]=getint(cmd, blink_ms_on[blink_nr]);
 						blink_ms_off[blink_nr]=getint(cmd, blink_ms_on[blink_nr]);
@@ -512,10 +512,10 @@ void loop()
 						blink_next[blink_nr] = millis();
 						Serial << "Blink " << blink_nr << ' ' << (blink_ms_on[blink_nr] ? "on" : "off") << endl;
 						if (blink_ms_on[blink_nr])
-							blink |= 1<< (blink_nr-1);
+							blink |= 1<< blink_nr;
 						else
 						{
-							blink &= ~(1<<(blink_nr-1));
+							blink &= ~(1<< blink_nr);
 						}
 					}
 				}
