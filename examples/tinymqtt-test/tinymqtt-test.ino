@@ -1,10 +1,11 @@
-#define TINY_MQTT_DEBUG
 #include <TinyMqtt.h>       // https://github.com/hsaturn/TinyMqtt
 #include <MqttStreaming.h>
+#include <ESP8266mDNS.h>
+
 #include <sstream>
 #include <map>
 
-/** 
+/**
   * Console allowing to make any kind of test.
   *
   * pros - Reduces internal latency (when publish is received by the same ESP)
@@ -40,7 +41,7 @@ std::map<std::string, MqttBroker*> brokers;
 
 void setup()
 {
-	WiFi.persistent(false); // https://github.com/esp8266/Arduino/issues/1054 
+	WiFi.persistent(false); // https://github.com/esp8266/Arduino/issues/1054
   Serial.begin(115200);
 	delay(500);
 	Serial << endl << endl << endl
@@ -54,6 +55,14 @@ void setup()
 
   Serial << "Connected to " << ssid << "IP address: " << WiFi.localIP() << endl;
 	Serial << "Type help for more..." << endl;
+
+  const char* name="tinytest";
+  Serial << "Starting MDNS, name= " << name;
+  if (!MDNS.begin(name))
+    Serial << "  error, not available." << endl;
+  else
+    Serial << " ok." << endl;
+
 
 	MqttBroker* broker = new MqttBroker(1883);
 	broker->begin();
@@ -344,6 +353,8 @@ void loop()
 	}
 
 	static long count;
+  MDNS.update();
+
 	if (MqttClient::counter != count)
 	{
 		Serial << "# " << MqttClient::counter << endl;
@@ -383,7 +394,7 @@ void loop()
 
 				// client.function notation
 				// ("a.fun " becomes "fun a ")
-				if (cmd.find('.') != std::string::npos && 
+				if (cmd.find('.') != std::string::npos &&
 						cmd.find('.') < cmd.find(' '))
 				{
 					s=getword(cmd, nullptr, '.');
