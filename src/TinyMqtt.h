@@ -1,15 +1,15 @@
+#pragma once
 #include <ESP8266WiFi.h>
+#include <ESPAsyncTCP.h>
 #include <vector>
 #include <set>
 #include <string>
 #include "StringIndexer.h"
 #include <MqttStreaming.h>
 
-#if 0
+#ifdef TINY_MQTT_DEBUG
   #define debug(what) { Serial << __LINE__ << ' ' << what << endl; delay(100); }
-  #define TINY_MQTT_DEBUG 1
 #else
-  #define TINY_MQTT_DEBUG 0
   #define debug(what) {}
 #endif
 
@@ -189,11 +189,12 @@ class MqttClient
 		static long counter;
 
 	private:
+		static void onData(void* client_ptr, AsyncClient*, void* data, size_t len);
 		MqttError sendTopic(const Topic& topic, MqttMessage::Type type, uint8_t qos);
 		void resubscribe();
 
 		friend class MqttBroker;
-		MqttClient(MqttBroker* parent, WiFiClient& client);
+		MqttClient(MqttBroker* parent, AsyncClient* client);
 		// republish a received publish if topic matches any in subscriptions
 		MqttError publishIfSubscribed(const Topic& topic, const MqttMessage& msg);
 
@@ -211,7 +212,7 @@ class MqttClient
 		// (this is the case when MqttBroker isn't used except here)
 		MqttBroker* parent=nullptr;		// connection to local broker
 
-		WiFiClient* client=nullptr;		// connection to mqtt client or to remote broker
+		AsyncClient* client=nullptr;		// connection to mqtt client or to remote broker
 		std::set<Topic>	subscriptions;
 		std::string clientId;
 		CallBack callback = nullptr;
@@ -230,10 +231,8 @@ class MqttBroker
 		MqttBroker(uint16_t port);
 		~MqttBroker();
 
-		void begin() { server.begin(); }
+		void begin() { server->begin(); }
 		void loop();
-
-		uint16_t port() const { return server.port(); }
 
 		void connect(const std::string& host, uint16_t port=1883);
 		bool connected() const { return state == Connected; }
@@ -253,6 +252,7 @@ class MqttBroker
 	private:
 		friend class MqttClient;
 
+		static void onClient(void*, AsyncClient*);
 		bool checkUser(const char* user, uint8_t len) const
 		{ return compareString(auth_user, user, len); }
 
@@ -270,7 +270,7 @@ class MqttBroker
 
 		bool compareString(const char* good, const char* str, uint8_t str_len) const;
 		std::vector<MqttClient*>	clients;
-		WiFiServer server;
+		AsyncServer* server;
 
 		const char* auth_user = "guest";
 		const char* auth_password = "guest";
