@@ -271,6 +271,17 @@ void MqttClient::loop()
 			// there is no need to send one PingReq per instance.
 		}
 	}
+#ifndef TCP_ASYNC
+	while(client && client->available()>0)
+	{
+		message.incoming(client->read());
+		if (message.type())
+		{
+			processMessage(&message);
+			message.reset();
+		}
+	}
+#endif
 }
 
 void MqttClient::onConnect(void *mqttclient_ptr, TcpClient*)
