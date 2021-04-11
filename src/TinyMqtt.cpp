@@ -11,8 +11,10 @@ void outstring(const char* prefix, const char*p, uint16_t len)
 
 MqttBroker::MqttBroker(uint16_t port)
 {
-	server = new AsyncServer(port);
+	server = new TcpServer(port);
+#ifdef TCP_ASYNC
 	server->onClient(onClient, this);
+#endif
 }
 
 MqttBroker::~MqttBroker()
@@ -25,12 +27,14 @@ MqttBroker::~MqttBroker()
 }
 
 // private constructor used by broker only
-MqttClient::MqttClient(MqttBroker* parent, AsyncClient* new_client)
+MqttClient::MqttClient(MqttBroker* parent, TcpClient* new_client)
 	: parent(parent), client(new_client)
 {
+#ifdef TCP_ASYNC
 	client->onData(onData, this);
 	// client->onConnect() TODO
 	// client->onDisconnect() TODO
+#endif
 	alive = millis()+5000;	// client expires after 5s if no CONNECT msg
 }
 
@@ -75,11 +79,16 @@ void MqttClient::connect(std::string broker, uint16_t port, uint16_t ka)
 	keep_alive = ka;
 	close();
 	if (client) delete client;
-	client = new AsyncClient;
+	client = new TcpClient;
 	client->onData(onData, this);
 	client->onConnect(onConnect, this);
 	debug("Trying to connect to " << broker.c_str() << ':' << port);
-	client->connect(broker.c_str(), port);
+	if (client->connect(broker.c_str(), port))
+    {
+    #ifndef TCP_ASYNC
+        onConnect(this, client);
+    #endif
+    }
 }
 
 void MqttBroker::addClient(MqttClient* client)
@@ -115,7 +124,7 @@ void MqttBroker::removeClient(MqttClient* remove)
 	debug("Error cannot remove client");	// TODO should not occur
 }
 
-void MqttBroker::onClient(void* broker_ptr, AsyncClient* client)
+void MqttBroker::onClient(void* broker_ptr, TcpClient* client)
 {
 	MqttBroker* broker = static_cast<MqttBroker*>(broker_ptr);
 
@@ -125,6 +134,14 @@ void MqttBroker::onClient(void* broker_ptr, AsyncClient* client)
 
 void MqttBroker::loop()
 {
+#ifndef TCP_ASYNC
+  WiFiClient client = server.available();
+
+  if (client)
+	{
+		onClient(this, &client);
+	}
+#endif
 	if (broker)
 	{
 		// TODO should monitor broker's activity.
@@ -270,6 +287,7 @@ void MqttClient::onConnect(void *mqttclient_ptr, AsyncClient*)
 	mqtt->clientAlive(0);
 }
 
+#ifdef TCP_ASYNC
 void MqttClient::onData(void* client_ptr, AsyncClient*, void* data, size_t len)
 {
 	char* char_ptr = static_cast<char*>(data);
@@ -285,6 +303,7 @@ void MqttClient::onData(void* client_ptr, AsyncClient*, void* data, size_t len)
 		len--;
 	}
 }
+#endif
 
 void MqttClient::resubscribe()
 {
