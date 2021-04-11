@@ -384,8 +384,15 @@ void loop()
 				last_cmd=cmd;
 
 			if (cmd.substr(0,3)!="set") replaceVars(cmd);
+
 			while(cmd.length())
 			{
+				std::string cmd_end;
+				if (cmd.find(';') != std::string::npos)
+				{
+					cmd_end = cmd;
+					cmd = getword(cmd_end,"",';');
+				}
 				MqttError retval = MqttOk;
 
 				std::string s;
@@ -619,7 +626,7 @@ void loop()
 					Serial << "IP: " << WiFi.localIP() << endl;
 				else if (compare(s,"help"))
 				{
-					Serial << "syntax:" << endl;
+					Serial << "syntax:   instr; instr; ..." << endl;
 					Serial << "  MqttBroker:" << endl;
 					Serial << "    broker {name} {port} : create a new broker" << endl;
 					Serial << endl;
@@ -653,6 +660,11 @@ void loop()
 				if (retval != MqttOk)
 				{
 					Serial << "## ERROR " << retval << endl;
+				}
+				if (cmd_end.length())
+				{
+					cmd = cmd_end;
+					cmd_end = "";
 				}
 			}
 		}
