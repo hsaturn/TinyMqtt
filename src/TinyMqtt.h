@@ -1,13 +1,27 @@
 #pragma once
-#ifdef ESP8266
-	#include <ESPAsyncTCP.h>
+
+// TODO Should add a AUnit with both TCP_ASYNC and not TCP_ASYNC
+// #define TCP_ASYNC	// Uncomment this to use ESPAsyncTCP instead of normal cnx
+
+#if defined(ESP8266) || defined(EPOXY_DUINO)
+	#ifdef TCP_ASYNC
+		#include <ESPAsyncTCP.h>
+  #else
+    #include <ESP8266WiFi.h>
+  #endif
 #elif defined(ESP32)
-	#include <WiFi.h>
-	#include <AsyncTCP.h> // https://github.com/me-no-dev/AsyncTCP
-#elif defined(EPOXY_DUINO)
-	#include <ESPAsyncTCP.h>
+	#ifdef TCP_ASYNC
+	    #include <AsyncTCP.h> // https://github.com/me-no-dev/AsyncTCP
+    #else
+	    #include <WiFi.h>
+    #endif
 #else
 	#error "Unsupported platform"
+#endif
+#ifdef EPOXY_DUINO
+  #define dbg_ptr uint64_t
+#else
+  #define dbg_ptr uint32_t
 #endif
 #include <vector>
 #include <set>
@@ -21,6 +35,14 @@
   #define debug(what) { Serial << __LINE__ << ' ' << what << endl; delay(100); }
 #else
   #define debug(what) {}
+#endif
+
+#ifdef TCP_ASYNC
+  using TcpClient = AsyncClient;
+  using TcpServer = AsyncServer;
+#else
+  using TcpClient = WiFiClient;
+  using TcpServer = WiFiServer;
 #endif
 
 enum MqttError
@@ -57,7 +79,7 @@ class MqttMessage
 			Subscribe   = 0x80,
 			SubAck      = 0x90,
 			UnSubscribe = 0xA0,
-			UnSuback		= 0xB0,
+			UnSuback	= 0xB0,
 			PingReq     = 0xC0,
 			PingResp    = 0xD0,
 			Disconnect  = 0xE0
@@ -192,14 +214,15 @@ class MqttClient
 		static long counter;
 
 	private:
-
-		static void onConnect(void * client_ptr, AsyncClient*);
-		static void onData(void* client_ptr, AsyncClient*, void* data, size_t len);
+		static void onConnect(void * client_ptr, TcpClient*);
+#ifdef TCP_ASYNC
+		static void onData(void* client_ptr, TcpClient*, void* data, size_t len);
+#endif
 		MqttError sendTopic(const Topic& topic, MqttMessage::Type type, uint8_t qos);
 		void resubscribe();
 
 		friend class MqttBroker;
-		MqttClient(MqttBroker* parent, AsyncClient* client);
+		MqttClient(MqttBroker* parent, TcpClient* client);
 		// republish a received publish if topic matches any in subscriptions
 		MqttError publishIfSubscribed(const Topic& topic, const MqttMessage& msg);
 
@@ -217,7 +240,7 @@ class MqttClient
 		// (this is the case when MqttBroker isn't used except here)
 		MqttBroker* parent=nullptr;		// connection to local broker
 
-		AsyncClient* client=nullptr;		// connection to mqtt client or to remote broker
+		TcpClient* client=nullptr;		// connection to mqtt client or to remote broker
 		std::set<Topic>	subscriptions;
 		std::string clientId;
 		CallBack callback = nullptr;
@@ -257,7 +280,7 @@ class MqttBroker
 	private:
 		friend class MqttClient;
 
-		static void onClient(void*, AsyncClient*);
+		static void onClient(void*, TcpClient*);
 		bool checkUser(const char* user, uint8_t len) const
 		{ return compareString(auth_user, user, len); }
 
@@ -275,7 +298,7 @@ class MqttBroker
 
 		bool compareString(const char* good, const char* str, uint8_t str_len) const;
 		std::vector<MqttClient*>	clients;
-		AsyncServer* server;
+		TcpServer* server;
 
 		const char* auth_user = "guest";
 		const char* auth_password = "guest";

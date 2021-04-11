@@ -11,8 +11,10 @@ void outstring(const char* prefix, const char*p, uint16_t len)
 
 MqttBroker::MqttBroker(uint16_t port)
 {
-	server = new AsyncServer(port);
+	server = new TcpServer(port);
+#ifdef TCP_ASYNC
 	server->onClient(onClient, this);
+#endif
 }
 
 MqttBroker::~MqttBroker()
@@ -25,12 +27,17 @@ MqttBroker::~MqttBroker()
 }
 
 // private constructor used by broker only
-MqttClient::MqttClient(MqttBroker* parent, AsyncClient* new_client)
-	: parent(parent), client(new_client)
+MqttClient::MqttClient(MqttBroker* parent, TcpClient* new_client)
+	: parent(parent)
 {
+#ifdef TCP_ASYNC
+	client = new_client;
 	client->onData(onData, this);
 	// client->onConnect() TODO
 	// client->onDisconnect() TODO
+#else
+	client = new WiFiClient(*new_client);
+#endif
 	alive = millis()+5000;	// client expires after 5s if no CONNECT msg
 }
 
@@ -75,11 +82,19 @@ void MqttClient::connect(std::string broker, uint16_t port, uint16_t ka)
 	keep_alive = ka;
 	close();
 	if (client) delete client;
-	client = new AsyncClient;
+	client = new TcpClient;
+
+	debug("Trying to connect to " << broker.c_str() << ':' << port);
+#ifdef TCP_ASYNC
 	client->onData(onData, this);
 	client->onConnect(onConnect, this);
-	debug("Trying to connect to " << broker.c_str() << ':' << port);
 	client->connect(broker.c_str(), port);
+#else
+	if (client->connect(broker.c_str(), port))
+	{
+		onConnect(this, client);
+	}
+#endif
 }
 
 void MqttBroker::addClient(MqttClient* client)
@@ -115,16 +130,24 @@ void MqttBroker::removeClient(MqttClient* remove)
 	debug("Error cannot remove client");	// TODO should not occur
 }
 
-void MqttBroker::onClient(void* broker_ptr, AsyncClient* client)
+void MqttBroker::onClient(void* broker_ptr, TcpClient* client)
 {
 	MqttBroker* broker = static_cast<MqttBroker*>(broker_ptr);
 
 	broker->addClient(new MqttClient(broker, client));
-	debug("New client #" << broker->clients.size());
+	debug("New client");
 }
 
 void MqttBroker::loop()
 {
+#ifndef TCP_ASYNC
+  WiFiClient client = server->available();
+
+  if (client)
+	{
+		onClient(this, &client);
+	}
+#endif
 	if (broker)
 	{
 		// TODO should monitor broker's activity.
@@ -144,7 +167,7 @@ void MqttBroker::loop()
 		}
 		else
 		{
-      debug("Client " << client->id().c_str() << "  Disconnected, parent=" << (int32_t)client->parent);
+      debug("Client " << client->id().c_str() << "  Disconnected, parent=" << (dbg_ptr)client->parent);
 			// Note: deleting a client not added by the broker itself will probably crash later.
 			delete client;
 			break;
@@ -248,9 +271,20 @@ void MqttClient::loop()
 			// there is no need to send one PingReq per instance.
 		}
 	}
+#ifndef TCP_ASYNC
+	while(client && client->available()>0)
+	{
+		message.incoming(client->read());
+		if (message.type())
+		{
+			processMessage(&message);
+			message.reset();
+		}
+	}
+#endif
 }
 
-void MqttClient::onConnect(void *mqttclient_ptr, AsyncClient*)
+void MqttClient::onConnect(void *mqttclient_ptr, TcpClient*)
 {
 	MqttClient* mqtt = static_cast<MqttClient*>(mqttclient_ptr);
 	debug("cnx: connecting");
@@ -265,12 +299,13 @@ void MqttClient::onConnect(void *mqttclient_ptr, AsyncClient*)
 	debug("cnx: mqtt connecting");
 	msg.sendTo(mqtt);
 	msg.reset();
-	debug("cnx: mqtt sent " << (int32_t)mqtt->parent);
+	debug("cnx: mqtt sent " << (dbg_ptr)mqtt->parent);
 
 	mqtt->clientAlive(0);
 }
 
-void MqttClient::onData(void* client_ptr, AsyncClient*, void* data, size_t len)
+#ifdef TCP_ASYNC
+void MqttClient::onData(void* client_ptr, TcpClient*, void* data, size_t len)
 {
 	char* char_ptr = static_cast<char*>(data);
 	MqttClient* client=static_cast<MqttClient*>(client_ptr);
@@ -285,6 +320,7 @@ void MqttClient::onData(void* client_ptr, AsyncClient*, void* data, size_t len)
 		len--;
 	}
 }
+#endif
 
 void MqttClient::resubscribe()
 {
@@ -361,7 +397,7 @@ void MqttClient::processMessage(const MqttMessage* mesg)
 #ifdef TINY_MQTT_DEBUG
 if (mesg->type() != MqttMessage::Type::PingReq && mesg->type() != MqttMessage::Type::PingResp)
 {
-	Serial << "---> INCOMING " << _HEX(mesg->type()) << " client(" << (int)client << ':' << clientId << ") mem=" << ESP.getFreeHeap() << endl;
+	Serial << "---> INCOMING " << _HEX(mesg->type()) << " client(" << (dbg_ptr)client << ':' << clientId << ") mem=" << ESP.getFreeHeap() << endl;
 	// mesg->hexdump("Incoming");
 }
 #endif
