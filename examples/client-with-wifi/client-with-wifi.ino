@@ -1,6 +1,8 @@
 #include <TinyMqtt.h>   // https://github.com/hsaturn/TinyMqtt
 
 /** 
+  * Local broker that accept connections and two local clients
+  *
   * 
   *  +-----------------------------+
   *  | ESP                         |
@@ -9,11 +11,12 @@
   *  |       |         +--------+  |
   *  |       |             ^       |
   *  |       |             |       |
-  *  |       v             v       |
-  *  | +----------+  +----------+  |
-  *  | | internal |  | internal |  |
-  *  | | client   |  | client   |  |
-  *  | +----------+  +----------+  |
+  *  |       |             |       |     -----
+  *  |       v             v       |      ---  
+  *  | +----------+  +----------+  |       -  
+  *  | | internal |  | internal |  +-------*  Wifi
+  *  | | client   |  | client   |  |          
+  *  | +----------+  +----------+  |          
   *  |                             |
   *  +-----------------------------+
   * 

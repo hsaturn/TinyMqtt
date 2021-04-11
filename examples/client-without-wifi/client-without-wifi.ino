@@ -1,12 +1,30 @@
 #include <TinyMqtt.h>   // https://github.com/hsaturn/TinyMqtt
 
 /** TinyMQTT allows a disconnected mode:
- * 
- *  In this example, local clients A and B are talking together, no need to be connected.
- *  A single ESP can use this to be able to comunicate with itself with the power
- *  of MQTT, and once connected still continue to work with others.
- *  
- */
+  * 
+  *  +-----------------------------+
+  *  | ESP                         |
+  *  |                 +--------+  |
+  *  |       +-------->| broker |  |
+  *  |       |         +--------+  |
+  *  |       |             ^       |
+  *  |       |             |       |
+  *  |       v             v       |
+  *  | +----------+  +----------+  |
+  *  | | internal |  | internal |  |
+  *  | | client   |  | client   |  |          
+  *  | +----------+  +----------+  |          
+  *  |                             |
+  *  +-----------------------------+
+  *
+  *  In this example, local clients A and B are talking together, no need to be connected.
+  *
+  *  A single ESP can use this to be able to comunicate with itself with the power
+  *  of MQTT, and once connected still continue to work with others.
+  *
+  *  The broker may still be conected if wifi is on.
+  *  
+  */
 
 std::string topic="sensor/temperature";
 

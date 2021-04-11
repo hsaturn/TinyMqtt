@@ -5,6 +5,16 @@
 #define PORT 1883
 MqttBroker broker(PORT);
 
+/** Basic Mqtt Broker
+  *
+  *  +-----------------------------+
+  *  | ESP                         |
+  *  |       +--------+            | 
+  *  |       | broker |            | 1883 <--- External client/s
+  *  |       +--------+            |
+  *  |                             |
+  *  +-----------------------------+
+  * 
 void setup() 
 {
   Serial.begin(115200);

@@ -5,18 +5,13 @@
 #include <sstream>
 #include <map>
 
-/**
+/** Very complex example
   * Console allowing to make any kind of test.
   *
-  * pros - Reduces internal latency (when publish is received by the same ESP)
-  *      - Reduces wifi traffic
-  *      - No need to have an external broker
-	*      - can still report to a 'main' broker (TODO see documentation that have to be written)
-	*      - accepts external clients
-  *
-  * cons - Takes more memory
-	*      - a bit hard to understand
+	* Upload the sketch, the use the terminal.
+	* Press H for mini help.
 	*
+	* TODO examples of scripts
   */
 
 #include <my_credentials.h>

@@ -1,9 +1,21 @@
 #include "TinyMqtt.h"   // https://github.com/hsaturn/TinyMqtt
 
-/** Simple Client
+/** Simple Client (The simplest configuration)
   *
-	* This is the simplest Mqtt client configuration
-	*
+  *                             
+  *                   +--------+       
+  *           +------>| broker |<--- <  Other client
+  *           |       +--------+       
+  *           |                               
+  *   +-----------------+
+  *   | ESP   |         |           
+  *   | +----------+    |          
+  *   | | internal |    |              
+  *   | | client   |    |          
+  *   | +----------+    |          
+  *   |                 |
+  *   +-----------------+
+  * 
 	* 1 - edit my_credentials.h to setup wifi essid/password
 	* 2 - change BROKER values (or keep emqx.io test broker)
 	*
