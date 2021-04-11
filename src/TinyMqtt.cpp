@@ -28,12 +28,15 @@ MqttBroker::~MqttBroker()
 
 // private constructor used by broker only
 MqttClient::MqttClient(MqttBroker* parent, TcpClient* new_client)
-	: parent(parent), client(new_client)
+	: parent(parent)
 {
 #ifdef TCP_ASYNC
+	client = new_client;
 	client->onData(onData, this);
 	// client->onConnect() TODO
 	// client->onDisconnect() TODO
+#else
+	client = new WiFiClient(*new_client);
 #endif
 	alive = millis()+5000;	// client expires after 5s if no CONNECT msg
 }
@@ -80,15 +83,18 @@ void MqttClient::connect(std::string broker, uint16_t port, uint16_t ka)
 	close();
 	if (client) delete client;
 	client = new TcpClient;
+
+	debug("Trying to connect to " << broker.c_str() << ':' << port);
+#ifdef TCP_ASYNC
 	client->onData(onData, this);
 	client->onConnect(onConnect, this);
-	debug("Trying to connect to " << broker.c_str() << ':' << port);
+	client->connect(broker.c_str(), port);
+#else
 	if (client->connect(broker.c_str(), port))
-    {
-    #ifndef TCP_ASYNC
-        onConnect(this, client);
-    #endif
-    }
+	{
+		onConnect(this, client);
+	}
+#endif
 }
 
 void MqttBroker::addClient(MqttClient* client)
@@ -129,13 +135,13 @@ void MqttBroker::onClient(void* broker_ptr, TcpClient* client)
 	MqttBroker* broker = static_cast<MqttBroker*>(broker_ptr);
 
 	broker->addClient(new MqttClient(broker, client));
-	debug("New client #" << broker->clients.size());
+	debug("New client");
 }
 
 void MqttBroker::loop()
 {
 #ifndef TCP_ASYNC
-  WiFiClient client = server.available();
+  WiFiClient client = server->available();
 
   if (client)
 	{
@@ -267,7 +273,7 @@ void MqttClient::loop()
 	}
 }
 
-void MqttClient::onConnect(void *mqttclient_ptr, AsyncClient*)
+void MqttClient::onConnect(void *mqttclient_ptr, TcpClient*)
 {
 	MqttClient* mqtt = static_cast<MqttClient*>(mqttclient_ptr);
 	debug("cnx: connecting");
@@ -288,7 +294,7 @@ void MqttClient::onConnect(void *mqttclient_ptr, AsyncClient*)
 }
 
 #ifdef TCP_ASYNC
-void MqttClient::onData(void* client_ptr, AsyncClient*, void* data, size_t len)
+void MqttClient::onData(void* client_ptr, TcpClient*, void* data, size_t len)
 {
 	char* char_ptr = static_cast<char*>(data);
 	MqttClient* client=static_cast<MqttClient*>(client_ptr);

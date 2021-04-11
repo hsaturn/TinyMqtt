@@ -1,6 +1,14 @@
 #pragma once
+
+// TODO Should add a AUnit with both TCP_ASYNC and not TCP_ASYNC
+// #define TCP_ASYNC	// Uncomment this to use ESPAsyncTCP instead of normal cnx
+
 #ifdef ESP8266
-	#include <ESPAsyncTCP.h>
+	#ifdef TCP_ASYNC
+		#include <ESPAsyncTCP.h>
+	#else
+		#include <ESP8266WiFi.h>
+  #endif
 #elif defined(ESP32)
 	#include <WiFi.h>
 	#include <AsyncTCP.h> // https://github.com/me-no-dev/AsyncTCP
@@ -16,13 +24,13 @@
 #include <MqttStreaming.h>
 
 // #define TINY_MQTT_DEBUG
+#define TINY_MQTT_DEBUG
+
 #ifdef TINY_MQTT_DEBUG
   #define debug(what) { Serial << __LINE__ << ' ' << what << endl; delay(100); }
 #else
   #define debug(what) {}
 #endif
-
-#define TCP_ASYNC
 
 #ifdef TCP_ASYNC
   using TcpClient = AsyncClient;
@@ -201,8 +209,8 @@ class MqttClient
 		static long counter;
 
 	private:
-#ifdef TCP_ASYNC
 		static void onConnect(void * client_ptr, TcpClient*);
+#ifdef TCP_ASYNC
 		static void onData(void* client_ptr, TcpClient*, void* data, size_t len);
 #endif
 		MqttError sendTopic(const Topic& topic, MqttMessage::Type type, uint8_t qos);
