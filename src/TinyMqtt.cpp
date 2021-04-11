@@ -167,7 +167,7 @@ void MqttBroker::loop()
 		}
 		else
 		{
-      debug("Client " << client->id().c_str() << "  Disconnected, parent=" << (int32_t)client->parent);
+      debug("Client " << client->id().c_str() << "  Disconnected, parent=" << (dbg_ptr)client->parent);
 			// Note: deleting a client not added by the broker itself will probably crash later.
 			delete client;
 			break;
@@ -288,7 +288,7 @@ void MqttClient::onConnect(void *mqttclient_ptr, TcpClient*)
 	debug("cnx: mqtt connecting");
 	msg.sendTo(mqtt);
 	msg.reset();
-	debug("cnx: mqtt sent " << (int32_t)mqtt->parent);
+	debug("cnx: mqtt sent " << (dbg_ptr)mqtt->parent);
 
 	mqtt->clientAlive(0);
 }
@@ -386,7 +386,7 @@ void MqttClient::processMessage(const MqttMessage* mesg)
 #ifdef TINY_MQTT_DEBUG
 if (mesg->type() != MqttMessage::Type::PingReq && mesg->type() != MqttMessage::Type::PingResp)
 {
-	Serial << "---> INCOMING " << _HEX(mesg->type()) << " client(" << (int)client << ':' << clientId << ") mem=" << ESP.getFreeHeap() << endl;
+	Serial << "---> INCOMING " << _HEX(mesg->type()) << " client(" << (dbg_ptr)client << ':' << clientId << ") mem=" << ESP.getFreeHeap() << endl;
 	// mesg->hexdump("Incoming");
 }
 #endif

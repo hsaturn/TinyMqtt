@@ -3,19 +3,25 @@
 // TODO Should add a AUnit with both TCP_ASYNC and not TCP_ASYNC
 // #define TCP_ASYNC	// Uncomment this to use ESPAsyncTCP instead of normal cnx
 
-#ifdef ESP8266
+#if defined(ESP8266) || defined(EPOXY_DUINO)
 	#ifdef TCP_ASYNC
 		#include <ESPAsyncTCP.h>
-	#else
-		#include <ESP8266WiFi.h>
+  #else
+    #include <ESP8266WiFi.h>
   #endif
 #elif defined(ESP32)
-	#include <WiFi.h>
-	#include <AsyncTCP.h> // https://github.com/me-no-dev/AsyncTCP
-#elif defined(EPOXY_DUINO)
-	#include <ESPAsyncTCP.h>
+	#ifdef TCP_ASYNC
+	    #include <AsyncTCP.h> // https://github.com/me-no-dev/AsyncTCP
+    #else
+	    #include <WiFi.h>
+    #endif
 #else
 	#error "Unsupported platform"
+#endif
+#ifdef EPOXY_DUINO
+  #define dbg_ptr uint64_t
+#else
+  #define dbg_ptr uint32_t
 #endif
 #include <vector>
 #include <set>
@@ -24,7 +30,6 @@
 #include <MqttStreaming.h>
 
 // #define TINY_MQTT_DEBUG
-#define TINY_MQTT_DEBUG
 
 #ifdef TINY_MQTT_DEBUG
   #define debug(what) { Serial << __LINE__ << ' ' << what << endl; delay(100); }
