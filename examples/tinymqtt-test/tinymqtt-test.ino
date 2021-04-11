@@ -138,7 +138,7 @@ std::set<std::string> commands = {
 	"auto", "broker", "blink", "client", "connect",
 	"create", "delete", "help", "interval",
 	"ls", "ip", "off", "on", "set",
-	"publish", "reset", "subscribe", "unsubscribe", "view"
+	"publish", "reset", "subscribe", "unsubscribe", "view", "every"
 };
 
 void getCommand(std::string& search)
@@ -316,22 +316,389 @@ std::map<MqttClient*, automatic*> automatic::autos;
 
 bool compare(std::string s, const char* cmd)
 {
-	if (s.length()==0 or s.length()>strlen(cmd))  return false;
-	return strncmp(cmd, s.c_str(), s.length())==0;
+	uint8_t p=0;
+	while(s[p++]==*cmd++)
+	{
+		if (*cmd==0 or s[p]==0) return true;
+		if (s[p]==' ') return true;
+	}
+	return false;
 }
 
 using ClientFunction = void(*)(std::string& cmd, MqttClient* publish);
+
+struct Every
+{
+	std::string cmd;
+	uint32_t ms;
+	uint32_t next;
+
+	void dump()
+	{
+		auto mill=millis();
+		Serial << ms << "ms [" << cmd << "] next in ";
+		if (mill > next)
+			Serial << "now";
+		else
+			Serial << next-mill << "ms";
+	}
+};
 
 uint32_t blink_ms_on[16];
 uint32_t blink_ms_off[16];
 uint32_t blink_next[16];
 bool blink_state[16];
 int16_t blink;
+
+std::vector<Every> everies;
+
+void eval(std::string& cmd)
+{
+	while(cmd.length())
+	{
+		MqttError retval = MqttOk;
+
+		std::string s;
+		MqttBroker* broker = nullptr;
+		MqttClient* client = nullptr;
+
+		// client.function notation
+		// ("a.fun " becomes "fun a ")
+		if (cmd.find('.') != std::string::npos &&
+				cmd.find('.') < cmd.find(' '))
+		{
+			s=getword(cmd, nullptr, '.');
+
+			if (s.length())
+			{
+				if (clients.find(s) != clients.end())
+				{
+					client = clients[s];
+				}
+				else if (brokers.find(s) != brokers.end())
+				{
+					broker = brokers[s];
+				}
+				else
+				{
+					Serial << "Unknown class (" << s.c_str() << ")" << endl;
+					cmd="";
+				}
+			}
+		}
+
+		s = getword(cmd);
+		if (s.length()) getCommand(s);
+		if (s.length()==0)
+		{}
+		else if (compare(s, "delete"))
+		{
+			if (client==nullptr && broker==nullptr)
+			{
+				s = getword(cmd);
+				if (clients.find(s) != clients.end())
+				{
+					client = clients[s];
+				}
+				else if (brokers.find(s) != brokers.end())
+				{
+					broker = brokers[s];
+				}
+				else
+					Serial << "Unable to find (" << s.c_str() << ")" << endl;
+			}
+			if (client)
+			{
+				for (auto it: clients)
+				{
+					if (it.second != client) continue;
+					Serial << "deleted" << endl;
+					delete (it.second);
+					clients.erase(it.first);
+					break;
+				}
+				cmd += " ls";
+			}
+			else if (broker)
+			{
+				for(auto it: brokers)
+				{
+					if (broker != it.second) continue;
+					Serial << "deleted" << endl;
+					delete (it.second);
+					brokers.erase(it.first);
+					break;
+				}
+				cmd += " ls";
+			}
+			else
+				Serial << "Nothing to delete" << endl;
+		}
+		else if (broker)
+		{
+			if (compare(s,"connect"))
+			{
+				Serial << "NYI" << endl;
+			}
+			else if (compare(s, "view"))
+			{
+				broker->dump();
+			}
+		}
+		else if (client)
+		{
+			if (compare(s,"connect"))
+			{
+				client->connect(getip(cmd,"192.168.1.40").c_str(), getint(cmd, 1883), getint(cmd, 60));
+				Serial << (client->connected() ? "connected." : "not connected") << endl;
+			}
+			else if (compare(s,"publish"))
+			{
+				while (cmd[0]==' ') cmd.erase(0,1);
+				retval = client->publish(getword(cmd, topic.c_str()), cmd.c_str(), cmd.length());
+				cmd="";	// remove payload
+			}
+			else if (compare(s,"subscribe"))
+			{
+				client->subscribe(getword(cmd, topic.c_str()));
+			}
+			else if (compare(s, "unsubscribe"))
+			{
+				client->unsubscribe(getword(cmd, topic.c_str()));
+			}
+			else if (compare(s, "view"))
+			{
+				client->dump();
+			}
+		}
+		else if (compare(s, "on"))
+		{
+			uint8_t pin=getint(cmd, 2);
+			pinMode(pin, OUTPUT);
+			digitalWrite(pin, HIGH);
+		}
+		else if (compare(s, "off"))
+		{
+			uint8_t pin=getint(cmd, 2);
+			pinMode(pin, OUTPUT);
+			digitalWrite(pin, LOW);
+		}
+		else if (compare(s, "every"))
+		{
+			uint32_t ms = getint(cmd, 0);
+			if (ms and cmd.length())
+			{
+				Every every;
+				every.ms=ms;
+				every.cmd=cmd;
+				every.next=millis()+ms;
+				everies.push_back(every);
+				every.dump();
+				Serial << endl;
+				cmd="";
+			}
+			else if (ms==0 and compare(cmd, "list"))
+			{
+				getword(cmd);
+				Serial << "List of everies (ms=" << millis() << ")" << endl;
+				uint8_t count=0;
+				for(auto& every: everies)
+				{
+					Serial << count << ": ";
+					every.dump();
+					Serial << endl;
+					count++;
+				}
+			}
+			else if (ms==0 and compare(cmd, "remove"))
+			{
+				getword(cmd);
+				int8_t every=getint(cmd, -1);
+				if (every==-1 and compare(cmd, "all"))
+				{
+					getword(cmd);
+					everies.clear();
+				}
+				else if (everies.size() > (uint8_t)every)
+				{
+					everies.erase(everies.begin()+every);
+				}
+			}
+		}
+		else if (compare(s, "blink"))
+		{
+			int8_t blink_nr = getint(cmd, -1);
+			if (blink_nr >= 0)
+			{
+				blink_ms_on[blink_nr]=getint(cmd, blink_ms_on[blink_nr]);
+				blink_ms_off[blink_nr]=getint(cmd, blink_ms_on[blink_nr]);
+				pinMode(blink_nr, OUTPUT);
+				blink_next[blink_nr] = millis();
+				Serial << "Blink " << blink_nr << ' ' << (blink_ms_on[blink_nr] ? "on" : "off") << endl;
+				if (blink_ms_on[blink_nr])
+					blink |= 1<< blink_nr;
+				else
+				{
+					blink &= ~(1<< blink_nr);
+				}
+			}
+		}
+		else if (compare(s, "auto"))
+		{
+			automatic::command(client, cmd);
+			if (client == nullptr)
+				cmd.clear();
+		}
+		else if (compare(s, "broker"))
+		{
+			std::string id=getword(cmd);
+			if (id.length() or brokers.find(id)!=brokers.end())
+			{
+				int port=getint(cmd, 0);
+				if (port)
+				{
+					MqttBroker* broker = new MqttBroker(port);
+					broker->begin();
+
+					brokers[id] = broker;
+					Serial << "new broker (" << id.c_str() << ")" << endl;
+				}
+				else
+					Serial << "Missing port" << endl;
+			}
+			else
+				Serial << "Missing or existing broker name (" << id.c_str() << ")" << endl;
+			cmd+=" ls";
+		}
+		else if (compare(s, "client"))
+		{
+			std::string id=getword(cmd);
+			if (id.length() or clients.find(id)!=clients.end())
+			{
+				s=getword(cmd);	// broker name
+				if (s=="" or brokers.find(s) != brokers.end())
+				{
+					MqttBroker* broker = nullptr;
+					if (s.length()) broker = brokers[s];
+					MqttClient* client = new MqttClient(broker);
+					client->id(id);
+					clients[id]=client;
+					client->setCallback(onPublish);
+					client->subscribe(topic);
+					Serial << "new client (" << id.c_str() << ", " << s.c_str() << ')' << endl;
+				}
+				else if (s.length())
+				{
+					Serial << " not found." << endl;
+				}
+			}
+			else
+				Serial << "Missing or existing client name" << endl;
+			cmd+=" ls";
+		}
+		else if (compare(s, "set"))
+		{
+			std::string name(getword(cmd));
+			if (name.length()==0)
+			{
+				for(auto it: vars)
+				{
+					Serial << "  " << it.first << " -> " << it.second << endl;
+				}
+			}
+			else if (commands.find(name) != commands.end())
+			{
+				Serial << "Reserved keyword (" << name << ")" << endl;
+				cmd.clear();
+			}
+			else
+			{
+				if (cmd.length())
+				{
+					vars[name] = cmd;
+					cmd.clear();
+				}
+				else if (vars.find(name) != vars.end())
+					vars.erase(vars.find(name));
+			}
+		}
+		else if (compare(s, "ls") or compare(s, "view"))
+		{
+			Serial << "--< " << clients.size() << " client/s. >--" << endl;
+			for(auto it: clients)
+			{
+				Serial << "  "; it.second->dump();
+			}
+
+			Serial << "--< " << brokers.size() << " brokers/s. >--" << endl;
+			for(auto it: brokers)
+			{
+				Serial << " ==[ Broker: " << it.first.c_str() << " ]== ";
+				it.second->dump();
+			}
+		}
+		else if (compare(s, "reset"))
+			ESP.restart();
+		else if (compare(s, "ip"))
+			Serial << "IP: " << WiFi.localIP() << endl;
+		else if (compare(s,"help"))
+		{
+			Serial << "syntax:" << endl;
+			Serial << "  MqttBroker:" << endl;
+			Serial << "    broker {name} {port} : create a new broker" << endl;
+			Serial << endl;
+			Serial << "  MqttClient:" << endl;
+			Serial << "    client {name} {parent broker} : create a client then" << endl;
+			Serial << "      name.connect  [ip] [port] [alive]" << endl;
+			Serial << "      name.[un]subscribe [topic]" << endl;
+			Serial << "      name.publish [topic][payload]" << endl;
+			Serial << "      name.view" << endl;
+			Serial << "      name.delete" << endl;
+
+			automatic::help();
+			Serial << endl;
+			Serial << "    help" << endl;
+			Serial << "    blink [Dx on_ms off_ms]" << endl;
+			Serial << "    ls / ip / reset" << endl;
+			Serial << "    set [name][value]" << endl;
+			Serial << "    !  repeat last command" << endl;
+			Serial << endl;
+			Serial << "  every ms [command]; every list; every remove [nr|all]" << endl;
+			Serial << "  on {output}; off {output}" << endl;
+			Serial << "  $id : name of the client." << endl;
+			Serial << "  default topic is '" << topic.c_str() << "'" << endl;
+			Serial << endl;
+		}
+		else
+		{
+			while(s[0]==' ') s.erase(0,1);
+			if (s.length())
+				Serial << "Unknown command (" << s.c_str() << ")" << endl;
+		}
+
+		if (retval != MqttOk)
+		{
+			Serial << "## ERROR " << retval << endl;
+		}
+	}
+}
+
 void loop()
 {
 	auto ms=millis();
 	int8_t out=0;
 	int16_t blink_bits = blink;
+
+	for(auto& every: everies)
+	{
+		if (every.ms && every.cmd.length() && ms > every.next)
+		{
+			std::string cmd(every.cmd);
+			eval(cmd);
+			every.next += every.ms;
+		}
+	}
+
 	while(blink_bits)
 	{
 		if (blink_ms_on[out] and ms > blink_next[out])
@@ -375,7 +742,6 @@ void loop()
 
 		if (c==10 or c==14)
 		{
-
 			Serial << "----------------[ " << cmd.c_str() << " ]--------------" << endl;
 			static std::string last_cmd;
 			if (cmd=="!")
@@ -384,277 +750,7 @@ void loop()
 				last_cmd=cmd;
 
 			if (cmd.substr(0,3)!="set") replaceVars(cmd);
-			while(cmd.length())
-			{
-				MqttError retval = MqttOk;
-
-				std::string s;
-				MqttBroker* broker = nullptr;
-				MqttClient* client = nullptr;
-
-				// client.function notation
-				// ("a.fun " becomes "fun a ")
-				if (cmd.find('.') != std::string::npos &&
-						cmd.find('.') < cmd.find(' '))
-				{
-					s=getword(cmd, nullptr, '.');
-
-					if (s.length())
-					{
-						if (clients.find(s) != clients.end())
-						{
-							client = clients[s];
-						}
-						else if (brokers.find(s) != brokers.end())
-						{
-							broker = brokers[s];
-						}
-						else
-						{
-							Serial << "Unknown class (" << s.c_str() << ")" << endl;
-							cmd="";
-						}
-					}
-				}
-				
-				s = getword(cmd);
-				if (s.length()) getCommand(s);
-				if (s.length()==0)
-				{}
-				else if (compare(s, "delete"))
-				{
-					if (client==nullptr && broker==nullptr)
-					{
-						s = getword(cmd);
-						if (clients.find(s) != clients.end())
-						{
-							client = clients[s];
-						}
-						else if (brokers.find(s) != brokers.end())
-						{
-							broker = brokers[s];
-						}
-						else
-							Serial << "Unable to find (" << s.c_str() << ")" << endl;
-					}
-					if (client)
-					{
-						for (auto it: clients)
-						{
-							if (it.second != client) continue;
-							Serial << "deleted" << endl;
-							delete (it.second);
-							clients.erase(it.first);
-							break;
-						}
-						cmd += " ls";
-					}
-					else if (broker)
-					{
-						for(auto it: brokers)
-						{
-							if (broker != it.second) continue;
-							Serial << "deleted" << endl;
-							delete (it.second);
-							brokers.erase(it.first);
-							break;
-						}
-						cmd += " ls";
-					}
-					else
-						Serial << "Nothing to delete" << endl;
-				}
-				else if (broker)
-				{
-					if (compare(s,"connect"))
-				  {
-						Serial << "NYI" << endl;
-				  }
-					else if (compare(s, "view"))
-					{
-						broker->dump();
-					}
-			  }
-				else if (client)
-				{
-					if (compare(s,"connect"))
-					{
-						client->connect(getip(cmd,"192.168.1.40").c_str(), getint(cmd, 1883), getint(cmd, 60));
-						Serial << (client->connected() ? "connected." : "not connected") << endl;
-					}
-					else if (compare(s,"publish"))
-					{
-						while (cmd[0]==' ') cmd.erase(0,1);
-						retval = client->publish(getword(cmd, topic.c_str()), cmd.c_str(), cmd.length());
-						cmd="";	// remove payload
-					}
-					else if (compare(s,"subscribe"))
-					{
-						client->subscribe(getword(cmd, topic.c_str()));
-					}
-					else if (compare(s, "unsubscribe"))
-					{
-						client->unsubscribe(getword(cmd, topic.c_str()));
-					}
-					else if (compare(s, "view"))
-					{
-						client->dump();
-					}
-				}
-				else if (compare(s, "blink"))
-				{
-					int8_t blink_nr = getint(cmd, -1);
-					if (blink_nr >= 0)
-					{
-						blink_ms_on[blink_nr]=getint(cmd, blink_ms_on[blink_nr]);
-						blink_ms_off[blink_nr]=getint(cmd, blink_ms_on[blink_nr]);
-						pinMode(blink_nr, OUTPUT);
-						blink_next[blink_nr] = millis();
-						Serial << "Blink " << blink_nr << ' ' << (blink_ms_on[blink_nr] ? "on" : "off") << endl;
-						if (blink_ms_on[blink_nr])
-							blink |= 1<< blink_nr;
-						else
-						{
-							blink &= ~(1<< blink_nr);
-						}
-					}
-				}
-				else if (compare(s, "auto"))
-				{
-					automatic::command(client, cmd);
-					if (client == nullptr)
-						cmd.clear();
-				}
-				else if (compare(s, "broker"))
-				{
-					std::string id=getword(cmd);
-					if (id.length() or brokers.find(id)!=brokers.end())
-					{
-						int port=getint(cmd, 0);
-						if (port)
-						{
-							MqttBroker* broker = new MqttBroker(port);
-							broker->begin();
-
-							brokers[id] = broker;
-							Serial << "new broker (" << id.c_str() << ")" << endl;
-						}
-						else
-							Serial << "Missing port" << endl;
-					}
-					else
-						Serial << "Missing or existing broker name (" << id.c_str() << ")" << endl;
-					cmd+=" ls";
-				}
-				else if (compare(s, "client"))
-				{
-					std::string id=getword(cmd);
-					if (id.length() or clients.find(id)!=clients.end())
-					{
-						s=getword(cmd);	// broker name
-						if (s=="" or brokers.find(s) != brokers.end())
-						{
-							MqttBroker* broker = nullptr;
-							if (s.length()) broker = brokers[s];
-							MqttClient* client = new MqttClient(broker);
-							client->id(id);
-							clients[id]=client;
-							client->setCallback(onPublish);
-							client->subscribe(topic);
-							Serial << "new client (" << id.c_str() << ", " << s.c_str() << ')' << endl;
-						}
-						else if (s.length())
-						{
-							Serial << " not found." << endl;
-						}
-					}
-					else
-						Serial << "Missing or existing client name" << endl;
-					cmd+=" ls";
-				}
-				else if (compare(s, "set"))
-				{
-					std::string name(getword(cmd));
-					if (name.length()==0)
-					{
-						for(auto it: vars)
-						{
-							Serial << "  " << it.first << " -> " << it.second << endl;
-						}
-					}
-					else if (commands.find(name) != commands.end())
-					{
-						Serial << "Reserved keyword (" << name << ")" << endl;
-						cmd.clear();
-					}
-					else
-					{
-						if (cmd.length())
-						{
-							vars[name] = cmd;
-							cmd.clear();
-						}
-						else if (vars.find(name) != vars.end())
-							vars.erase(vars.find(name));
-					}
-				}
-				else if (compare(s, "ls") or compare(s, "view"))
-				{
-					Serial << "--< " << clients.size() << " client/s. >--" << endl;
-					for(auto it: clients)
-					{
-						Serial << "  "; it.second->dump();
-					}
-
-					Serial << "--< " << brokers.size() << " brokers/s. >--" << endl;
-					for(auto it: brokers)
-					{
-						Serial << " ==[ Broker: " << it.first.c_str() << " ]== ";
-						it.second->dump();
-					}
-				}
-				else if (compare(s, "reset"))
-					ESP.restart();
-				else if (compare(s, "ip"))
-					Serial << "IP: " << WiFi.localIP() << endl;
-				else if (compare(s,"help"))
-				{
-					Serial << "syntax:" << endl;
-					Serial << "  MqttBroker:" << endl;
-					Serial << "    broker {name} {port} : create a new broker" << endl;
-					Serial << endl;
-					Serial << "  MqttClient:" << endl;
-					Serial << "    client {name} {parent broker} : create a client then" << endl;
-					Serial << "      name.connect  [ip] [port] [alive]" << endl;
-					Serial << "      name.[un]subscribe [topic]" << endl;
-					Serial << "      name.publish [topic][payload]" << endl;
-					Serial << "      name.view" << endl;
-					Serial << "      name.delete" << endl;
-
-					automatic::help();
-					Serial << endl;
-					Serial << "    help" << endl;
-					Serial << "    blink [Dx on_ms off_ms]" << endl;
-					Serial << "    ls / ip / reset" << endl;
-					Serial << "    set [name][value]" << endl;
-					Serial << "    !  repeat last command" << endl;
-					Serial << endl;
-					Serial << "  $id : name of the client." << endl;
-					Serial << "  default topic is '" << topic.c_str() << "'" << endl;
-					Serial << endl;
-				}
-				else
-				{
-					while(s[0]==' ') s.erase(0,1);
-					if (s.length())
-						Serial << "Unknown command (" << s.c_str() << ")" << endl;
-				}
-
-				if (retval != MqttOk)
-				{
-					Serial << "## ERROR " << retval << endl;
-				}
-			}
+			eval(cmd);
 		}
 		else
 		{
