@@ -15,8 +15,6 @@
     #else
 	    #include <WiFi.h>
     #endif
-#else
-	#error "Unsupported platform"
 #endif
 #ifdef EPOXY_DUINO
   #define dbg_ptr uint64_t
