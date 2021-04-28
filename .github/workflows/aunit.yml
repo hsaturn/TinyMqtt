@@ -27,8 +27,8 @@ jobs:
         # Run tests for ESP8266
         make -C tests ESP_LIBS="ESP8266WiFi ESPAsyncTCP" tests
         make -C tests runtests
-	make -C tests clean
+        make -C tests clean
         # Run tests for ESP32
         #make -C tests ESP_LIBS="ESP8266WiFi ESPAsyncTCP" tests
         #make -C tests runtests
-	#make -C tests clean
+        #make -C tests clean
