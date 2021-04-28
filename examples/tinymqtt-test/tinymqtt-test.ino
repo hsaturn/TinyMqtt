@@ -3,6 +3,7 @@
 #if defined(ESP8266)
   #include <ESP8266mDNS.h>
 #elif defined(ESP32)
+  #include <WiFi.h>
   #include <ESPmDNS.h>
 #else
   #error Unsupported platform
