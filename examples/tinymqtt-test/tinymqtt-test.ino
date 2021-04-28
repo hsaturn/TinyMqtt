@@ -7,7 +7,6 @@
 #else
   #error Unsupported platform
 #endif
-#include <ESPmDNS.h>
 
 #include <sstream>
 #include <map>
@@ -630,14 +629,14 @@ void eval(std::string& cmd)
 			Serial << "--< " << clients.size() << " client/s. >--" << endl;
 			for(auto it: clients)
 			{
-				Serial << "  "; it.second->dump();
+				it.second->dump("  ");
 			}
 
 			Serial << "--< " << brokers.size() << " brokers/s. >--" << endl;
 			for(auto it: brokers)
 			{
-				Serial << " ==[ Broker: " << it.first.c_str() << " ]== ";
-				it.second->dump();
+				Serial << "  +-- '" << it.first.c_str() << "' " << it.second->clientsCount() << " client/s."<< endl;
+				it.second->dump("     ");
 			}
 		}
 		else if (compare(s, "reset"))

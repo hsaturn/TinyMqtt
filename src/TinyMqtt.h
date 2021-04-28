@@ -189,23 +189,25 @@ class MqttClient
 		// TODO seems to be useless
 		bool isLocal() const { return client == nullptr; }
 
-		void dump()
+		void dump(std::string indent="")
 		{
 			uint32_t ms=millis();
-			Serial << "MqttClient (" << clientId.c_str() << ") " << (connected() ? " ON " : " OFF");
-			Serial << ", alive=" << alive << '/' << ms << ", ka=" << keep_alive;
+			Serial << indent << "+-- " << '\'' << clientId.c_str() << "' " << (connected() ? " ON " : " OFF");
+			Serial << ", alive=" << alive << '/' << ms << ", ka=" << keep_alive << ' ';
 			Serial << (client && client->connected() ? "" : "dis") << "connected";
-            message.hexdump("entrant msg");
-			bool c=false;
-			Serial << " [";
-			for(auto s: subscriptions)
+			if (subscriptions.size())
 			{
-				Serial << (c?", ": "")<< s.str().c_str();
-				c=true;
+				bool c = false;
+				Serial << " [";
+				for(auto s: subscriptions)
+				{
+					if (c) Serial << ", ";
+					Serial << s.str().c_str();
+					c=true;
+				}
+				Serial << ']';
 			}
-
-			
-			Serial << "]" << endl;
+			Serial << endl;
 		}
 
 		/** Count the number of messages that have been sent **/
@@ -265,14 +267,10 @@ class MqttBroker
 
 		size_t clientsCount() const { return clients.size(); }
 
-		void dump()
+		void dump(std::string indent="")
 		{
-			Serial << clients.size() << " client/s" << endl;
 			for(auto client: clients)
-			{
-				Serial << "  ";
-				client->dump();
-			}
+				client->dump(indent);
 		}
 
 	private:
