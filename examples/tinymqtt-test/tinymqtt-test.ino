@@ -119,7 +119,7 @@ std::string getip(std::string& str, const char* if_empty=nullptr, char sep=' ')
 			return addr;
 	}
 	IPAddress local=WiFi.localIP();
-	addr="";
+	addr.clear();
 	while(build.size()!=4)
 	{
 		std::stringstream b;
@@ -143,7 +143,7 @@ std::set<std::string> commands = {
 	"publish", "reset", "subscribe", "unsubscribe", "view", "every"
 };
 
-void getCommand(std::string& search)
+void convertToCommand(std::string& search)
 {
 	while(search[0]==' ') search.erase(0,1);
 	if (search.length()==0) return;
@@ -163,7 +163,7 @@ void getCommand(std::string& search)
 	else if (count>1)
 	{
 		Serial << "Ambiguous command: " << matches << endl;
-		search="";
+		search.clear();
 	}
 }
 
@@ -334,9 +334,12 @@ struct Every
 	std::string cmd;
 	uint32_t ms;
 	uint32_t next;
+	uint32_t underrun=0;
+	bool active=true;
 
 	void dump()
 	{
+		Serial << (active ? "enabled  " : "disabled ");
 		auto mill=millis();
 		Serial << ms << "ms [" << cmd << "] next in ";
 		if (mill > next)
@@ -365,7 +368,6 @@ void eval(std::string& cmd)
 		MqttClient* client = nullptr;
 
 		// client.function notation
-		// ("a.fun " becomes "fun a ")
 		if (cmd.find('.') != std::string::npos &&
 				cmd.find('.') < cmd.find(' '))
 		{
@@ -384,13 +386,13 @@ void eval(std::string& cmd)
 				else
 				{
 					Serial << "Unknown class (" << s.c_str() << ")" << endl;
-					cmd="";
+					cmd.clear();
 				}
 			}
 		}
 
 		s = getword(cmd);
-		if (s.length()) getCommand(s);
+		if (s.length()) convertToCommand(s);
 		if (s.length()==0)
 		{}
 		else if (compare(s, "delete"))
@@ -446,6 +448,11 @@ void eval(std::string& cmd)
 			{
 				broker->dump();
 			}
+			else
+			{
+				Serial << "Unknown broker command (" << s << ")" << endl;
+				s.clear();
+			}
 		}
 		else if (client)
 		{
@@ -458,7 +465,7 @@ void eval(std::string& cmd)
 			{
 				while (cmd[0]==' ') cmd.erase(0,1);
 				retval = client->publish(getword(cmd, topic.c_str()), cmd.c_str(), cmd.length());
-				cmd="";	// remove payload
+				cmd.clear();	// remove payload
 			}
 			else if (compare(s,"subscribe"))
 			{
@@ -471,6 +478,11 @@ void eval(std::string& cmd)
 			else if (compare(s, "view"))
 			{
 				client->dump();
+			}
+			else
+			{
+				Serial << "Unknown client command (" << s << ")" << endl;
+				s.clear();
 			}
 		}
 		else if (compare(s, "on"))
@@ -488,18 +500,56 @@ void eval(std::string& cmd)
 		else if (compare(s, "every"))
 		{
 			uint32_t ms = getint(cmd, 0);
-			if (ms and cmd.length())
+			if (ms)
 			{
-				Every every;
-				every.ms=ms;
-				every.cmd=cmd;
-				every.next=millis()+ms;
-				everies.push_back(every);
-				every.dump();
-				Serial << endl;
-				cmd="";
+				if (cmd.length())
+				{
+					Every every;
+					every.ms=ms;
+					every.cmd=cmd;
+					every.next=millis()+ms;
+					everies.push_back(every);
+					every.dump();
+					Serial << endl;
+					cmd.clear();
+				}
 			}
-			else if (ms==0 and compare(cmd, "list"))
+			else if (compare(cmd, "off") or compare(cmd, "on"))
+			{
+				bool active=getword(cmd)=="on";
+				uint8_t ever;
+				if (compare(cmd, "all"))
+					ever=100;
+				else
+					ever=getint(cmd, 99);
+				uint8_t count=0;
+				if (ever == 99)
+				{
+					Serial << "Missing every number" << endl;
+				}
+				else
+				{
+					for(auto& every: everies)
+					{
+						if (count==ever or (ever==100))
+						{
+							if (every.active != active)
+							{
+								every.active = active;
+								every.underrun = 0;
+							}
+							ever = 99;
+							break;
+						}
+						count++;
+					}
+					if (ever != 99)
+					{
+						Serial << "Every not found" << endl;
+					}
+				}
+			}
+			else if (compare(cmd, "list") or cmd.length()==0)
 			{
 				getword(cmd);
 				Serial << "List of everies (ms=" << millis() << ")" << endl;
@@ -512,11 +562,17 @@ void eval(std::string& cmd)
 					count++;
 				}
 			}
-			else if (ms==0 and compare(cmd, "remove"))
+			else if (compare(cmd, "remove"))
 			{
+				Serial << "Removing..." << endl;
 				getword(cmd);
 				int8_t every=getint(cmd, -1);
-				if (every==-1 and compare(cmd, "all"))
+				if (every==-1 and compare(cmd, "last") and everies.size())
+				{
+					getword(cmd);
+					everies.erase(everies.begin()+everies.size()-1);
+				}
+				else if (every==-1 and compare(cmd, "all"))
 				{
 					getword(cmd);
 					everies.clear();
@@ -525,7 +581,11 @@ void eval(std::string& cmd)
 				{
 					everies.erase(everies.begin()+every);
 				}
+				else
+					Serial << "Bad colmmand" << endl;
 			}
+			else
+				Serial << "Bad command" << endl;
 		}
 		else if (compare(s, "blink"))
 		{
@@ -665,7 +725,7 @@ void eval(std::string& cmd)
 			Serial << "    set [name][value]" << endl;
 			Serial << "    !  repeat last command" << endl;
 			Serial << endl;
-			Serial << "  every ms [command]; every list; every remove [nr|all]" << endl;
+			Serial << "  every ms [command]; every list; every remove [nr|all], every [on|off] #" << endl;
 			Serial << "  on {output}; off {output}" << endl;
 			Serial << "  $id : name of the client." << endl;
 			Serial << "  default topic is '" << topic.c_str() << "'" << endl;
@@ -680,7 +740,7 @@ void eval(std::string& cmd)
 
 		if (retval != MqttOk)
 		{
-			Serial << "## ERROR " << retval << endl;
+			Serial << "# MQTT ERROR " << retval << endl;
 		}
 	}
 }
@@ -690,15 +750,23 @@ void loop()
 	auto ms=millis();
 	int8_t out=0;
 	int16_t blink_bits = blink;
+	uint8_t e=0;
 
 	for(auto& every: everies)
 	{
+		if (not every.active) continue;
 		if (every.ms && every.cmd.length() && ms > every.next)
 		{
 			std::string cmd(every.cmd);
 			eval(cmd);
 			every.next += every.ms;
+			if (ms > every.next and ms > every.underrun)
+			{
+				Serial << "Underrun every #" << e << ", " <<  (ms - every.next) << "ms late" << endl;
+				every.underrun = ms+5000;
+			}
 		}
+		e++;
 	}
 
 	while(blink_bits)
