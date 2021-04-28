@@ -4,10 +4,11 @@
 [![AUnit Tests](https://github.com/hsaturn/TinyMqtt/actions/workflows/aunit.yml/badge.svg)](https://github.com/hsaturn/TinyMqtt/actions/workflows/aunit.yml)
 ![Issues](https://img.shields.io/github/issues/hsaturn/TinyMqtt)
 ![Esp8266](https://img.shields.io/badge/platform-ESP8266-green)
+![Esp32](https://img.shields.io/badge/platform-ESP32-green)
 ![Gpl 3.0](https://img.shields.io/github/license/hsaturn/TinyMqtt)
 ![Mqtt 3.1.1](https://img.shields.io/badge/Mqtt-%203.1.1-yellow)
 
-ESP 8266 is a small, fast and capable Mqtt Broker and Client
+TinyMqtt is a small, fast and capable Mqtt Broker and Client for Esp8266 / Esp32 / Esp WROOM
 
 ## Features
 
