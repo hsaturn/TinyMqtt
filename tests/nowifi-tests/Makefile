@@ -3,5 +3,4 @@
 
 APP_NAME := nowifi-tests
 ARDUINO_LIBS := AUnit AceCommon AceTime TinyMqtt EspMock
-ESP_LIBS = ESP8266WiFi ESPAsyncTCP
 include ../../../EspMock/EspMock.mk
