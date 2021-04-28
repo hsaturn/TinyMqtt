@@ -1,6 +1,13 @@
 #include <TinyMqtt.h>       // https://github.com/hsaturn/TinyMqtt
 #include <MqttStreaming.h>
-#include <ESP8266mDNS.h>
+#if defined(ESP8266)
+  #include <ESP8266mDNS.h>
+#elif defined(ESP32)
+  #include <ESPmDNS.h>
+#else
+  #error Unsupported platform
+#endif
+#include <ESPmDNS.h>
 
 #include <sstream>
 #include <map>
@@ -11,6 +18,7 @@
 	* Upload the sketch, the use the terminal.
 	* Press H for mini help.
 	*
+  * tested with mqtt-spy-0.5.4
 	* TODO examples of scripts
   */
 
@@ -715,7 +723,9 @@ void loop()
 	}
 
 	static long count;
+  #if defined(ESP9266)
   MDNS.update();
+  #endif
 
 	if (MqttClient::counter != count)
 	{
