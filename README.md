@@ -1,12 +1,12 @@
 # TinyMqtt
 
-![Release](https://img.shields.io/github/v/release/hsaturn/TinyMqtt)
+[![Release](https://img.shields.io/github/v/release/hsaturn/TinyMqtt)](https://github.com/hsaturn/TinyMqtt/releases)
 [![AUnit Tests](https://github.com/hsaturn/TinyMqtt/actions/workflows/aunit.yml/badge.svg)](https://github.com/hsaturn/TinyMqtt/actions/workflows/aunit.yml)
-![Issues](https://img.shields.io/github/issues/hsaturn/TinyMqtt)
-![Esp8266](https://img.shields.io/badge/platform-ESP8266-green)
-![Esp32](https://img.shields.io/badge/platform-ESP32-green)
-![Gpl 3.0](https://img.shields.io/github/license/hsaturn/TinyMqtt)
-![Mqtt 3.1.1](https://img.shields.io/badge/Mqtt-%203.1.1-yellow)
+[![Issues](https://img.shields.io/github/issues/hsaturn/TinyMqtt)](https://github.com/hsaturn/TinyMqtt/issues)
+[![Esp8266](https://img.shields.io/badge/platform-ESP8266-green)](https://www.espressif.com/en/products/socs/esp8266)
+[![Esp32](https://img.shields.io/badge/platform-ESP32-green)](https://www.espressif.com/en/products/socs/esp32)
+[![Gpl 3.0](https://img.shields.io/github/license/hsaturn/TinyMqtt)](https://www.gnu.org/licenses/gpl-3.0.fr.html)
+[![Mqtt 3.1.1](https://img.shields.io/badge/Mqtt-%203.1.1-yellow)](https://docs.oasis-open.org/mqtt/mqtt/v3.1.1/errata01/os/mqtt-v3.1.1-errata01-os-complete.html#_Toc442180822)
 
 TinyMqtt is a small, fast and capable Mqtt Broker and Client for Esp8266 / Esp32 / Esp WROOM
 
