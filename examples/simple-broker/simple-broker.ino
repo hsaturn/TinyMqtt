@@ -1,7 +1,5 @@
 #include "TinyMqtt.h"   // https://github.com/hsaturn/TinyMqtt
 
-#include <my_credentials.h>
-
 #define PORT 1883
 MqttBroker broker(PORT);
 
@@ -14,10 +12,21 @@ MqttBroker broker(PORT);
   *  |       +--------+            |
   *  |                             |
   *  +-----------------------------+
+  *
+  *  Your ESP will become a MqttBroker.
+	*  You can test it with any client such as mqtt-spy for example
+	*  
   */
+
+const char* ssid = "";
+const char* password = "";
+
 void setup() 
 {
   Serial.begin(115200);
+
+	if (strlen(ssid)==0)
+		Serial << "****** PLEASE MODIFY ssid/password *************" << endl;
 
   WiFi.mode(WIFI_STA);
   WiFi.begin(ssid, password);
