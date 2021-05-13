@@ -23,7 +23,7 @@
   *  of MQTT, and once connected still continue to work with others.
   *
   *  The broker may still be conected if wifi is on.
-  *  
+  *
   */
 
 std::string topic="sensor/temperature";
@@ -32,11 +32,11 @@ MqttBroker broker(1883);
 MqttClient mqtt_a(&broker);
 MqttClient mqtt_b(&broker);
 
-void onPublishA(const MqttClient* srce, const Topic& topic, const char* payload, size_t length)
-{ Serial << "--> A Received " << topic.c_str() << endl; }
+void onPublishA(const MqttClient* /* srce */, const Topic& topic, const char* payload, size_t /* length */)
+{ Serial << "--> Client A received msg on topic " << topic.c_str() << ", " << payload << endl; }
 
-void onPublishB(const MqttClient* srce, const Topic& topic, const char* payload, size_t length)
-{ Serial << "--> B Received " << topic.c_str() << endl; }
+void onPublishB(const MqttClient* /* srce */, const Topic& topic, const char* payload, size_t /* length */)
+{ Serial << "--> Client B received msg on topic " << topic.c_str() << ", " << payload << endl; }
 
 void setup()
 {
@@ -53,7 +53,7 @@ void setup()
 
 void loop()
 {
-	broker.loop();
+	broker.loop();	// Don't forget to call loop() for all brokers and clients
   mqtt_a.loop();
   mqtt_b.loop();
 
@@ -65,7 +65,7 @@ void loop()
 	{
 		Serial << "A is publishing " << topic.c_str() << endl;
 		timerA += intervalA;
-		mqtt_a.publish(topic);
+		mqtt_a.publish(topic, "sent by A");
 	}
 
   // ============= client B publish ================
@@ -76,6 +76,6 @@ void loop()
 	{
 		Serial << "B is publishing " << topic.c_str() << endl;
 		timerB += intervalB;
-		mqtt_b.publish(topic);
+		mqtt_b.publish(topic, "sent by B");
 	}
 }
