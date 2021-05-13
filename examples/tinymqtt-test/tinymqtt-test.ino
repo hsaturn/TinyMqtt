@@ -25,7 +25,8 @@ bool echo_on = true;
 	* TODO examples of scripts
   */
 
-#include <my_credentials.h>
+const char* ssid = "";
+const char* password = "";
 
 std::string topic="sensor/temperature";
 
