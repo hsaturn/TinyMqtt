@@ -10,11 +10,10 @@
     #include <ESP8266WiFi.h>
   #endif
 #elif defined(ESP32)
+  #include <WiFi.h>
 	#ifdef TCP_ASYNC
-	    #include <AsyncTCP.h> // https://github.com/me-no-dev/AsyncTCP
-    #else
-	    #include <WiFi.h>
-    #endif
+	  #include <AsyncTCP.h> // https://github.com/me-no-dev/AsyncTCP
+  #endif
 #endif
 #ifdef EPOXY_DUINO
   #define dbg_ptr uint64_t
@@ -177,6 +176,7 @@ class MqttClient
 
 		// Publish from client to the world
 		MqttError publish(const Topic&, const char* payload, size_t pay_length);
+		MqttError publish(const Topic& t, const char* payload) { return publish(t, payload, strlen(payload)); }
 		MqttError publish(const Topic& t, const String& s) { return publish(t, s.c_str(), s.length()); }
 		MqttError publish(const Topic& t, const std::string& s) { return publish(t,s.c_str(),s.length());}
 		MqttError publish(const Topic& t) { return publish(t, nullptr, 0);};
