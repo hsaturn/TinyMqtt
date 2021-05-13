@@ -31,7 +31,8 @@
   *
   */
 
-#include <my_credentials.h>
+const char *ssid     = "";
+const char *password = "";
 
 std::string topic="sensor/temperature";
 
@@ -40,17 +41,20 @@ MqttBroker broker(1883);
 MqttClient mqtt_a(&broker);
 MqttClient mqtt_b(&broker);
 
-void onPublishA(const MqttClient* source, const Topic& topic, const char* payload, size_t length)
-{ Serial << endl << "---------> A Received " << topic.c_str() << endl; }
+void onPublishA(const MqttClient* /* source */, const Topic& topic, const char* payload, size_t /* length */)
+{ Serial << "--> client A received " << topic.c_str() << ", " << payload << endl; }
 
-void onPublishB(const MqttClient* source, const Topic& topic, const char* payload, size_t length)
-{ Serial << endl << "---------> B Received " << topic.c_str() << endl; }
+void onPublishB(const MqttClient* /* source */, const Topic& topic, const char* payload, size_t /* length */)
+{ Serial << "--> client B Received " << topic.c_str() << ", " << payload << endl; }
 
 void setup()
 {
   Serial.begin(115200);
   delay(500);
   Serial << "Clients with wifi " << endl;
+
+	if (strlen(ssid)==0)
+		Serial << "****** PLEASE EDIT THE EXAMPLE AND MODIFY ssid/password *************" << endl;
 
   WiFi.mode(WIFI_STA);
   WiFi.begin(ssid, password);
@@ -76,14 +80,14 @@ void loop()
   mqtt_b.loop();
 
   // ============= client A publish ================
-  static const int intervalA = 5000;  // publishes every 5s
+  static const int intervalA = 5000;  // publishes every 5s (please avoid usage of delay())
   static uint32_t timerA = millis() + intervalA;
 
   if (millis() > timerA)
   {
     Serial << "A is publishing " << topic.c_str() << endl;
     timerA += intervalA;
-    mqtt_a.publish(topic);
+    mqtt_a.publish(topic, " sent by A");
   }
 
   // ============= client B publish ================
@@ -92,8 +96,9 @@ void loop()
 
   if (millis() > timerB)
   {
+		static int temperature;
     Serial << "B is publishing " << topic.c_str() << endl;
     timerB += intervalB;
-    mqtt_b.publish(topic, std::string(String(15+millis()%10).c_str()));
+    mqtt_b.publish(topic, " sent by B: "+std::string(String(16+temperature++%6).c_str()));
   }
 }

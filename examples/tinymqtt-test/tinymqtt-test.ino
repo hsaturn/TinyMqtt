@@ -12,8 +12,11 @@
 #include <sstream>
 #include <map>
 
+bool echo_on = true;
+
 /** Very complex example
-  * Console allowing to make any kind of test.
+  * Console allowing to make any kind of test,
+	* even some stress tests.
   *
 	* Upload the sketch, the use the terminal.
 	* Press H for mini help.
@@ -47,17 +50,32 @@ void setup()
 	WiFi.persistent(false); // https://github.com/esp8266/Arduino/issues/1054
   Serial.begin(115200);
 	delay(500);
-	Serial << endl << endl << endl
-	<< "Connecting to '" << ssid << "' ";
 
+  Serial << endl << endl;
+  Serial << "***************************************************************" << endl;
+  Serial << "*  Welcome to the TinyMqtt console" << endl;
+  Serial << endl;
+  Serial << "*  The console allows to test all features of the libraries." << endl;
+  Serial << endl;
+  if (strlen(ssid)==0)
+    Serial << "*  WARNING: You may want to modify ssid/password in order" << endl
+		       << "            to reflect your Wifi configuration." << endl;
+  Serial << endl;
+	Serial << "*  Enter help to view the list of commands." << endl;
+  Serial << "***************************************************************" << endl;
+  Serial << endl;
+
+	Serial << "Connecting to '" << ssid << "' ";
+
+  WiFi.mode(WIFI_STA);
+  WiFi.begin(ssid, password);
   WiFi.mode(WIFI_STA);
   WiFi.begin(ssid, password);
 
   while (WiFi.status() != WL_CONNECTED)
-	{ Serial << '-'; delay(500); }
+  { Serial << '-'; delay(500); }
 
-  Serial << "Connected to " << ssid << "IP address: " << WiFi.localIP() << endl;
-	Serial << "Type help for more..." << endl;
+  Serial << endl << "Connected to " << ssid << "IP address: " << WiFi.localIP() << endl;
 
   const char* name="tinytest";
   Serial << "Starting MDNS, name= " << name;
@@ -72,27 +90,67 @@ void setup()
 	brokers["broker"] = broker;
 }
 
+std::string getword(std::string& str, const char* if_empty=nullptr, char sep=' ');
+
 int getint(std::string& str, const int if_empty=0)
 {
-	std::string sword;
-	while(str.length() && str[0]>='0' && str[0]<='9')
+	std::string str2=str;
+	std::string sword = getword(str);
+	if (sword[0] and isdigit(sword[0]))
 	{
-		sword += str[0]; str.erase(0,1);
+		int ret=atoi(sword.c_str());
+		while(isdigit(sword[0]) or sword[0]==' ') sword.erase(0,1);
+		if (sword.length()) str = sword+' '+str;
+	  return ret;
 	}
-	while(str[0]==' ') str.erase(0,1);
-	if (if_empty and sword.length()==0) return if_empty;
-	return atoi(sword.c_str());
+	str=str2;
+  return if_empty;
 }
 
-std::string getword(std::string& str, const char* if_empty=nullptr, char sep=' ')
+std::string getword(std::string& str, const char* if_empty/*=nullptr*/, char sep/*=' '*/)
 {
+	char quote=(str[0]=='"' or str[0]=='\'' ? str[0] : 0);
+	if (quote) str.erase(0,1);
 	std::string sword;
-	while(str.length() && str[0]!=sep)
+	while(str.length() and (str[0]!=sep or quote))
 	{
-		sword += str[0]; str.erase(0,1);
+		if (str[0]==quote)
+		{
+			str.erase(0,1);
+			break;
+		}
+		sword += str[0];
+		str.erase(0,1);
 	}
 	while(str[0]==sep) str.erase(0,1);
 	if (if_empty and sword.length()==0) return if_empty;
+	if (quote==false and sword.length()>=4 and sword.substr(0,3)=="rnd")
+	{
+		sword.erase(0,3);
+		if (sword[0]=='(')
+		{
+			int to = 100;
+			sword.erase(0,1);
+			int from=getint(sword);
+			if (sword[0]==',')
+			{
+				sword.erase(0,1);
+				to = getint(sword);
+				if (sword[0]!=')') Serial << "Missing ')'" << endl;
+			}
+			else
+			{
+				to=from;
+				from=0;
+			}
+			return String(random(from,to)).c_str();
+		}
+		else
+		{
+			Serial << "Missing '('" << endl;
+		}
+	}
+	while(str[0]==' ') str.erase(0,1);
 	return sword;
 }
 
@@ -141,7 +199,7 @@ std::set<std::string> commands = {
 	"auto", "broker", "blink", "client", "connect",
 	"create", "delete", "help", "interval",
 	"ls", "ip", "off", "on", "set",
-	"publish", "reset", "subscribe", "unsubscribe", "view", "every"
+	"publish", "reset", "subscribe", "unsubscribe", "view", "echo", "every"
 };
 
 void convertToCommand(std::string& search)
@@ -180,7 +238,7 @@ void replace(const char* d, std::string& str, std::string srch, std::string to)
 		{
 			str.erase(pos, srch.length());
 			str.insert(pos, to);
-			pos += to.length();
+			pos += to.length()-1;
 		}
 	}
 }
@@ -198,6 +256,7 @@ void replaceVars(std::string& cmd)
 	}
 	cmd.erase(0, cmd.find_first_not_of(" "));
 	cmd.erase(cmd.find_last_not_of(" ")+1);
+
 }
 
 // publish at regular interval
@@ -464,9 +523,7 @@ void eval(std::string& cmd)
 			}
 			else if (compare(s,"publish"))
 			{
-				while (cmd[0]==' ') cmd.erase(0,1);
-				retval = client->publish(getword(cmd, topic.c_str()), cmd.c_str(), cmd.length());
-				cmd.clear();	// remove payload
+				retval = client->publish(getword(cmd, topic.c_str()), getword(cmd));
 			}
 			else if (compare(s,"subscribe"))
 			{
@@ -498,6 +555,22 @@ void eval(std::string& cmd)
 			pinMode(pin, OUTPUT);
 			digitalWrite(pin, LOW);
 		}
+		else if (compare(s, "echo"))
+		{
+			s=getword(cmd);
+			if (s=="on")
+				echo_on = true;
+			else if (s=="off")
+				echo_on = false;
+			else
+			{
+				Serial << s << ' ';
+				while(cmd.length())
+				{
+					Serial << getword(cmd) << ' ';
+				}
+			}
+		}
 		else if (compare(s, "every"))
 		{
 			uint32_t ms = getint(cmd, 0);
@@ -518,36 +591,20 @@ void eval(std::string& cmd)
 			else if (compare(cmd, "off") or compare(cmd, "on"))
 			{
 				bool active=getword(cmd)=="on";
-				uint8_t ever;
-				if (compare(cmd, "all"))
-					ever=100;
-				else
-					ever=getint(cmd, 99);
+				uint8_t ever=getint(cmd, 100);
 				uint8_t count=0;
-				if (ever == 99)
+				for(auto& every: everies)
 				{
-					Serial << "Missing every number" << endl;
-				}
-				else
-				{
-					for(auto& every: everies)
+					if (count==ever or (ever==100))
 					{
-						if (count==ever or (ever==100))
+						if (every.active != active)
 						{
-							if (every.active != active)
-							{
-								every.active = active;
-								every.underrun = 0;
-							}
-							ever = 99;
-							break;
+							Serial << "every #" << count << (active ? " on" :" off") << endl;
+							every.active = active;
+							every.underrun = 0;
 						}
-						count++;
 					}
-					if (ever != 99)
-					{
-						Serial << "Every not found" << endl;
-					}
+					count++;
 				}
 			}
 			else if (compare(cmd, "list") or cmd.length()==0)
@@ -726,9 +783,11 @@ void eval(std::string& cmd)
 			Serial << "    set [name][value]" << endl;
 			Serial << "    !  repeat last command" << endl;
 			Serial << endl;
-			Serial << "  every ms [command]; every list; every remove [nr|all], every [on|off] #" << endl;
+			Serial << "  echo [on|off] or strings" << endl;
+			Serial << "  every ms [command]; every list; every remove [nr|all], every (on|off) [#]" << endl;
 			Serial << "  on {output}; off {output}" << endl;
 			Serial << "  $id : name of the client." << endl;
+			Serial << "  rnd[(min[,max])] random number." << endl;
 			Serial << "  default topic is '" << topic.c_str() << "'" << endl;
 			Serial << endl;
 		}
@@ -812,8 +871,10 @@ void loop()
 	{
 		static std::string cmd;
 		char c=Serial.read();
+		if (echo_on)
+			Serial << c;
 
-		if (c==10 or c==14)
+		if (c==10 or c==13)
 		{
 			Serial << "----------------[ " << cmd.c_str() << " ]--------------" << endl;
 			static std::string last_cmd;
