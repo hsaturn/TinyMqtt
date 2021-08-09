@@ -1,3 +1,4 @@
+#include <Arduino.h>
 #include <AUnit.h>
 #include <StringIndexer.h>
 #include <map>

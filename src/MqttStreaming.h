@@ -42,7 +42,7 @@
 #ifndef ARDUINO_STREAMING
 #define ARDUINO_STREAMING
 
-#if defined(ARDUINO) && ARDUINO >= 100
+#if (defined(ARDUINO) && ARDUINO >= 100) || defined(EPOXY_DUINO)
 #include "Arduino.h"
 #else
 #ifndef STREAMING_CONSOLE
@@ -154,7 +154,7 @@ template<typename T>
 inline Print &operator <<(Print &obj, const _BASED<T> &arg)
 { obj.print(arg.val, arg.base); return obj; }
 
-#if ARDUINO >= 18
+#if ARDUINO >= 18 || defined(EPOXY_DUINO)
 // Specialization for class _FLOAT
 // Thanks to Michael Margolis for suggesting a way
 // to accommodate Arduino 0018's floating point precision
