@@ -665,7 +665,12 @@ void MqttMessage::incoming(char in_byte)
 			state = Length;
 			break;
 		case Length:
-			size = (size<<7) + (in_byte & 0x7F);
+		  if (size==0)
+        size = in_byte & 0x7F;
+		  else if (size<128)
+		    size += static_cast<uint16_t>(in_byte & 0x7F)<<7;
+		  else
+		    state = Error;  // Really don't want to handle msg with length > 16k
 			if (size > MaxBufferLength)
 			{
 				state = Error;

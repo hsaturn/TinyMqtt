@@ -64,7 +64,7 @@ class Topic : public IndexedString
 class MqttClient;
 class MqttMessage
 {
-	const uint16_t MaxBufferLength = 255;
+	const uint16_t MaxBufferLength = 4096;  //hard limit: 16k
 	public:
 		enum Type
 		{
