@@ -105,5 +105,5 @@ void setup() {
 void loop() {
 	aunit::TestRunner::run();
 
-	if (Serial.available()) ESP.reset();
+	// if (Serial.available()) ESP.reset();
 }
