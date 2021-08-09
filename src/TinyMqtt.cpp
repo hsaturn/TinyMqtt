@@ -665,7 +665,7 @@ void MqttMessage::incoming(char in_byte)
 			state = Length;
 			break;
 		case Length:
-			size = (size<<7) + (in_byte & 0x3F);
+			size = (size<<7) + (in_byte & 0x7F);
 			if (size > MaxBufferLength)
 			{
 				state = Error;
