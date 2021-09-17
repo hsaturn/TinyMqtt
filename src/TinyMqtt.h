@@ -64,7 +64,7 @@ class Topic : public IndexedString
 class MqttClient;
 class MqttMessage
 {
-	const uint16_t MaxBufferLength = 4096;  //hard limit: 16k
+	const uint16_t MaxBufferLength = 4096;  //hard limit: 16k due to size decoding
 	public:
 		enum Type
 		{
@@ -101,6 +101,7 @@ class MqttMessage
 		void add(const Topic& t) { add(t.str()); }
 		const char* end() const { return &buffer[0]+buffer.size(); }
 		const char* getVHeader() const { return &buffer[vheader]; }
+		void complete() { encodeLength(); }
 
 		void reset();
 
@@ -116,21 +117,22 @@ class MqttMessage
 		void create(Type type)
 		{
 			buffer=(char)type;
-			buffer+='\0';		// reserved for msg length
-			vheader=2;
+			buffer+='\0';		// reserved for msg length byte 1/2
+			buffer+='\0';		// reserved for msg length byte 2/2 (fixed)
+			vheader=3;      // Should never change
 			size=0;
 			state=Create;
 		}
-		MqttError sendTo(MqttClient*) const;
+		MqttError sendTo(MqttClient*);
 		void hexdump(const char* prefix=nullptr) const;
 
 	private:
-		void encodeLength() const;
+		void encodeLength();
 
-		mutable std::string buffer;	// mutable -> sendTo()
+		std::string buffer;
 		uint8_t vheader;
 		uint16_t size;	// bytes left to receive
-		mutable State state;	// mutable -> encodeLength()
+		State state;
 };
 
 class MqttBroker;
@@ -215,8 +217,7 @@ class MqttClient
 			Serial << endl;
 		}
 
-		/** Count the number of messages that have been sent **/
-		static long counter;
+		static long counter;  // Number of processed messages
 
 	private:
 
@@ -231,10 +232,10 @@ class MqttClient
 		friend class MqttBroker;
 		MqttClient(MqttBroker* parent, TcpClient* client);
 		// republish a received publish if topic matches any in subscriptions
-		MqttError publishIfSubscribed(const Topic& topic, const MqttMessage& msg);
+		MqttError publishIfSubscribed(const Topic& topic, MqttMessage& msg);
 
 		void clientAlive(uint32_t more_seconds);
-		void processMessage(const MqttMessage* message);
+		void processMessage(MqttMessage* message);
 
 		bool mqtt_connected = false;
 		char mqtt_flags;
@@ -291,7 +292,7 @@ class MqttBroker
 		{ return compareString(auth_password, password, len); }
 
 
-		MqttError publish(const MqttClient* source, const Topic& topic, const MqttMessage& msg) const;
+		MqttError publish(const MqttClient* source, const Topic& topic, MqttMessage& msg) const;
 
 		MqttError subscribe(const Topic& topic, uint8_t qos);
 

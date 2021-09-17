@@ -132,7 +132,7 @@ test(nowifi_nocallback_when_destroyed)
 	assertEqual(published.size(), (size_t)1);	// Only one publish has been received
 }
 
-test(nowifi_payload_nullptr)
+test(nowifi_small_payload)
 {
 	published.clear();
 
@@ -148,6 +148,22 @@ test(nowifi_payload_nullptr)
   // coming from MqttClient::publish(...)
   assertEqual(payload, lastPayload);
 	assertEqual(lastLength, (size_t)4);
+}
+
+test(nowifi_hudge_payload)
+{
+  const char* payload="This payload is hudge, just because its length exceeds 127. Thus when encoding length, we have to encode it on two bytes at min. This should not prevent the message from being encoded and decoded successfully !";
+
+  MqttClient subscriber(&broker);
+  subscriber.setCallback(onPublish);
+  subscriber.subscribe("a/b");
+
+	MqttClient publisher(&broker);
+	publisher.publish("a/b", payload);		// This publish is received
+
+  // onPublish should have filled lastPayload and lastLength
+  assertEqual(payload, lastPayload);
+	assertEqual(lastLength, strlen(payload));
 }
 
 //----------------------------------------------------------------------------
