@@ -101,8 +101,6 @@ class MqttMessage
 		void add(const Topic& t) { add(t.str()); }
 		const char* end() const { return &buffer[0]+buffer.size(); }
 		const char* getVHeader() const { return &buffer[vheader]; }
-		uint16_t length() const { return buffer.size(); }
-		void complete();
 
 		void reset();
 
@@ -127,12 +125,12 @@ class MqttMessage
 		void hexdump(const char* prefix=nullptr) const;
 
 	private:
-		void encodeLength(char* msb, int length) const;
+		void encodeLength() const;
 
 		mutable std::string buffer;	// mutable -> sendTo()
 		uint8_t vheader;
 		uint16_t size;	// bytes left to receive
-		State state;
+		mutable State state;	// mutable -> encodeLength()
 };
 
 class MqttBroker;
@@ -172,7 +170,14 @@ class MqttClient
 		/** Should be called in main loop() */
 		void loop();
 		void close(bool bSendDisconnect=true);
-		void setCallback(CallBack fun) {callback=fun; };
+		void setCallback(CallBack fun)
+		{
+			callback=fun;
+			#ifdef TINY_MQTT_DEBUG
+				Serial << "Callback set to " << (long)fun << endl;
+				if (callback) callback(this, "test/topic", "value", 5);
+			#endif
+		};
 
 		// Publish from client to the world
 		MqttError publish(const Topic&, const char* payload, size_t pay_length);
@@ -214,6 +219,8 @@ class MqttClient
 		static long counter;
 
 	private:
+
+		// event when tcp/ip link established (real or fake)
 		static void onConnect(void * client_ptr, TcpClient*);
 #ifdef TCP_ASYNC
 		static void onData(void* client_ptr, TcpClient*, void* data, size_t len);
@@ -240,7 +247,7 @@ class MqttClient
 		// (this is the case when MqttBroker isn't used except here)
 		MqttBroker* parent=nullptr;		// connection to local broker
 
-		TcpClient* client=nullptr;		// connection to mqtt client or to remote broker
+		TcpClient* client=nullptr;		// connection to remote broker
 		std::set<Topic>	subscriptions;
 		std::string clientId;
 		CallBack callback = nullptr;
