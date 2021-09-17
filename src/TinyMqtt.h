@@ -64,7 +64,7 @@ class Topic : public IndexedString
 class MqttClient;
 class MqttMessage
 {
-	const uint16_t MaxBufferLength = 4096;  //hard limit: 16k
+	const uint16_t MaxBufferLength = 4096;  //hard limit: 16k due to size decoding
 	public:
 		enum Type
 		{
@@ -101,8 +101,7 @@ class MqttMessage
 		void add(const Topic& t) { add(t.str()); }
 		const char* end() const { return &buffer[0]+buffer.size(); }
 		const char* getVHeader() const { return &buffer[vheader]; }
-		uint16_t length() const { return buffer.size(); }
-		void complete();
+		void complete() { encodeLength(); }
 
 		void reset();
 
@@ -118,18 +117,19 @@ class MqttMessage
 		void create(Type type)
 		{
 			buffer=(char)type;
-			buffer+='\0';		// reserved for msg length
-			vheader=2;
+			buffer+='\0';		// reserved for msg length byte 1/2
+			buffer+='\0';		// reserved for msg length byte 2/2 (fixed)
+			vheader=3;      // Should never change
 			size=0;
 			state=Create;
 		}
-		MqttError sendTo(MqttClient*) const;
+		MqttError sendTo(MqttClient*);
 		void hexdump(const char* prefix=nullptr) const;
 
 	private:
-		void encodeLength(char* msb, int length) const;
+		void encodeLength();
 
-		mutable std::string buffer;	// mutable -> sendTo()
+		std::string buffer;
 		uint8_t vheader;
 		uint16_t size;	// bytes left to receive
 		State state;
@@ -172,7 +172,14 @@ class MqttClient
 		/** Should be called in main loop() */
 		void loop();
 		void close(bool bSendDisconnect=true);
-		void setCallback(CallBack fun) {callback=fun; };
+		void setCallback(CallBack fun)
+		{
+			callback=fun;
+			#ifdef TINY_MQTT_DEBUG
+				Serial << "Callback set to " << (long)fun << endl;
+				if (callback) callback(this, "test/topic", "value", 5);
+			#endif
+		};
 
 		// Publish from client to the world
 		MqttError publish(const Topic&, const char* payload, size_t pay_length);
@@ -210,10 +217,11 @@ class MqttClient
 			Serial << endl;
 		}
 
-		/** Count the number of messages that have been sent **/
-		static long counter;
+		static long counter;  // Number of processed messages
 
 	private:
+
+		// event when tcp/ip link established (real or fake)
 		static void onConnect(void * client_ptr, TcpClient*);
 #ifdef TCP_ASYNC
 		static void onData(void* client_ptr, TcpClient*, void* data, size_t len);
@@ -224,10 +232,10 @@ class MqttClient
 		friend class MqttBroker;
 		MqttClient(MqttBroker* parent, TcpClient* client);
 		// republish a received publish if topic matches any in subscriptions
-		MqttError publishIfSubscribed(const Topic& topic, const MqttMessage& msg);
+		MqttError publishIfSubscribed(const Topic& topic, MqttMessage& msg);
 
 		void clientAlive(uint32_t more_seconds);
-		void processMessage(const MqttMessage* message);
+		void processMessage(MqttMessage* message);
 
 		bool mqtt_connected = false;
 		char mqtt_flags;
@@ -240,7 +248,7 @@ class MqttClient
 		// (this is the case when MqttBroker isn't used except here)
 		MqttBroker* parent=nullptr;		// connection to local broker
 
-		TcpClient* client=nullptr;		// connection to mqtt client or to remote broker
+		TcpClient* client=nullptr;		// connection to remote broker
 		std::set<Topic>	subscriptions;
 		std::string clientId;
 		CallBack callback = nullptr;
@@ -284,7 +292,7 @@ class MqttBroker
 		{ return compareString(auth_password, password, len); }
 
 
-		MqttError publish(const MqttClient* source, const Topic& topic, const MqttMessage& msg) const;
+		MqttError publish(const MqttClient* source, const Topic& topic, MqttMessage& msg) const;
 
 		MqttError subscribe(const Topic& topic, uint8_t qos);
 
