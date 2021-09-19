@@ -143,7 +143,7 @@ void setup() {
 	Serial.begin(115200);
 	while(!Serial);
 
-	Serial.println("=============[ NO WIFI CONNECTION TinyMqtt TESTS ]========================");
+	Serial.println("=============[ LOCAL TinyMqtt TESTS              ]========================");
 }
 
 void loop() {

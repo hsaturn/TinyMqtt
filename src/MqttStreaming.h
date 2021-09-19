@@ -38,6 +38,7 @@
   4.  Simple _FMT mechanism ala printf, but without the typeunsafetyness 
       and no internal buffers for replaceable stream printing
 */
+#pragma once
 
 #ifndef ARDUINO_STREAMING
 #define ARDUINO_STREAMING

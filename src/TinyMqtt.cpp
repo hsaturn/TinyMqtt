@@ -84,7 +84,7 @@ void MqttClient::connect(MqttBroker* parentBroker)
 
 void MqttClient::connect(std::string broker, uint16_t port, uint16_t ka)
 {
-	debug("cnx: closing");
+	debug("MqttClient::connect");
 	keep_alive = ka;
 	close();
 	if (client) delete client;

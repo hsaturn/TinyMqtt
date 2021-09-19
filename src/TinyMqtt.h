@@ -235,7 +235,7 @@ class MqttClient
 		MqttError publishIfSubscribed(const Topic& topic, MqttMessage& msg);
 
 		void clientAlive(uint32_t more_seconds);
-		void processMessage(MqttMessage* message);
+		void processMessage(const MqttMessage* message);
 
 		bool mqtt_connected = false;
 		char mqtt_flags;
