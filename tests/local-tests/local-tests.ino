@@ -68,8 +68,8 @@ test(local_publish_should_be_dispatched)
 	publisher.publish("a/c");
 
 	assertEqual(published.size(), (size_t)1);	// 1 client has received something
-	assertTrue(published[""]["a/b"] == 1);
-	assertTrue(published[""]["a/c"] == 2);
+	assertEqual(published[""]["a/b"], 1);
+	assertEqual(published[""]["a/c"], 2);
 }
 
 test(local_publish_should_be_dispatched_to_local_clients)
@@ -91,10 +91,10 @@ test(local_publish_should_be_dispatched_to_local_clients)
 	publisher.publish("a/c");
 
 	assertEqual(published.size(), (size_t)2);	// 2 clients have received something
-	assertTrue(published["A"]["a/b"] == 1);
-	assertTrue(published["A"]["a/c"] == 1);
-	assertTrue(published["B"]["a/b"] == 1);
-	assertTrue(published["B"]["a/c"] == 0);
+	assertEqual(published["A"]["a/b"], 1);
+	assertEqual(published["A"]["a/c"], 1);
+	assertEqual(published["B"]["a/b"], 1);
+	assertEqual(published["B"]["a/c"], 0);
 }
 
 test(local_unsubscribe)
@@ -114,7 +114,7 @@ test(local_unsubscribe)
 	publisher.publish("a/b");
 	publisher.publish("a/b");
 
-	assertTrue(published[""]["a/b"] == 1);	// Only one publish has been received
+	assertEqual(published[""]["a/b"], 1);	// Only one publish has been received
 }
 
 test(local_nocallback_when_destroyed)

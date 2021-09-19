@@ -29,7 +29,7 @@
 // #define TINY_MQTT_DEBUG
 
 #ifdef TINY_MQTT_DEBUG
-  #define debug(what) { Serial << __LINE__ << ' ' << what << endl; delay(100); }
+  #define debug(what) { Serial << (int)__LINE__ << ' ' << what << endl; delay(100); }
 #else
   #define debug(what) {}
 #endif
@@ -160,6 +160,8 @@ class MqttClient
 		void connect(MqttBroker* parent);
 		void connect(std::string broker, uint16_t port, uint16_t keep_alive = 10);
 
+    // TODO it seems that connected returns true in tcp mode even if
+    // no negociation occured (only if tcp link is established)
 		bool connected() { return
 			(parent!=nullptr and client==nullptr) or
 			(client and client->connected()); }
@@ -198,23 +200,27 @@ class MqttClient
 
 		void dump(std::string indent="")
 		{
-			uint32_t ms=millis();
-			Serial << indent << "+-- " << '\'' << clientId.c_str() << "' " << (connected() ? " ON " : " OFF");
-			Serial << ", alive=" << alive << '/' << ms << ", ka=" << keep_alive << ' ';
-			Serial << (client && client->connected() ? "" : "dis") << "connected";
-			if (subscriptions.size())
-			{
-				bool c = false;
-				Serial << " [";
-				for(auto s: subscriptions)
-				{
-					if (c) Serial << ", ";
-					Serial << s.str().c_str();
-					c=true;
-				}
-				Serial << ']';
-			}
-			Serial << endl;
+		  (void)indent;
+      #ifdef TINY_MQTT_DEBUG
+        uint32_t ms=millis();
+        Serial << indent << "+-- " << '\'' << clientId.c_str() << "' " << (connected() ? " ON " : " OFF");
+        Serial << ", alive=" << alive << '/' << ms << ", ka=" << keep_alive << ' ';
+        Serial << (client && client->connected() ? "" : "dis") << "connected";
+        if (subscriptions.size())
+        {
+          bool c = false;
+          Serial << " [";
+          for(auto s: subscriptions)
+            (void)indent;
+          {
+            if (c) Serial << ", ";
+            Serial << s.str().c_str();
+            c=true;
+          }
+          Serial << ']';
+        }
+        Serial << endl;
+      #endif
 		}
 
 		static long counter;  // Number of processed messages
@@ -235,7 +241,7 @@ class MqttClient
 		MqttError publishIfSubscribed(const Topic& topic, MqttMessage& msg);
 
 		void clientAlive(uint32_t more_seconds);
-		void processMessage(const MqttMessage* message);
+		void processMessage(MqttMessage* message);
 
 		bool mqtt_connected = false;
 		char mqtt_flags;

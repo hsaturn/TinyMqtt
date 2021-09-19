@@ -1,14 +1,6 @@
 #include "TinyMqtt.h"
 #include <sstream>
 
-void outstring(const char* prefix, const char*p, uint16_t len)
-{
-	return;
-	Serial << prefix << "='";
-	while(len--) Serial << (char)*p++;
-	Serial << '\'' << endl;
-}
-
 MqttBroker::MqttBroker(uint16_t port)
 {
 	server = new TcpServer(port);
@@ -447,11 +439,9 @@ if (mesg->type() != MqttMessage::Type::PingReq && mesg->type() != MqttMessage::T
 			if (mqtt_flags & FlagWill)	// Will topic
 			{
 				mesg->getString(payload, len);	// Will Topic
-				outstring("WillTopic", payload, len);
 				payload += len;
 
 				mesg->getString(payload, len);	// Will Message
-				outstring("WillMessage", payload, len);
 				payload += len;
 			}
 			// FIXME forgetting credential is allowed (security hole)
@@ -468,7 +458,9 @@ if (mesg->type() != MqttMessage::Type::PingReq && mesg->type() != MqttMessage::T
 				payload += len;
 			}
 
-			Serial << "Connected client:" << clientId.c_str() << ", keep alive=" << keep_alive << '.' << endl;
+      #ifdef TINY_MQTT_DEBUG
+			  Serial << "Connected client:" << clientId.c_str() << ", keep alive=" << keep_alive << '.' << endl;
+      #endif
 			bclose = false;
 			mqtt_connected=true;
 			{
@@ -522,7 +514,6 @@ if (mesg->type() != MqttMessage::Type::PingReq && mesg->type() != MqttMessage::T
 				{
 					mesg->getString(payload, len);	// Topic
 					debug( "  topic (" << std::string(payload, len) << ')');
-					outstring("  un/subscribes", payload, len);
 					// subscribe(Topic(payload, len));
 					Topic topic(payload, len);
 					payload += len;
@@ -602,10 +593,12 @@ if (mesg->type() != MqttMessage::Type::PingReq && mesg->type() != MqttMessage::T
 	};
 	if (bclose)
 	{
-		Serial << "*************** Error msg 0x" << _HEX(mesg->type());
-		mesg->hexdump("-------ERROR ------");
-		dump();
-		Serial << endl;
+    #ifdef TINY_MQTT_DEBUG
+		  Serial << "*************** Error msg 0x" << _HEX(mesg->type());
+		  mesg->hexdump("-------ERROR ------");
+		  dump();
+		  Serial << endl;
+    #endif
 		close();
   }
 	else
@@ -722,8 +715,10 @@ void MqttMessage::incoming(char in_byte)
 			break;
 		case Complete:
 		default:
-			Serial << "Spurious " << _HEX(in_byte) << endl;
-			hexdump("spurious");
+			#ifdef TINY_MQTT_DEBUG
+			  Serial << "Spurious " << _HEX(in_byte) << endl;
+			  hexdump("spurious");
+      #endif
 			reset();
 			break;
 	}
@@ -778,6 +773,8 @@ MqttError MqttMessage::sendTo(MqttClient* client)
 
 void MqttMessage::hexdump(const char* prefix) const
 {
+  (void)prefix;
+#ifdef TINY_MQTT_DEBUG
 	uint16_t addr=0;
 	const int bytes_per_row = 8;
 	const char* hex_to_str = " | ";
@@ -813,4 +810,5 @@ void MqttMessage::hexdump(const char* prefix) const
 	}
 
 	Serial << endl;
+#endif
 }

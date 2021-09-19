@@ -19,6 +19,18 @@ std::map<std::string, std::map<Topic, int>>	published;		// map[client_id] => map
 char* lastPayload = nullptr;
 size_t lastLength;
 
+void start_servers(int n, bool early_accept = true)
+{
+    ESP8266WiFiClass::resetInstances();
+    ESP8266WiFiClass::earlyAccept = early_accept;
+    while(n)
+    {
+      ESP8266WiFiClass::selectInstance(n--);
+      WiFi.mode(WIFI_STA);
+      WiFi.begin("fake_ssid", "fake_pwd");
+    }
+}
+
 void onPublish(const MqttClient* srce, const Topic& topic, const char* payload, size_t length)
 {
 	if (srce)
@@ -41,43 +53,90 @@ test(network_single_broker_begin)
 
 test(network_client_to_broker_connexion)
 {
+  start_servers(2, true);
+
   assertEqual(WiFi.status(), WL_CONNECTED);
 
   MqttBroker broker(1883);
   broker.begin();
+  IPAddress broker_ip = WiFi.localIP();
 
-  Serial << "TODO IP = " << WiFi.localIP() << endl;
-
+  ESP8266WiFiClass::selectInstance(2);
   MqttClient client;
-  client.connect(WiFi.localIP().toString().c_str(), 1883);
+  client.connect(broker_ip.toString().c_str(), 1883);
   broker.loop();
 
-  assertEqual(broker.clientsCount(), (size_t)1);
+  assertTrue(broker.clientsCount() == 1);
+  assertTrue(client.connected());
 }
 
-/*
-test(network_one_broker_one_client)
+test(network_one_client_one_broker_publish_and_subscribe_through_network)
 {
+  start_servers(2, true);
   published.clear();
   assertEqual(WiFi.status(), WL_CONNECTED);
 
   MqttBroker broker(1883);
   broker.begin();
+  IPAddress ip_broker = WiFi.localIP();
 
-  Serial << "TODO IP = " << WiFi.localIP() << endl;
-
+  // We have a 2nd ESP in order to test through wifi (opposed to local)
+  ESP8266WiFiClass::selectInstance(2);
   MqttClient client;
-  client.connect(WiFi.localIP().toString().c_str(), 1883);
+  client.connect(ip_broker.toString().c_str(), 1883);
+  broker.loop();
+  assertTrue(client.connected());
+
   client.setCallback(onPublish);
   client.subscribe("a/b");
   client.publish("a/b", "ab");
-  // client.loop();
+
+  for (int i =0; i<2; i++)
+  {
+    client.loop();
+    broker.loop();
+  }
+  
+  assertEqual(published.size(), (size_t)1);
+  assertEqual((int)lastLength, (int)2); // sizeof(ab)
+}
+
+test(network_one_client_one_broker_hudge_publish_and_subscribe_through_network)
+{
+  start_servers(2, true);
+  published.clear();
+  assertEqual(WiFi.status(), WL_CONNECTED);
+
+  MqttBroker broker(1883);
+  broker.begin();
+  IPAddress ip_broker = WiFi.localIP();
+
+  // We have a 2nd ESP in order to test through wifi (opposed to local)
+  ESP8266WiFiClass::selectInstance(2);
+  MqttClient client;
+  client.connect(ip_broker.toString().c_str(), 1883);
+  broker.loop();
+  assertTrue(client.connected());
+
+  std::string sent;
+
+  for(int i=0; i<200; i++)
+    sent += char('0'+i%10);
+
+  client.setCallback(onPublish);
+  client.subscribe("a/b");
+  client.publish("a/b", sent.c_str());
+
+  for (int i =0; i<2; i++)
+  {
+    client.loop();
+    broker.loop();
+  }
 
   assertEqual(published.size(), (size_t)1);
+  assertEqual((unsigned int)lastLength, (unsigned int)sent.size());
 }
-*/
 
-#if 0
 test(network_client_should_unregister_when_destroyed)
 {
 	assertEqual(broker.clientsCount(), (size_t)0);
@@ -87,6 +146,11 @@ test(network_client_should_unregister_when_destroyed)
 	}
 	assertEqual(broker.clientsCount(), (size_t)0);
 }
+
+#if 0
+
+// THESE TESTS ARE IN LOCAL MODE
+// WE HAVE TO CONVERT THEM TO WIFI MODE (pass through virtual TCP link)
 
 test(network_connect)
 {
@@ -219,12 +283,12 @@ test(network_hudge_payload)
 //----------------------------------------------------------------------------
 // setup() and loop()
 void setup() {
-	delay(1000);
+	/* delay(1000);
 	Serial.begin(115200);
 	while(!Serial);
 
 	Serial.println("=============[ FAKE NETWORK TinyMqtt TESTS       ]========================");
-
+*/
 	WiFi.mode(WIFI_STA);
 	WiFi.begin("network", "password");
 }
