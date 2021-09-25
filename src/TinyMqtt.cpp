@@ -510,17 +510,25 @@ if (mesg->type() != MqttMessage::Type::PingReq && mesg->type() != MqttMessage::T
 				payload = header+2;
 				
 				debug("un/subscribe loop");
+				std::vector<char> qoss;
 				while(payload < mesg->end())
 				{
 					mesg->getString(payload, len);	// Topic
 					debug( "  topic (" << std::string(payload, len) << ')');
 					// subscribe(Topic(payload, len));
 					Topic topic(payload, len);
+
 					payload += len;
 					if ((mesg->type() & 0XF0) == MqttMessage::Type::Subscribe)
 					{
 						uint8_t qos = *payload++;
-						if (qos != 0) debug("Unsupported QOS" << qos << endl);
+						if (qos != 0)
+						{
+							debug("Unsupported QOS" << qos << endl);
+							qoss.push_back(0x80);
+						}
+						else
+							qoss.push_back(qos);
 						subscriptions.insert(topic);
 					}
 					else
@@ -533,6 +541,22 @@ if (mesg->type() != MqttMessage::Type::PingReq && mesg->type() != MqttMessage::T
 				debug("end loop");
 				bclose = false;
 				// TODO SUBACK
+				if ((mesg->type() & 0XF0) == MqttMessage::Type::Subscribe)
+				{
+					sMQTTMessage msg(sMQTTMessage::Type::SubAck);
+					msg.add(header[0]);
+					msg.add(header[1]);
+					for (int i = 0; i<qoss.size(); i++)
+						msg.add(qoss[i]);
+					msg.sendTo(this);
+				}
+				else
+				{
+					sMQTTMessage msg(sMQTTMessage::Type::UnSuback);
+					msg.add(header[0]);
+					msg.add(header[1]);
+					msg.sendTo(this);
+				}
 			}
 			break;
 
