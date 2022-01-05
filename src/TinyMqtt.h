@@ -42,7 +42,7 @@
   using TcpServer = WiFiServer;
 #endif
 
-enum MqttError
+enum __attribute__((packed)) MqttError
 {
 	MqttOk = 0,
 	MqttNowhereToSend=1,
@@ -66,7 +66,7 @@ class MqttMessage
 {
 	const uint16_t MaxBufferLength = 4096;  //hard limit: 16k due to size decoding
 	public:
-		enum Type
+		enum __attribute__((packed)) Type
 		{
 			Unknown     =    0,
 			Connect     = 0x10,
@@ -76,12 +76,12 @@ class MqttMessage
 			Subscribe   = 0x80,
 			SubAck      = 0x90,
 			UnSubscribe = 0xA0,
-			UnSuback	= 0xB0,
+			UnSuback	  = 0xB0,
 			PingReq     = 0xC0,
 			PingResp    = 0xD0,
 			Disconnect  = 0xE0
 		};
-		enum State
+		enum __attribute__((packed)) State
 		{
 			FixedHeader=0,
 			Length=1,
@@ -141,7 +141,7 @@ class MqttBroker;
 class MqttClient
 {
 	using CallBack = void (*)(const MqttClient* source, const Topic& topic, const char* payload, size_t payload_length);
-	enum Flags
+	enum __attribute__((packed)) Flags
 	{
 		FlagUserName = 128,
 		FlagPassword = 64,
@@ -266,7 +266,7 @@ class MqttClient
 
 class MqttBroker
 {
-	enum State
+	enum __attribute__((packed)) State
 	{
 		Disconnected,	// Also the initial state
 		Connecting,		// connect and sends a fake publish to avoid circular cnx
