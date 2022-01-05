@@ -111,7 +111,7 @@ class MqttMessage
 
 		Type type() const
 		{
-			return state == Complete ? static_cast<Type>(buffer[0]) : Unknown;
+			return state == Complete ? static_cast<Type>(buffer[0] & 0xF0) : Unknown;
 		}
 
 		uint8_t flags() const { return static_cast<uint8_t>(buffer[0] & 0x0F); }
