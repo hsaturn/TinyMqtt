@@ -523,7 +523,7 @@ if (mesg->type() != MqttMessage::Type::PingReq && mesg->type() != MqttMessage::T
 				payload = header+2;
 				
 				debug("un/subscribe loop");
-				std::vector<char> qoss;
+				std::string qoss;
 				while(payload < mesg->end())
 				{
 					mesg->getString(payload, len);	// Topic
@@ -553,23 +553,12 @@ if (mesg->type() != MqttMessage::Type::PingReq && mesg->type() != MqttMessage::T
 				}
 				debug("end loop");
 				bclose = false;
-				// TODO SUBACK
-				if ((mesg->type() & 0XF0) == MqttMessage::Type::Subscribe)
-				{
-					sMQTTMessage msg(sMQTTMessage::Type::SubAck);
-					msg.add(header[0]);
-					msg.add(header[1]);
-					for (int i = 0; i<qoss.size(); i++)
-						msg.add(qoss[i]);
-					msg.sendTo(this);
-				}
-				else
-				{
-					sMQTTMessage msg(sMQTTMessage::Type::UnSuback);
-					msg.add(header[0]);
-					msg.add(header[1]);
-					msg.sendTo(this);
-				}
+
+        MqttMessage ack(mesg->type() == MqttMessage::Type::Subscribe ? MqttMessage::Type::SubAck : MqttMessage::Type::UnSuback);
+        ack.add(header[0]);
+        ack.add(header[1]);
+        ack.add(qoss.c_str(), qoss.size(), false);
+        ack.sendTo(this);
 			}
 			break;
 
