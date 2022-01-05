@@ -114,9 +114,11 @@ class MqttMessage
 			return state == Complete ? static_cast<Type>(buffer[0]) : Unknown;
 		}
 
+		uint8_t flags() const { return static_cast<uint8_t>(buffer[0] & 0x0F); }
+
 		void create(Type type)
 		{
-			buffer=(char)type;
+			buffer=(decltype(buffer)::value_type)type;
 			buffer+='\0';		// reserved for msg length byte 1/2
 			buffer+='\0';		// reserved for msg length byte 2/2 (fixed)
 			vheader=3;      // Should never change

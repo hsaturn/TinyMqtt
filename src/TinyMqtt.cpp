@@ -418,11 +418,11 @@ if (mesg->type() != MqttMessage::Type::PingReq && mesg->type() != MqttMessage::T
   uint16_t len;
 	bool bclose=true;
 
-	switch(mesg->type() & 0XF0)
 #ifdef EPOXY_DUINO
   counters[mesg->type()]++;
 #endif
 
+	switch(mesg->type())
 	{
 		case MqttMessage::Type::Connect:
 			if (mqtt_connected)
@@ -532,7 +532,7 @@ if (mesg->type() != MqttMessage::Type::PingReq && mesg->type() != MqttMessage::T
 					Topic topic(payload, len);
 
 					payload += len;
-					if ((mesg->type() & 0XF0) == MqttMessage::Type::Subscribe)
+					if (mesg->type() == MqttMessage::Type::Subscribe)
 					{
 						uint8_t qos = *payload++;
 						if (qos != 0)
@@ -584,7 +584,7 @@ if (mesg->type() != MqttMessage::Type::PingReq && mesg->type() != MqttMessage::T
 			#endif
 			if (mqtt_connected or client == nullptr)
 			{
-				uint8_t qos = mesg->type() & 0x6;
+				uint8_t qos = mesg->flags();
 				payload = header;
 				mesg->getString(payload, len);
 				Topic published(payload, len);
