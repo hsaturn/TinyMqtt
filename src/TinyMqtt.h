@@ -223,7 +223,9 @@ class MqttClient
       #endif
 		}
 
-		static long counter;  // Number of processed messages
+#ifdef EPOXY_DUINO
+		static std::map<MqttMessage::Type, int> counters;  // Number of processed messages
+#endif
 
 	private:
 

@@ -1,6 +1,10 @@
 #include "TinyMqtt.h"
 #include <sstream>
 
+#ifdef EPOXY_DUINO
+  std::map<MqttMessage::Type, int> MqttClient::counters;
+#endif
+
 MqttBroker::MqttBroker(uint16_t port)
 {
 	server = new TcpServer(port);
@@ -30,7 +34,11 @@ MqttClient::MqttClient(MqttBroker* parent, TcpClient* new_client)
 #else
 	client = new WiFiClient(*new_client);
 #endif
+#ifdef EPOXY_DUINO
+	alive = millis()+500000;
+#else
 	alive = millis()+5000;	// TODO MAGIC client expires after 5s if no CONNECT msg
+#endif
 }
 
 MqttClient::MqttClient(MqttBroker* parent, const std::string& id)
@@ -242,7 +250,11 @@ void MqttClient::clientAlive(uint32_t more_seconds)
 {
 	if (keep_alive)
 	{
+#ifdef EPOXY_DUINO
+		alive=millis()+500000;
+#else
 		alive=millis()+1000*(keep_alive+more_seconds);
+#endif
 	}
 	else
 		alive=0;
@@ -387,11 +399,8 @@ MqttError MqttClient::sendTopic(const Topic& topic, MqttMessage::Type type, uint
 	return msg.sendTo(this);
 }
 
-long MqttClient::counter=0;
-
 void MqttClient::processMessage(MqttMessage* mesg)
 {
-	counter++;
 #ifdef TINY_MQTT_DEBUG
 if (mesg->type() != MqttMessage::Type::PingReq && mesg->type() != MqttMessage::Type::PingResp)
 {
@@ -410,6 +419,10 @@ if (mesg->type() != MqttMessage::Type::PingReq && mesg->type() != MqttMessage::T
 	bool bclose=true;
 
 	switch(mesg->type() & 0XF0)
+#ifdef EPOXY_DUINO
+  counters[mesg->type()]++;
+#endif
+
 	{
 		case MqttMessage::Type::Connect:
 			if (mqtt_connected)
