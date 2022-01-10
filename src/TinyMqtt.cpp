@@ -1,6 +1,10 @@
 #include "TinyMqtt.h"
 #include <sstream>
 
+#ifdef EPOXY_DUINO
+  std::map<MqttMessage::Type, int> MqttClient::counters;
+#endif
+
 MqttBroker::MqttBroker(uint16_t port)
 {
 	server = new TcpServer(port);
@@ -30,7 +34,11 @@ MqttClient::MqttClient(MqttBroker* parent, TcpClient* new_client)
 #else
 	client = new WiFiClient(*new_client);
 #endif
+#ifdef EPOXY_DUINO
+	alive = millis()+500000;
+#else
 	alive = millis()+5000;	// TODO MAGIC client expires after 5s if no CONNECT msg
+#endif
 }
 
 MqttClient::MqttClient(MqttBroker* parent, const std::string& id)
@@ -242,7 +250,11 @@ void MqttClient::clientAlive(uint32_t more_seconds)
 {
 	if (keep_alive)
 	{
+#ifdef EPOXY_DUINO
+		alive=millis()+500000;
+#else
 		alive=millis()+1000*(keep_alive+more_seconds);
+#endif
 	}
 	else
 		alive=0;
@@ -387,11 +399,8 @@ MqttError MqttClient::sendTopic(const Topic& topic, MqttMessage::Type type, uint
 	return msg.sendTo(this);
 }
 
-long MqttClient::counter=0;
-
 void MqttClient::processMessage(MqttMessage* mesg)
 {
-	counter++;
 #ifdef TINY_MQTT_DEBUG
 if (mesg->type() != MqttMessage::Type::PingReq && mesg->type() != MqttMessage::Type::PingResp)
 {
@@ -409,7 +418,11 @@ if (mesg->type() != MqttMessage::Type::PingReq && mesg->type() != MqttMessage::T
   uint16_t len;
 	bool bclose=true;
 
-	switch(mesg->type() & 0XF0)
+#ifdef EPOXY_DUINO
+  counters[mesg->type()]++;
+#endif
+
+	switch(mesg->type())
 	{
 		case MqttMessage::Type::Connect:
 			if (mqtt_connected)
@@ -510,17 +523,25 @@ if (mesg->type() != MqttMessage::Type::PingReq && mesg->type() != MqttMessage::T
 				payload = header+2;
 				
 				debug("un/subscribe loop");
+				std::string qoss;
 				while(payload < mesg->end())
 				{
 					mesg->getString(payload, len);	// Topic
 					debug( "  topic (" << std::string(payload, len) << ')');
 					// subscribe(Topic(payload, len));
 					Topic topic(payload, len);
+
 					payload += len;
-					if ((mesg->type() & 0XF0) == MqttMessage::Type::Subscribe)
+					if (mesg->type() == MqttMessage::Type::Subscribe)
 					{
 						uint8_t qos = *payload++;
-						if (qos != 0) debug("Unsupported QOS" << qos << endl);
+						if (qos != 0)
+						{
+							debug("Unsupported QOS" << qos << endl);
+							qoss.push_back(0x80);
+						}
+						else
+							qoss.push_back(qos);
 						subscriptions.insert(topic);
 					}
 					else
@@ -532,7 +553,12 @@ if (mesg->type() != MqttMessage::Type::PingReq && mesg->type() != MqttMessage::T
 				}
 				debug("end loop");
 				bclose = false;
-				// TODO SUBACK
+
+        MqttMessage ack(mesg->type() == MqttMessage::Type::Subscribe ? MqttMessage::Type::SubAck : MqttMessage::Type::UnSuback);
+        ack.add(header[0]);
+        ack.add(header[1]);
+        ack.add(qoss.c_str(), qoss.size(), false);
+        ack.sendTo(this);
 			}
 			break;
 
@@ -547,7 +573,7 @@ if (mesg->type() != MqttMessage::Type::PingReq && mesg->type() != MqttMessage::T
 			#endif
 			if (mqtt_connected or client == nullptr)
 			{
-				uint8_t qos = mesg->type() & 0x6;
+				uint8_t qos = mesg->flags();
 				payload = header;
 				mesg->getString(payload, len);
 				Topic published(payload, len);

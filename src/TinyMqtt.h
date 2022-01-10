@@ -42,7 +42,7 @@
   using TcpServer = WiFiServer;
 #endif
 
-enum MqttError
+enum __attribute__((packed)) MqttError
 {
 	MqttOk = 0,
 	MqttNowhereToSend=1,
@@ -66,7 +66,7 @@ class MqttMessage
 {
 	const uint16_t MaxBufferLength = 4096;  //hard limit: 16k due to size decoding
 	public:
-		enum Type
+		enum __attribute__((packed)) Type
 		{
 			Unknown     =    0,
 			Connect     = 0x10,
@@ -76,12 +76,12 @@ class MqttMessage
 			Subscribe   = 0x80,
 			SubAck      = 0x90,
 			UnSubscribe = 0xA0,
-			UnSuback	= 0xB0,
+			UnSuback	  = 0xB0,
 			PingReq     = 0xC0,
 			PingResp    = 0xD0,
 			Disconnect  = 0xE0
 		};
-		enum State
+		enum __attribute__((packed)) State
 		{
 			FixedHeader=0,
 			Length=1,
@@ -111,12 +111,14 @@ class MqttMessage
 
 		Type type() const
 		{
-			return state == Complete ? static_cast<Type>(buffer[0]) : Unknown;
+			return state == Complete ? static_cast<Type>(buffer[0] & 0xF0) : Unknown;
 		}
+
+		uint8_t flags() const { return static_cast<uint8_t>(buffer[0] & 0x0F); }
 
 		void create(Type type)
 		{
-			buffer=(char)type;
+			buffer=(decltype(buffer)::value_type)type;
 			buffer+='\0';		// reserved for msg length byte 1/2
 			buffer+='\0';		// reserved for msg length byte 2/2 (fixed)
 			vheader=3;      // Should never change
@@ -139,7 +141,7 @@ class MqttBroker;
 class MqttClient
 {
 	using CallBack = void (*)(const MqttClient* source, const Topic& topic, const char* payload, size_t payload_length);
-	enum Flags
+	enum __attribute__((packed)) Flags
 	{
 		FlagUserName = 128,
 		FlagPassword = 64,
@@ -223,7 +225,9 @@ class MqttClient
       #endif
 		}
 
-		static long counter;  // Number of processed messages
+#ifdef EPOXY_DUINO
+		static std::map<MqttMessage::Type, int> counters;  // Number of processed messages
+#endif
 
 	private:
 
@@ -262,7 +266,7 @@ class MqttClient
 
 class MqttBroker
 {
-	enum State
+	enum __attribute__((packed)) State
 	{
 		Disconnected,	// Also the initial state
 		Connecting,		// connect and sends a fake publish to avoid circular cnx

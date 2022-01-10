@@ -31,12 +31,10 @@ void onPublish(const MqttClient* srce, const Topic& topic, const char* payload, 
 
 test(local_client_should_unregister_when_destroyed)
 {
-return;
 	assertEqual(broker.clientsCount(), (size_t)0);
 	{
-		MqttClient client;
 		assertEqual(broker.clientsCount(), (size_t)0);	// Ensure client is not yet connected
-		client.connect("127.0.0.1", 1883);
+		MqttClient client(&broker);
 		assertEqual(broker.clientsCount(), (size_t)1);	// Ensure client is now connected
 	}
 	assertEqual(broker.clientsCount(), (size_t)0);
