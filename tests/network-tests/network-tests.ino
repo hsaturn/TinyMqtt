@@ -80,14 +80,6 @@ test(suback)
   broker.loop();
   client.loop();
 
-  String s;
-  for(const auto& in: MqttClient::counters)
-  {
-    s = s+String(in.first);
-    s = s+':';
-    s = s+String(in.second);
-    s = s+' ';
-  }
   assertEqual(MqttClient::counters[MqttMessage::Type::SubAck], 1);
 }
 
