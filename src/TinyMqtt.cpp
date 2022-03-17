@@ -27,12 +27,12 @@ MqttClient::MqttClient(MqttBroker* parent, TcpClient* new_client)
 	: parent(parent)
 {
 #ifdef TCP_ASYNC
-	client = new_client;
-	client->onData(onData, this);
-	// client->onConnect() TODO
-	// client->onDisconnect() TODO
+	tcp_client = new_client;
+	tcp_client->onData(onData, this);
+	// tcp_client->onConnect() TODO
+	// tcp_client->onDisconnect() TODO
 #else
-	client = new WiFiClient(*new_client);
+	tcp_client = new WiFiClient(*new_client);
 #endif
 #ifdef EPOXY_DUINO
 	alive = millis()+500000;
@@ -44,7 +44,7 @@ MqttClient::MqttClient(MqttBroker* parent, TcpClient* new_client)
 MqttClient::MqttClient(MqttBroker* parent, const std::string& id)
 	: parent(parent), clientId(id)
 {
-		client = nullptr;
+		tcp_client = nullptr;
 
 		if (parent) parent->addClient(this);
 }
@@ -52,21 +52,21 @@ MqttClient::MqttClient(MqttBroker* parent, const std::string& id)
 MqttClient::~MqttClient()
 {
 	close();
-	delete client;
+	delete tcp_client;
 }
 
 void MqttClient::close(bool bSendDisconnect)
 {
 	debug("close " << id().c_str());
 	mqtt_connected = false;
-	if (client)	// connected to a remote broker
+	if (tcp_client)	// connected to a remote broker
 	{
-		if (bSendDisconnect and client->connected())
+		if (bSendDisconnect and tcp_client->connected())
 		{
 			message.create(MqttMessage::Type::Disconnect);
 			message.sendTo(this);
 		}
-		client->stop();
+		tcp_client->stop();
 	}
 
 	if (parent)
@@ -87,18 +87,18 @@ void MqttClient::connect(std::string broker, uint16_t port, uint16_t ka)
 	debug("MqttClient::connect");
 	keep_alive = ka;
 	close();
-	if (client) delete client;
-	client = new TcpClient;
+	if (tcp_client) delete tcp_client;
+	tcp_client = new TcpClient;
 
 	debug("Trying to connect to " << mqtt_client.c_str() << ':' << port);
 #ifdef TCP_ASYNC
-	client->onData(onData, this);
-	client->onConnect(onConnect, this);
-	client->connect(mqtt_client.c_str(), port);
+	tcp_client->onData(onData, this);
+	tcp_client->onConnect(onConnect, this);
+	tcp_client->connect(mqtt_client.c_str(), port);
 #else
-	if (client->connect(broker.c_str(), port))
+	if (tcp_client->connect(broker.c_str(), port))
 	{
-		onConnect(this, client);
+		onConnect(this, tcp_client);
 	}
 #endif
 }
@@ -136,22 +136,22 @@ void MqttBroker::removeClient(MqttClient* remove)
 	debug("Error cannot remove client");	// TODO should not occur
 }
 
-void MqttBroker::onClient(void* broker_ptr, TcpClient* client)
+void MqttBroker::onClient(void* broker_ptr, TcpClient* new_client)
 {
 	MqttBroker* broker = static_cast<MqttBroker*>(broker_ptr);
 
-	broker->addClient(new MqttClient(broker, client));
+	broker->addClient(new MqttClient(broker, new_client));
 	debug("New client");
 }
 
 void MqttBroker::loop()
 {
 #ifndef TCP_ASYNC
-  WiFiClient client = server->available();
+  WiFiClient wifi_client = server->available();
 
-  if (client)
+  if (wifi_client)
 	{
-		onClient(this, &client);
+		onClient(this, &wifi_client);
 	}
 #endif
 	if (mqtt_client)
@@ -173,7 +173,7 @@ void MqttBroker::loop()
 		}
 		else
 		{
-      debug("Client " << client->id().c_str() << "  Disconnected, parent=" << (dbg_ptr)client->parent);
+      debug("Client " << tcp_client->id().c_str() << "  Disconnected, parent=" << (dbg_ptr)tcp_client->parent);
 			// Note: deleting a client not added by the broker itself will probably crash later.
 			delete client;
 			break;
@@ -201,7 +201,7 @@ MqttError MqttBroker::publish(const MqttClient* source, const Topic& topic, Mqtt
 		i++;
 #ifdef TINY_MQTT_DEBUG
 		Serial << "brk_" << (mqtt_client && mqtt_client->connected() ? "con" : "dis") <<
-			 "	srce=" << (source->isLocal() ? "loc" : "rem") << " clt#" << i << ", local=" << client->isLocal() << ", con=" << client->connected() << endl;
+			 "	srce=" << (source->isLocal() ? "loc" : "rem") << " clt#" << i << ", local=" << tcp_client->isLocal() << ", con=" << tcp_client->connected() << endl;
 #endif
 		bool doit = false;
 		if (mqtt_client && mqtt_client->connected())	// this (MqttBroker) is connected (to a external broker)
@@ -270,11 +270,11 @@ void MqttClient::loop()
 			close();
 			debug("closed");
 		}
-		else if (client && client->connected())
+		else if (tcp_client && tcp_client->connected())
 		{
 			debug("pingreq");
 			uint16_t pingreq = MqttMessage::Type::PingReq;
-			client->write((const char*)(&pingreq), 2);
+			tcp_client->write((const char*)(&pingreq), 2);
 			clientAlive(0);
 
 			// TODO when many MqttClient passes through a local broker
@@ -282,9 +282,9 @@ void MqttClient::loop()
 		}
 	}
 #ifndef TCP_ASYNC
-	while(client && client->available()>0)
+	while(tcp_client && tcp_client->available()>0)
 	{
-		message.incoming(client->read());
+		message.incoming(tcp_client->read());
 		if (message.type())
 		{
 			processMessage(&message);
@@ -318,14 +318,14 @@ void MqttClient::onConnect(void *mqttclient_ptr, TcpClient*)
 void MqttClient::onData(void* client_ptr, TcpClient*, void* data, size_t len)
 {
 	char* char_ptr = static_cast<char*>(data);
-	MqttClient* client=static_cast<MqttClient*>(client_ptr);
+	MqttClient* tcp_client=static_cast<MqttClient*>(client_ptr);
 	while(len>0)
 	{
-		client->message.incoming(*char_ptr++);
-		if (client->message.type())
+		tcp_client->message.incoming(*char_ptr++);
+		if (tcp_client->message.type())
 		{
-			client->processMessage(&client->message);
-			client->message.reset();
+			tcp_client->processMessage(&tcp_client->message);
+			tcp_client->message.reset();
 		}
 		len--;
 	}
@@ -405,9 +405,9 @@ void MqttClient::processMessage(MqttMessage* mesg)
 if (mesg->type() != MqttMessage::Type::PingReq && mesg->type() != MqttMessage::Type::PingResp)
 {
 	#ifdef NOT_ESP_CORE
-		Serial << "---> INCOMING " << _HEX(mesg->type()) << " client(" << (dbg_ptr)client << ':' << clientId << ") mem=" << " ESP.getFreeHeap() "<< endl;
+		Serial << "---> INCOMING " << _HEX(mesg->type()) << " client(" << (dbg_ptr)tcp_client << ':' << clientId << ") mem=" << " ESP.getFreeHeap() "<< endl;
 	#else
-		Serial << "---> INCOMING " << _HEX(mesg->type()) << " client(" << (dbg_ptr)client << ':' << clientId << ") mem=" << ESP.getFreeHeap() << endl;
+		Serial << "---> INCOMING " << _HEX(mesg->type()) << " client(" << (dbg_ptr)tcp_client << ':' << clientId << ") mem=" << ESP.getFreeHeap() << endl;
 	#endif
 	// mesg->hexdump("Incoming");
 	mesg->hexdump("Incoming");
@@ -504,10 +504,10 @@ if (mesg->type() != MqttMessage::Type::PingReq && mesg->type() != MqttMessage::T
 
 		case MqttMessage::Type::PingReq:
 			if (!mqtt_connected) break;
-			if (client)
+			if (tcp_client)
 			{
 				uint16_t pingreq = MqttMessage::Type::PingResp;
-				client->write((const char*)(&pingreq), 2);
+				tcp_client->write((const char*)(&pingreq), 2);
 			  bclose = false;
 			}
 			else
@@ -569,9 +569,9 @@ if (mesg->type() != MqttMessage::Type::PingReq && mesg->type() != MqttMessage::T
 
 		case MqttMessage::Type::Publish:
 			#ifdef TINY_MQTT_DEBUG
-				Serial << "publish " << mqtt_connected << '/' << (long) client << endl;
+				Serial << "publish " << mqtt_connected << '/' << (long) tcp_client << endl;
 			#endif
-			if (mqtt_connected or client == nullptr)
+			if (mqtt_connected or tcp_client == nullptr)
 			{
 				uint8_t qos = mesg->flags();
 				payload = header;
@@ -585,7 +585,7 @@ if (mesg->type() != MqttMessage::Type::PingReq && mesg->type() != MqttMessage::T
 				// TODO reset DUP
 				// TODO reset RETAIN
 
-				if (parent==nullptr or client==nullptr)	// internal MqttClient receives publish
+				if (parent==nullptr or tcp_client==nullptr)	// internal MqttClient receives publish
 				{
 					#ifdef TINY_MQTT_DEBUG
 						Serial << (isSubscribedTo(published) ? "not" : "") << " subscribed.\n";
@@ -652,7 +652,7 @@ MqttError MqttClient::publish(const Topic& topic, const char* payload, size_t pa
 	{
 		return parent->publish(this, topic, msg);
 	}
-	else if (client)
+	else if (tcp_client)
 		return msg.sendTo(this);
 	else
 		return MqttNowhereToSend;
@@ -666,7 +666,7 @@ MqttError MqttClient::publishIfSubscribed(const Topic& topic, MqttMessage& msg)
 	debug("mqttclient publish " << subscriptions.size());
 	if (isSubscribedTo(topic))
 	{
-		if (client)
+		if (tcp_client)
 			retval = msg.sendTo(this);
 		else
 		{
