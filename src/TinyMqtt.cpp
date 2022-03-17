@@ -90,11 +90,11 @@ void MqttClient::connect(std::string broker, uint16_t port, uint16_t ka)
 	if (client) delete client;
 	client = new TcpClient;
 
-	debug("Trying to connect to " << broker.c_str() << ':' << port);
+	debug("Trying to connect to " << mqtt_client.c_str() << ':' << port);
 #ifdef TCP_ASYNC
 	client->onData(onData, this);
 	client->onConnect(onConnect, this);
-	client->connect(broker.c_str(), port);
+	client->connect(mqtt_client.c_str(), port);
 #else
 	if (client->connect(broker.c_str(), port))
 	{
@@ -110,9 +110,9 @@ void MqttBroker::addClient(MqttClient* client)
 
 void MqttBroker::connect(const std::string& host, uint16_t port)
 {
-	if (broker == nullptr) broker = new MqttClient;
-	broker->connect(host, port);
-	broker->parent = this;	// Because connect removed the link
+	if (mqtt_client == nullptr) mqtt_client = new MqttClient;
+	mqtt_client->connect(host, port);
+	mqtt_client->parent = this;	// Because connect removed the link
 }
 
 void MqttBroker::removeClient(MqttClient* remove)
@@ -154,11 +154,11 @@ void MqttBroker::loop()
 		onClient(this, &client);
 	}
 #endif
-	if (broker)
+	if (mqtt_client)
 	{
 		// TODO should monitor broker's activity.
 		// 1 When broker disconnect and reconnect we have to re-subscribe
-		broker->loop();
+		mqtt_client->loop();
 	}
 
 
@@ -183,9 +183,9 @@ void MqttBroker::loop()
 
 MqttError MqttBroker::subscribe(const Topic& topic, uint8_t qos)
 {
-	if (broker && broker->connected())
+	if (mqtt_client && mqtt_client->connected())
 	{
-		return broker->subscribe(topic, qos);
+		return mqtt_client->subscribe(topic, qos);
 	}
 	return MqttNowhereToSend;
 }
@@ -200,19 +200,19 @@ MqttError MqttBroker::publish(const MqttClient* source, const Topic& topic, Mqtt
 	{
 		i++;
 #ifdef TINY_MQTT_DEBUG
-		Serial << "brk_" << (broker && broker->connected() ? "con" : "dis") <<
+		Serial << "brk_" << (mqtt_client && mqtt_client->connected() ? "con" : "dis") <<
 			 "	srce=" << (source->isLocal() ? "loc" : "rem") << " clt#" << i << ", local=" << client->isLocal() << ", con=" << client->connected() << endl;
 #endif
 		bool doit = false;
-		if (broker && broker->connected())	// this (MqttBroker) is connected (to a external broker)
+		if (mqtt_client && mqtt_client->connected())	// this (MqttBroker) is connected (to a external broker)
 		{
 			// ext_broker -> clients or clients -> ext_broker
-			if (source == broker)	// external broker -> internal clients
+			if (source == mqtt_client)	// external broker -> internal clients
 				doit = true;
 			else									// external clients -> this broker
 			{
 				// As this broker is connected to another broker, simply forward the msg
-				MqttError ret = broker->publishIfSubscribed(topic, msg);
+				MqttError ret = mqtt_client->publishIfSubscribed(topic, msg);
 				if (ret != MqttOk) retval = ret;
 			}
 		}
@@ -521,7 +521,7 @@ if (mesg->type() != MqttMessage::Type::PingReq && mesg->type() != MqttMessage::T
 			{
 				if (!mqtt_connected) break;
 				payload = header+2;
-				
+
 				debug("un/subscribe loop");
 				std::string qoss;
 				while(payload < mesg->end())
@@ -774,7 +774,7 @@ void MqttMessage::encodeLength()
     buffer[1] = 0x80 | (length & 0x7F);
     buffer[2] = (length >> 7);
     vheader = 3;
-      
+
     // We could check that buffer[2] < 128 (end of length encoding)
     state = Complete;
   }

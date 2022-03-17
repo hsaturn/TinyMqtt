@@ -318,5 +318,5 @@ class MqttBroker
 		const char* auth_password = "guest";
 		State state = Disconnected;
 
-		MqttClient* broker = nullptr;
+		MqttClient* mqtt_client = nullptr;
 };
