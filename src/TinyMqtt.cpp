@@ -24,7 +24,8 @@ MqttBroker::~MqttBroker()
 
 // private constructor used by broker only
 MqttClient::MqttClient(MqttBroker* parent, TcpClient* new_client)
-	: parent(parent)
+	: parent(parent),
+	  owner(Owner::Broker)
 {
 #ifdef TCP_ASYNC
 	tcp_client = new_client;
@@ -39,20 +40,27 @@ MqttClient::MqttClient(MqttBroker* parent, TcpClient* new_client)
 #else
 	alive = millis()+5000;	// TODO MAGIC client expires after 5s if no CONNECT msg
 #endif
+	debug("MqttClient -> new instance #" << parent->clients.size()
+	      << " : " << _HEX((dbg_ptr)this) << " [Broker]");
 }
 
 MqttClient::MqttClient(MqttBroker* parent, const std::string& id)
-	: parent(parent), clientId(id)
+	: parent(parent), clientId(id), owner(Owner::Application)
 {
-		tcp_client = nullptr;
+	debug("MqttClient -> new instance #: " << parent->clients.size()
+	      << " : " << _HEX((dbg_ptr)this) << " [Application]");
+	tcp_client = nullptr;
 
-		if (parent) parent->addClient(this);
+	if (parent) parent->addClient(this);
 }
 
 MqttClient::~MqttClient()
 {
+	debug("MqttClient -> destructor: " << _HEX((dbg_ptr)this));
 	close();
 	delete tcp_client;
+	tcp_client = nullptr;
+	debug("MqttClient -> destructor done: " << _HEX((dbg_ptr)this));
 }
 
 void MqttClient::close(bool bSendDisconnect)
@@ -90,7 +98,7 @@ void MqttClient::connect(std::string broker, uint16_t port, uint16_t ka)
 	if (tcp_client) delete tcp_client;
 	tcp_client = new TcpClient;
 
-	debug("Trying to connect to " << mqtt_client.c_str() << ':' << port);
+	debug("Trying to connect to " << broker.c_str() << ':' << port);
 #ifdef TCP_ASYNC
 	tcp_client->onData(onData, this);
 	tcp_client->onConnect(onConnect, this);
@@ -111,29 +119,52 @@ void MqttBroker::addClient(MqttClient* client)
 void MqttBroker::connect(const std::string& host, uint16_t port)
 {
 	if (mqtt_client == nullptr) mqtt_client = new MqttClient;
+	mqtt_client->owner = MqttClient::Owner::Broker;
 	mqtt_client->connect(host, port);
 	mqtt_client->parent = this;	// Because connect removed the link
 }
 
 void MqttBroker::removeClient(MqttClient* remove)
 {
-  for(auto it=clients.begin(); it!=clients.end(); it++)
+	auto it = std::find(clients.begin(), clients.end(), remove);
+	if (it != clients.end())
 	{
-		auto client=*it;
-		if (client==remove)
+		// TODO if this broker is connected to an external broker
+		// we have to unsubscribe remove's topics.
+		// (but doing this, check that other clients are not subscribed...)
+		// Unless -> we could receive useless messages
+		//        -> we are using (memory) one IndexedString plus its string for nothing.
+		switch (remove->owner)
 		{
-			// TODO if this broker is connected to an external broker
-			// we have to unsubscribe remove's topics.
-			// (but doing this, check that other clients are not subscribed...)
-			// Unless -> we could receive useless messages
-			//        -> we are using (memory) one IndexedString plus its string for nothing.
-			debug("Remove " << clients.size());
-			clients.erase(it);
-			debug("Client removed " << clients.size());
-			return;
+			case MqttClient::Owner::GarbageCollector:
+				// already assigned to garbage collector, should
+				// not happen, but not fatal. Keep in list, we
+				// remove it later
+				debug("removeClient(" << _HEX((dbg_ptr)remove)
+					  << ") -> WARNING: already in garbage");
+				break;
+			case MqttClient::Owner::Broker:
+				// remove later, through garbage collector
+				remove->owner = MqttClient::Owner::GarbageCollector;
+				debug("removeClient(" << _HEX((dbg_ptr)remove)
+					  << ") -> moved to garbage collector");
+				break;
+			case MqttClient::Owner::Application:
+				// user application else keeps track of this client,
+				// just remove it from the list
+				clients.erase(it);
+				debug("removeClient(" << _HEX((dbg_ptr)remove)
+					  << ") -> removed from list");
+				break;
+			default:
+				break;
 		}
 	}
-	debug("Error cannot remove client");	// TODO should not occur
+	else
+	{
+		// TODO should not occur
+		debug("ERROR: cannot remove client " << _HEX((dbg_ptr)remove));
+	}
 }
 
 void MqttBroker::onClient(void* broker_ptr, TcpClient* new_client)
@@ -147,9 +178,9 @@ void MqttBroker::onClient(void* broker_ptr, TcpClient* new_client)
 void MqttBroker::loop()
 {
 #ifndef TCP_ASYNC
-  WiFiClient wifi_client = server->available();
+	WiFiClient wifi_client = server->available();
 
-  if (wifi_client)
+	if (wifi_client)
 	{
 		onClient(this, &wifi_client);
 	}
@@ -161,23 +192,38 @@ void MqttBroker::loop()
 		mqtt_client->loop();
 	}
 
-
-  // for(auto it=clients.begin(); it!=clients.end(); it++)
-	// use index because size can change during the loop
-	for(size_t i=0; i<clients.size(); i++)
+	for (auto it = clients.begin(); it != clients.end(); )
 	{
-		auto client = clients[i];
-    if (client->connected())
-    {
+		MqttClient *client = *it;
+
+		if (client->connected())
+		{
 			client->loop();
 		}
 		else
 		{
-      debug("Client " << tcp_client->id().c_str() << "  Disconnected, parent=" << (dbg_ptr)tcp_client->parent);
+		    debug("client " << client->id().c_str() << " ("
+		    	  << _HEX((dbg_ptr)client)
+		    	  << ") disconnected, parent="
+		    	  << _HEX((dbg_ptr)client->parent)
+		    	  << " owner=" << client->owner);
 			// Note: deleting a client not added by the broker itself will probably crash later.
-			delete client;
-			break;
-    }
+			if (client->owner == MqttClient::Owner::GarbageCollector)
+			{
+				// set the parent to null to prevent removal through the
+				// implicit call to removeClient(...)
+				client->parent = nullptr;
+
+				// NOTE: the destructor of MqttClient implicitly calls close(...)
+				//       which calls removeClient(...)
+				it = clients.erase(it);
+				delete client;
+				continue;
+			}
+			else
+				removeClient(client);
+		}
+		it++;
 	}
 }
 
@@ -201,7 +247,7 @@ MqttError MqttBroker::publish(const MqttClient* source, const Topic& topic, Mqtt
 		i++;
 #ifdef TINY_MQTT_DEBUG
 		Serial << "brk_" << (mqtt_client && mqtt_client->connected() ? "con" : "dis") <<
-			 "	srce=" << (source->isLocal() ? "loc" : "rem") << " clt#" << i << ", local=" << tcp_client->isLocal() << ", con=" << tcp_client->connected() << endl;
+			 "	srce=" << (source->isLocal() ? "loc" : "rem") << " clt#" << i << ", local=" << client->isLocal() << ", con=" << client->connected() << endl;
 #endif
 		bool doit = false;
 		if (mqtt_client && mqtt_client->connected())	// this (MqttBroker) is connected (to a external broker)
@@ -309,7 +355,7 @@ void MqttClient::onConnect(void *mqttclient_ptr, TcpClient*)
 	debug("cnx: mqtt connecting");
 	msg.sendTo(mqtt);
 	msg.reset();
-	debug("cnx: mqtt sent " << (dbg_ptr)mqtt->parent);
+	debug("cnx: mqtt sent " << _HEX((dbg_ptr)mqtt->parent));
 
 	mqtt->clientAlive(0);
 }
@@ -405,9 +451,9 @@ void MqttClient::processMessage(MqttMessage* mesg)
 if (mesg->type() != MqttMessage::Type::PingReq && mesg->type() != MqttMessage::Type::PingResp)
 {
 	#ifdef NOT_ESP_CORE
-		Serial << "---> INCOMING " << _HEX(mesg->type()) << " client(" << (dbg_ptr)tcp_client << ':' << clientId << ") mem=" << " ESP.getFreeHeap() "<< endl;
+		Serial << "---> INCOMING " << _HEX(mesg->type()) << " client(" << _HEX((dbg_ptr)tcp_client) << ':' << clientId << ") mem=" << " ESP.getFreeHeap() "<< endl;
 	#else
-		Serial << "---> INCOMING " << _HEX(mesg->type()) << " client(" << (dbg_ptr)tcp_client << ':' << clientId << ") mem=" << ESP.getFreeHeap() << endl;
+		Serial << "---> INCOMING " << _HEX(mesg->type()) << " client(" << _HEX((dbg_ptr)tcp_client) << ':' << clientId << ") mem=" << ESP.getFreeHeap() << endl;
 	#endif
 	// mesg->hexdump("Incoming");
 	mesg->hexdump("Incoming");

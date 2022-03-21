@@ -29,7 +29,7 @@
 // #define TINY_MQTT_DEBUG
 
 #ifdef TINY_MQTT_DEBUG
-  #define debug(what) { Serial << (int)__LINE__ << ' ' << what << endl; delay(100); }
+  #define debug(what) { Serial << (int)__LINE__ << ' ' << what << endl; }
 #else
   #define debug(what) {}
 #endif
@@ -151,6 +151,29 @@ class MqttClient
 		FlagCleanSession = 2,	// unsupported
 		FlagReserved = 1
 	};
+
+	enum Owner
+	{
+
+		/**
+		 * owned by application, may even be a static instance,
+		 * must never been deleted automatically (this is the default value)
+		 */
+		Application,
+
+		/**
+		 * dynamically created by a MqttBroker, which also is responsible
+		 * for cleaning it up
+		 */
+		Broker,
+
+		/**
+		 * not owned by application or broker anymore,
+		 * dear garbage collector - please clean me up
+		 */
+		GarbageCollector
+	};
+
 	public:
 	  /** Constructor. If broker is not null, this is the adress of a local broker.
 		    If you want to connect elsewhere, leave broker null and use connect() **/
@@ -213,7 +236,6 @@ class MqttClient
           bool c = false;
           Serial << " [";
           for(auto s: subscriptions)
-            (void)indent;
           {
             if (c) Serial << ", ";
             Serial << s.str().c_str();
@@ -262,6 +284,7 @@ class MqttClient
 		std::set<Topic>	subscriptions;
 		std::string clientId;
 		CallBack callback = nullptr;
+		Owner owner = Application;
 };
 
 class MqttBroker
