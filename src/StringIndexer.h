@@ -32,7 +32,8 @@ class StringIndexer
 		{
 			for(auto it=strings.begin(); it!=strings.end(); it++)
 			{
-				if (strncmp(it->second.str.c_str(), str, len)==0)
+				if ((it->second.str.length() == len) &&
+					(strncmp(it->second.str.c_str(), str, len)==0))
 				{
 					it->second.used++;
 					return it->first;
