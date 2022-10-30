@@ -1,26 +1,52 @@
-name: Super-Linter
+---
+#################################
+#################################
+## Super Linter GitHub Actions ##
+#################################
+#################################
+name: Lint Code Base
 
-# Run this workflow every time a new commit pushed to your repository
 #
+# Documentation:
+# https://docs.github.com/en/actions/learn-github-actions/workflow-syntax-for-github-actions
+#
+
+#############################
+# Start the job on all push #
+#############################
 on: push
 
+###############
+# Set the Job #
+###############
 jobs:
-  # Set the job key. The key is displayed as the job name
-  # when a job name is not provided
-  super-lint:
+  build:
     # Name the Job
-    name: Lint code base
-    # Set the type of machine to run on
+    name: Lint Code Base
+    # Set the agent to run on
     runs-on: ubuntu-latest
 
+    ##################
+    # Load all steps #
+    ##################
     steps:
-      # Checks out a copy of your repository on the ubuntu-latest machine
-      - name: Checkout code
+      ##########################
+      # Checkout the code base #
+      ##########################
+      - name: Checkout Code
         uses: actions/checkout@v2
+        with:
+          # Full git history is needed to get a proper
+          # list of changed files within `super-linter`
+          fetch-depth: 0
 
-      # Runs the Super-Linter action
-      - name: Run Super-Linter
-        uses: github/super-linter@v3
+      ################################
+      # Run Linter against code base #
+      ################################
+      - name: Lint Code Base
+        uses: github/super-linter@v4
         env:
+          VALIDATE_ALL_CODEBASE: false
+          # Change to 'master' if your main branch differs
           DEFAULT_BRANCH: main
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
