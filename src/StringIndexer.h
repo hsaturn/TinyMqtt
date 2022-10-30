@@ -26,32 +26,9 @@ class StringIndexer
     #endif
   };
   public:
-    using index_t=uint8_t;
+    using index_t = uint8_t;
 
-    static index_t strToIndex(const char* str, uint8_t len)
-    {
-      for(auto it=strings.begin(); it!=strings.end(); it++)
-      {
-        if (strncmp(it->second.str.c_str(), str, len)==0)
-        {
-          it->second.used++;
-          return it->first;
-        }
-      }
-      for(index_t index=1; index; index++)
-      {
-        if (strings.find(index)==strings.end())
-        {
-          strings[index].str = std::string(str, len);
-          strings[index].used++;
-          // Serial << "Creating index " << index << " for (" << strings[index].str.c_str() << ") len=" << len << endl;
-          return index;
-        }
-      }
-      return 0;  // TODO out of indexes
-    }
-
-    static const std::string& str(const index_t& index)
+   static const std::string& str(const index_t& index)
     {
       static std::string dummy;
       const auto& it=strings.find(index);
@@ -82,6 +59,32 @@ class StringIndexer
     static uint16_t count() { return strings.size(); }
 
   private:
+    friend class IndexedString;
+
+    // increment use of str or create a new index
+    static index_t strToIndex(const char* str, uint8_t len)
+    {
+      for(auto it=strings.begin(); it!=strings.end(); it++)
+      {
+        if (it->second.str.length() == len && strcmp(it->second.str.c_str(), str)==0)
+        {
+          it->second.used++;
+          return it->first;
+        }
+      }
+      for(index_t index=1; index; index++)
+      {
+        if (strings.find(index)==strings.end())
+        {
+          strings[index].str = std::string(str, len);
+          strings[index].used++;
+          // Serial << "Creating index " << index << " for (" << strings[index].str.c_str() << ") len=" << len << endl;
+          return index;
+        }
+      }
+      return 0;  // TODO out of indexes
+    }
+
     static std::map<index_t, StringCounter> strings;
 };
 

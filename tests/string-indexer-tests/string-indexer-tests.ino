@@ -62,6 +62,14 @@ test(indexer_same_strings_should_equal)
 	assertTrue(one == two);
 }
 
+test(indexer_compare_strings_with_same_beginning)
+{
+  IndexedString two("one_two");
+  IndexedString one("one");
+
+  assertNotEqual(one.getIndex(), two.getIndex());
+}
+
 test(indexer_indexed_operator_eq)
 {
 	IndexedString one("one");
