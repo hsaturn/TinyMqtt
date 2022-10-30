@@ -20,6 +20,14 @@
 #else
   #define dbg_ptr uint32_t
 #endif
+
+#ifdef WIO_TERMINAL
+  // Uncommon board handling
+  // If you have a problem with this line, just remove it.
+  // Note: https://github.com/hsaturn/TinyMqtt/issues/41
+  #include <rpcWiFi.h>
+#endif
+
 #include <vector>
 #include <set>
 #include <string>
