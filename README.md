@@ -22,6 +22,12 @@ TinyMqtt is a small, fast and capable Mqtt Broker and Client for Esp8266 / Esp32
   proxy for clients that are connected to it.
 - zeroconf, this is a strange but very powerful mode where
   all brokers tries to connect together on the same local network.
+- small memory footprint (very efficient topic storage)
+
+## Limitations
+
+- Max of 255 different topics can be stored (change index_t type to allow more)
+- No Qos because messages are not queued but immediately sent to clients
 
 ## Quickstart
 
