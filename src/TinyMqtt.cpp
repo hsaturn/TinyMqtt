@@ -768,12 +768,21 @@ void MqttMessage::add(const char* p, size_t len, bool addLength)
 
 void MqttMessage::encodeLength()
 {
-	if (state != Complete)
-	{
-		int length = buffer.size()-3;	// 3 = 1 byte for header + 2 bytes for pre-reserved length field.
-    buffer[1] = 0x80 | (length & 0x7F);
-    buffer[2] = (length >> 7);
-    vheader = 3;
+  if (state != Complete)
+  {
+    int length = buffer.size()-3;	// 3 = 1 byte for header + 2 bytes for pre-reserved length field.
+    if (length <= 0x7F)
+    {
+      buffer.erase(1,1);
+      buffer[1] = length;
+      vheader = 2;
+    }
+    else
+    {
+      buffer[1] = 0x80 | (length & 0x7F);
+      buffer[2] = (length >> 7);
+      vheader = 3;
+    }
       
     // We could check that buffer[2] < 128 (end of length encoding)
     state = Complete;

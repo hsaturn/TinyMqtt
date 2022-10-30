@@ -2,6 +2,10 @@
 #include <AUnit.h>
 #include <TinyMqtt.h>
 #include <map>
+#include <iostream>
+#include <iomanip>
+#include <sstream>
+#include <string>
 
 /**
   * TinyMqtt network unit tests.
@@ -10,7 +14,60 @@
   * Checks with a local broker. Clients must connect to the local broker
 	**/
 
-using namespace std;
+// if ascii_pos = 0, no ascii dump, else ascii dump starts after column ascii_pos
+std::string bufferToHexa(const uint8_t* buffer, size_t length, char sep = 0, size_t ascii_pos = 0)
+{
+  std::stringstream out;
+  std::string ascii;
+  std::string h("0123456789ABCDEF");
+  for(size_t i=0; i<length; i++)
+  {
+    uint8_t c = buffer[i];
+    out << h[ c >> 4] << h[ c & 0x0F ];
+    if (sep) out << sep;
+    if (ascii_pos)
+    {
+      if (c>=32)
+        ascii += c;
+      else
+        ascii +='.';
+    }
+  }
+  std::string ret(out.str());
+  if (ascii_pos)
+  {
+    while(ret.length() < ascii_pos)
+      ret += ' ';
+    ret +='[' + ascii + ']';
+  }
+  return ret;
+}
+
+void dumpMqttMessage(const uint8_t* buffer, size_t length)
+{
+  std::map<int, std::string> pkt =
+  { { MqttMessage::Unknown     , "Unknown     " },
+    { MqttMessage::Connect     , "Connect     " },
+    { MqttMessage::ConnAck     , "ConnAck     " },
+    { MqttMessage::Publish     , "Publish     " },
+    { MqttMessage::PubAck      , "PubAck      " },
+    { MqttMessage::Subscribe   , "Subscribe   " },
+    { MqttMessage::SubAck      , "SubAck      " },
+    { MqttMessage::UnSubscribe , "Unsubscribe " },
+    { MqttMessage::UnSuback    , "UnSubAck    " },
+    { MqttMessage::PingReq     , "PingReq     " },
+    { MqttMessage::PingResp    , "PingResp    " },
+    { MqttMessage::Disconnect  , "Disconnect  " } };
+
+  std::cout << "       |   data sent " << std::setw(3) << length << " : ";
+  auto it = pkt.find(buffer[0] & 0xF0);
+  if (it == pkt.end())
+    std::cout << pkt[MqttMessage::Unknown];
+  else
+    std::cout << it->second;
+
+  std::cout << bufferToHexa(buffer, length, ' ', 60) << std::endl;
+}
 
 String toString(const IPAddress& ip)
 {
@@ -299,7 +356,7 @@ test(network_hudge_payload)
 
   MqttClient subscriber(&broker);
   subscriber.setCallback(onPublish);
-  subscriber.subscribe("a/b");
+  subscriber.subscribe("a/b");          // Note -> this does not send any byte .... (nowhere to send)
 
 	MqttClient publisher(&broker);
 	publisher.publish("a/b", payload);		// This publish is received
@@ -308,6 +365,47 @@ test(network_hudge_payload)
   assertEqual(payload, lastPayload);
 	assertEqual(lastLength, strlen(payload));
 	assertEqual(strcmp(payload, lastPayload), 0);
+}
+
+test(connack)
+{
+  const bool view = false;
+
+  NetworkObserver check(
+    [this](const WiFiClient*, const uint8_t* buffer, size_t length)
+    {
+      if (view) dumpMqttMessage(buffer, length);
+      if (buffer[0] == MqttMessage::ConnAck)
+      {
+        std::string hex = bufferToHexa(buffer, length);
+        assertStringCaseEqual(hex.c_str(), "20020000");
+      }
+    }
+  );
+
+  start_servers(2, true);
+  assertEqual(WiFi.status(), WL_CONNECTED);
+
+  MqttBroker broker(1883);
+  broker.begin();
+  IPAddress broker_ip = WiFi.localIP();
+
+  ESP8266WiFiClass::selectInstance(2);
+  MqttClient client;
+  client.connect(broker_ip.toString().c_str(), 1883);
+  broker.loop();
+
+  assertTrue(broker.clientsCount() == 1);
+  assertTrue(client.connected());
+
+  MqttClient::counters[MqttMessage::Type::SubAck] = 0;
+  client.subscribe("a/b");
+
+  // TODO how to avoid these loops ???
+  broker.loop();
+  client.loop();
+
+  assertEqual(MqttClient::counters[MqttMessage::Type::SubAck], 1);
 }
 
 //----------------------------------------------------------------------------
