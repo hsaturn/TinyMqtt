@@ -8,7 +8,7 @@
 MqttBroker::MqttBroker(uint16_t port)
 {
   server = new TcpServer(port);
-#ifdef TCP_ASYNC
+#ifdef TINY_MQTT_ASYNC
   server->onClient(onClient, this);
 #endif
 }
@@ -26,7 +26,7 @@ MqttBroker::~MqttBroker()
 MqttClient::MqttClient(MqttBroker* parent, TcpClient* new_client)
   : parent(parent)
 {
-#ifdef TCP_ASYNC
+#ifdef TINY_MQTT_ASYNC
   client = new_client;
   client->onData(onData, this);
   // client->onConnect() TODO
@@ -91,7 +91,7 @@ void MqttClient::connect(std::string broker, uint16_t port, uint16_t ka)
   client = new TcpClient;
 
   debug("Trying to connect to " << broker.c_str() << ':' << port);
-#ifdef TCP_ASYNC
+#ifdef TINY_MQTT_ASYNC
   client->onData(onData, this);
   client->onConnect(onConnect, this);
   client->connect(broker.c_str(), port);
@@ -146,7 +146,7 @@ void MqttBroker::onClient(void* broker_ptr, TcpClient* client)
 
 void MqttBroker::loop()
 {
-#ifndef TCP_ASYNC
+#ifndef TINY_MQTT_ASYNC
   WiFiClient client = server->available();
 
   if (client)
@@ -281,7 +281,7 @@ void MqttClient::loop()
       // there is no need to send one PingReq per instance.
     }
   }
-#ifndef TCP_ASYNC
+#ifndef TINY_MQTT_ASYNC
   while(client && client->available()>0)
   {
     message.incoming(client->read());
@@ -314,7 +314,7 @@ void MqttClient::onConnect(void *mqttclient_ptr, TcpClient*)
   mqtt->clientAlive(0);
 }
 
-#ifdef TCP_ASYNC
+#ifdef TINY_MQTT_ASYNC
 void MqttClient::onData(void* client_ptr, TcpClient*, void* data, size_t len)
 {
   char* char_ptr = static_cast<char*>(data);

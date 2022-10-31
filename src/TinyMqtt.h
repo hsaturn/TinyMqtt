@@ -1,17 +1,17 @@
 #pragma once
 
-// TODO Should add a AUnit with both TCP_ASYNC and not TCP_ASYNC
-// #define TCP_ASYNC  // Uncomment this to use ESPAsyncTCP instead of normal cnx
+// TODO Should add a AUnit with both TINY_MQTT_ASYNC and not TINY_MQTT_ASYNC
+// #define TINY_MQTT_ASYNC  // Uncomment this to use ESPAsyncTCP instead of normal cnx
 
 #if defined(ESP8266) || defined(EPOXY_DUINO)
-  #ifdef TCP_ASYNC
+  #ifdef TINY_MQTT_ASYNC
     #include <ESPAsyncTCP.h>
   #else
     #include <ESP8266WiFi.h>
   #endif
 #elif defined(ESP32)
   #include <WiFi.h>
-  #ifdef TCP_ASYNC
+  #ifdef TINY_MQTT_ASYNC
     #include <AsyncTCP.h> // https://github.com/me-no-dev/AsyncTCP
   #endif
 #endif
@@ -42,7 +42,7 @@
   #define debug(what) {}
 #endif
 
-#ifdef TCP_ASYNC
+#ifdef TINY_MQTT_ASYNC
   using TcpClient = AsyncClient;
   using TcpServer = AsyncServer;
 #else
@@ -240,7 +240,7 @@ class MqttClient
 
     // event when tcp/ip link established (real or fake)
     static void onConnect(void * client_ptr, TcpClient*);
-#ifdef TCP_ASYNC
+#ifdef TINY_MQTT_ASYNC
     static void onData(void* client_ptr, TcpClient*, void* data, size_t len);
 #endif
     MqttError sendTopic(const Topic& topic, MqttMessage::Type type, uint8_t qos);
