@@ -221,7 +221,6 @@ class MqttClient
           bool c = false;
           Serial << " [";
           for(auto s: subscriptions)
-            (void)indent;
           {
             if (c) Serial << ", ";
             Serial << s.str().c_str();
