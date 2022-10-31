@@ -5,7 +5,13 @@ tests:
 		$(MAKE) -C $$(dirname $$i) -j; \
 	done
 
-runtests: tests
+debugtest:
+	set -e; \
+	$(MAKE) clean; \
+	$(MAKE) -C debug-mode -j; \
+	debug-mode/debug-tests.out
+
+runtests: clean tests
 	set -e; \
 	for i in *-tests/Makefile; do \
 		echo '==== Running:' $$(dirname $$i); \
