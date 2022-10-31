@@ -11,7 +11,9 @@ debugtest:
 	$(MAKE) -C debug-mode -j; \
 	debug-mode/debug-tests.out
 
-runtests: clean tests
+runtests: debugtest
+	$(MAKE) clean
+	$(MAKE) tests
 	set -e; \
 	for i in *-tests/Makefile; do \
 		echo '==== Running:' $$(dirname $$i); \
