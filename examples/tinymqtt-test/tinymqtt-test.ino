@@ -1,3 +1,5 @@
+// vim: ts=2 sw=2
+#define TINY_MQTT_DEBUG
 #include <TinyMqtt.h>       // https://github.com/hsaturn/TinyMqtt
 #include <MqttStreaming.h>
 #if defined(ESP8266)
@@ -33,14 +35,19 @@ std::string topic="sensor/temperature";
 void onPublish(const MqttClient* srce, const Topic& topic, const char* payload, size_t length)
 {
 	Serial << "--> " << srce->id().c_str() << ": ======> received " << topic.c_str();
-	if (payload) Serial << ", payload[" << length << "]=[";
-	while(length--)
+	if (payload)
 	{
-		const char c=*payload++;
-		if (c!=10 and c!=13 and c <32) Serial << '?';
-		Serial << *payload++;
+		Serial << ", payload[" << length << "]=[";
+		while(length--)
+		{
+			const char c=*payload++;
+			if (c<32)
+				Serial << '?';
+			else
+				Serial << c;
+		}
+		Serial << ']' << endl;
 	}
-	Serial<< endl;
 }
 
 std::map<std::string, MqttClient*> clients;
@@ -673,7 +680,12 @@ void eval(std::string& cmd)
 		else if (compare(s, "broker"))
 		{
 			std::string id=getword(cmd);
-			if (id.length() or brokers.find(id)!=brokers.end())
+      if (clients.find(id) != clients.end())
+      {
+        Serial << "A client already have that name" << endl;
+        cmd.clear();
+      }
+			else if (id.length() or brokers.find(id)!=brokers.end())
 			{
 				int port=getint(cmd, 0);
 				if (port)
@@ -685,16 +697,26 @@ void eval(std::string& cmd)
 					Serial << "new broker (" << id.c_str() << ")" << endl;
 				}
 				else
+        {
 					Serial << "Missing port" << endl;
+          cmd.clear();
+        }
 			}
 			else
+      {
 				Serial << "Missing or existing broker name (" << id.c_str() << ")" << endl;
-			cmd+=" ls";
+        cmd.clear();
+      }
 		}
 		else if (compare(s, "client"))
 		{
 			std::string id=getword(cmd);
-			if (id.length() or clients.find(id)!=clients.end())
+      if (brokers.find(id) != brokers.end())
+      {
+				Serial << "A broker have that name" << endl;
+				cmd.clear();
+      }
+			else if (id.length() or clients.find(id)!=clients.end())
 			{
 				s=getword(cmd);	// broker name
 				if (s=="" or brokers.find(s) != brokers.end())
@@ -711,11 +733,14 @@ void eval(std::string& cmd)
 				else if (s.length())
 				{
 					Serial << " not found." << endl;
+				  cmd.clear();
 				}
 			}
 			else
+      {
 				Serial << "Missing or existing client name" << endl;
-			cmd+=" ls";
+        cmd.clear();
+ 			}
 		}
 		else if (compare(s, "set"))
 		{
@@ -766,7 +791,9 @@ void eval(std::string& cmd)
 		{
 			Serial << "syntax:" << endl;
 			Serial << "  MqttBroker:" << endl;
-			Serial << "    broker {name} {port} : create a new broker" << endl;
+			Serial << "    broker {broker_name} {port} : create a new broker" << endl;
+      Serial << "      broker_name.delete : delete a broker (buggy)" << endl;
+      Serial << "      broker_name.view   : dump a broker" << endl;
 			Serial << endl;
 			Serial << "  MqttClient:" << endl;
 			Serial << "    client {name} {parent broker} : create a client then" << endl;
@@ -775,17 +802,18 @@ void eval(std::string& cmd)
 			Serial << "      name.publish [topic][payload]" << endl;
 			Serial << "      name.view" << endl;
 			Serial << "      name.delete" << endl;
+			Serial << endl;
 
 			automatic::help();
 			Serial << endl;
-			Serial << "    help" << endl;
-			Serial << "    blink [Dx on_ms off_ms]" << endl;
-			Serial << "    ls / ip / reset" << endl;
-			Serial << "    set [name][value]" << endl;
-			Serial << "    !  repeat last command" << endl;
+			Serial << "  help" << endl;
+			Serial << "  blink [Dx on_ms off_ms]    : make pin blink" << endl;
+			Serial << "  ls / ip / reset" << endl;
+			Serial << "  set [name][value]" << endl;
+			Serial << "  !  repeat last command" << endl;
 			Serial << endl;
 			Serial << "  echo [on|off] or strings" << endl;
-			Serial << "  every ms [command]; every list; every remove [nr|all], every (on|off) [#]" << endl;
+			Serial << "  every ms [command]; every list; every remove [nr|all]; every (on|off) [#]" << endl;
 			Serial << "  on {output}; off {output}" << endl;
 			Serial << "  $id : name of the client." << endl;
 			Serial << "  rnd[(min[,max])] random number." << endl;
@@ -855,11 +883,6 @@ void loop()
   MDNS.update();
   #endif
 
-	if (MqttClient::counter != count)
-	{
-		Serial << "# " << MqttClient::counter << endl;
-		count = MqttClient::counter;
-	}
 	for(auto it: brokers)
 		it.second->loop();
 
