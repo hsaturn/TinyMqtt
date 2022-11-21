@@ -636,9 +636,65 @@ if (mesg->type() != MqttMessage::Type::PingReq && mesg->type() != MqttMessage::T
 bool Topic::matches(const Topic& topic) const
 {
   if (getIndex() == topic.getIndex()) return true;
-  if (str() == topic.str()) return true;
-  return false;
+  const char* p1 = c_str();
+  const char* p2 = topic.c_str();
+
+  if (p1 == p2) return true;
+  if (*p2 == '$' and *p1 != '$') return false;
+
+  while(*p1 and *p2)
+  {
+    if (*p1 == '+')
+    {
+      ++p1;
+      if (*p1 and *p1!='/') return false;
+      if (*p1) ++p1;
+      while(*p2 and *p2++!='/');
+    }
+    else if (*p1 == '#')
+    {
+      if (*++p1==0) return true;
+      return false;
+    }
+    else if (*p1 == '*')
+    {
+      const char c=*(p1+1);
+      if (c==0) return true;
+      if (c!='/') return false;
+      const char*p = p1+2;
+      while(*p and *p2)
+      {
+        if (*p == *p2)
+        {
+          if (*p==0) return true;
+          if (*p=='/')
+          {
+            p1=p;
+            break;
+          }
+        }
+        else
+        {
+          while(*p2 and *p2++!='/');
+          break;
+        }
+        ++p;
+        ++p2;
+      }
+      if (*p==0) return true;
+    }
+    else if (*p1 == *p2)
+    {
+      ++p1;
+      ++p2;
+    }
+    else
+      return false;
+  }
+  if (*p1=='/' and p1[1]=='#' and p1[2]==0) return true;
+  return *p1==0 and *p2==0;
 }
+
 
 // publish from local client
 MqttError MqttClient::publish(const Topic& topic, const char* payload, size_t pay_length)

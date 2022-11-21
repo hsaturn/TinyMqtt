@@ -93,6 +93,104 @@ test(nowifi_publish_should_be_dispatched_to_clients)
 	assertEqual(published["B"]["a/c"], 0);
 }
 
+test(nowifi_subscribe_with_star_wildcard)
+{
+	published.clear();
+	assertEqual(broker.clientsCount(), (size_t)0);
+
+	MqttClient subscriber(&broker, "A");
+	subscriber.setCallback(onPublish);
+	subscriber.subscribe("house/*/temp");
+
+	MqttClient publisher(&broker);
+	publisher.publish("house/bedroom/temp");
+	publisher.publish("house/kitchen/temp");
+	publisher.publish("house/living_room/tv/temp");
+	publisher.publish("building/location1/bedroom/temp");
+
+	assertEqual(published["A"]["house/bedroom/temp"], 1);
+	assertEqual(published["A"]["house/kitchen/temp"], 1);
+	assertEqual(published["A"]["house/living_room/tv/temp"], 1);
+	assertEqual(published["A"]["building/location1/bedroom/temp"], 0);
+}
+
+test(nowifi_subscribe_with_plus_wildcard)
+{
+	published.clear();
+	assertEqual(broker.clientsCount(), (size_t)0);
+
+	MqttClient subscriber(&broker, "A");
+	subscriber.setCallback(onPublish);
+	subscriber.subscribe("house/+/temp");
+
+	MqttClient publisher(&broker);
+	publisher.publish("house/bedroom/temp");
+	publisher.publish("house/kitchen/temp");
+	publisher.publish("house/living_room/tv/temp");
+	publisher.publish("building/location1/bedroom/temp");
+
+	assertEqual(published["A"]["house/bedroom/temp"], 1);
+	assertEqual(published["A"]["house/kitchen/temp"], 1);
+	assertEqual(published["A"]["house/living_room/tv/temp"], 0);
+	assertEqual(published["A"]["building/location1/bedroom/temp"], 0);
+}
+
+test(nowifi_should_not_receive_sys_msg)
+{
+	published.clear();
+	assertEqual(broker.clientsCount(), (size_t)0);
+
+	MqttClient subscriber(&broker, "A");
+	subscriber.setCallback(onPublish);
+	subscriber.subscribe("+/data");
+
+	MqttClient publisher(&broker);
+	publisher.publish("$SYS/data");
+
+	assertEqual(published["A"]["$SYS/data"], 0);
+}
+
+test(nowifi_subscribe_with_mixed_wildcards)
+{
+	published.clear();
+	assertEqual(broker.clientsCount(), (size_t)0);
+
+	MqttClient subscriber(&broker, "A");
+	subscriber.setCallback(onPublish);
+	subscriber.subscribe("+/data/#");
+
+	MqttClient publisher(&broker);
+	publisher.publish("node1/data/update");
+	publisher.publish("node2/data/delta");
+	publisher.publish("node3/data");
+
+	assertEqual(published["A"]["node1/data/update"], 1);
+	assertEqual(published["A"]["node2/data/delta"], 1);
+	assertEqual(published["A"]["node3/data"], 1);
+}
+
+test(nowifi_unsubscribe_with_wildcards)
+{
+	published.clear();
+	assertEqual(broker.clientsCount(), (size_t)0);
+
+	MqttClient subscriber(&broker, "A");
+	subscriber.setCallback(onPublish);
+	subscriber.subscribe("one/two/+");
+	subscriber.subscribe("one/two/three");
+
+	MqttClient publisher(&broker);
+	publisher.publish("one/two/three");
+	publisher.publish("one/two/four");
+
+	subscriber.unsubscribe("one/two/+");
+	publisher.publish("one/two/five");
+
+	assertEqual(published["A"]["one/two/three"], 1);
+	assertEqual(published["A"]["one/two/four"], 1);
+	assertEqual(published["A"]["one/two/five"], 0);
+}
+
 test(nowifi_unsubscribe)
 {
 	published.clear();
