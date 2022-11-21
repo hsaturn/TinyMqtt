@@ -17,12 +17,14 @@ TinyMqtt is a small, fast and capable Mqtt Broker and Client for Esp8266 / Esp32
   The max I've seen was 2k msg/s (1 client 1 subscription)
 - Act as as a mqtt broker and/or a mqtt client
 - Mqtt 3.1.1 / Qos 0 supported
+- Wildcards supported (+ # $ and * (even if not part of the spec...))
 - Standalone (can work without WiFi) (degraded/local mode)
 - Brokers can connect to another broker and becomes then a
   proxy for clients that are connected to it.
 - zeroconf, this is a strange but very powerful mode where
   all brokers tries to connect together on the same local network.
 - small memory footprint (very efficient topic storage)
+- TinyMQTT is largely unit tested, so once a bug is fixed, it is fixed forever
 
 ## Limitations
 
@@ -66,7 +68,7 @@ no need for having tons of clients (also RAM is the problem with many clients)
 * ~~MqttClient auto re-subscribe (::resubscribe works bad on broker.emqx.io)~~
 * MqttClient auto reconnection
 * MqttClient user/password
-* Wildcards (I may implement only # as I'm not interrested by a clever and cpu consuming matching)
+* ~~Wildcards (I may implement only # as I'm not interrested by a clever and cpu consuming matching)~~
 * I suspect that MqttClient::parent could be removed and replaced with a simple boolean
   (this'll need to rewrite a few functions)
 
