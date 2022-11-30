@@ -1,13 +1,13 @@
 #include "TinyMqtt.h"
 #include <sstream>
 
+#ifdef TINY_MQTT_DEBUG
 static auto green = TinyConsole::green;
 static auto cyan = TinyConsole::cyan;
 static auto white = TinyConsole::white;
 static auto red = TinyConsole::red;
 static auto yellow = TinyConsole::yellow;
 
-#ifdef TINY_MQTT_DEBUG
 int TinyMqtt::debug=2;
 #endif
 
