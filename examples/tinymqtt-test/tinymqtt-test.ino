@@ -1,5 +1,6 @@
-// vim: ts=2 sw=2
+// vim: ts=2 sw=2 expandtab smartindent
 #define TINY_MQTT_DEBUG
+#include <TinyConsole.h>
 #include <TinyMqtt.h>       // https://github.com/hsaturn/TinyMqtt
 #include <MqttStreaming.h>
 #if defined(ESP8266)
@@ -15,6 +16,10 @@
 #include <map>
 
 bool echo_on = true;
+auto green = TinyConsole::green;
+auto red = TinyConsole::red;
+auto white = TinyConsole::white;
+auto cyan = TinyConsole::cyan;
 
 /** Very complex example
   * Console allowing to make any kind of test,
@@ -27,26 +32,26 @@ bool echo_on = true;
 	* TODO examples of scripts
   */
 
-const char* ssid = "";
-const char* password = "";
+const char* ssid = "Freebox-786A2F";
+const char* password = "usurpavi8dalum64lumine?";
 
 std::string topic="sensor/temperature";
 
 void onPublish(const MqttClient* srce, const Topic& topic, const char* payload, size_t length)
 {
-	Serial << "--> " << srce->id().c_str() << ": ======> received " << topic.c_str();
+	Console << cyan << "--> " << srce->id().c_str() << ": received " << topic.c_str() << white;
 	if (payload)
 	{
-		Serial << ", payload[" << length << "]=[";
+		Console << ", payload[" << length << "]=[";
 		while(length--)
 		{
 			const char c=*payload++;
 			if (c<32)
-				Serial << '?';
+				Console << '?';
 			else
-				Serial << c;
+				Console << c;
 		}
-		Serial << ']' << endl;
+		Console << ']' << endl;
 	}
 }
 
@@ -57,23 +62,26 @@ void setup()
 {
 	WiFi.persistent(false); // https://github.com/esp8266/Arduino/issues/1054
   Serial.begin(115200);
+	Console.begin(Serial);
+	Console.setPrompt("> ");
+	Console.setCallback(onCommand);
 	delay(500);
 
-  Serial << endl << endl;
-  Serial << "***************************************************************" << endl;
-  Serial << "*  Welcome to the TinyMqtt console" << endl;
-  Serial << endl;
-  Serial << "*  The console allows to test all features of the libraries." << endl;
-  Serial << endl;
+	Console.cls();
+  Console << endl << endl;
+  Console << yellow
+			    << "***************************************************************" << endl;
+  Console << "*  Welcome to the TinyMqtt console" << endl;
+  Console << "*  The console allows to test all features of the libraries." << endl;
+	Console << "*  Enter help to view the list of commands." << endl;
+  Console << "***************************************************************" << endl;
+  Console << endl;
   if (strlen(ssid)==0)
-    Serial << "*  WARNING: You may want to modify ssid/password in order" << endl
-		       << "            to reflect your Wifi configuration." << endl;
-  Serial << endl;
-	Serial << "*  Enter help to view the list of commands." << endl;
-  Serial << "***************************************************************" << endl;
-  Serial << endl;
+    Console << red << "*  ERROR: You must modify ssid/password in order" << endl
+		       << "            to be able to connect to your Wifi network." << endl;
+  Console << endl << white;
 
-	Serial << "Connecting to '" << ssid << "' ";
+	Console << "Connecting to '" << ssid << "' ";
 
   WiFi.mode(WIFI_STA);
   WiFi.begin(ssid, password);
@@ -81,16 +89,16 @@ void setup()
   WiFi.begin(ssid, password);
 
   while (WiFi.status() != WL_CONNECTED)
-  { Serial << '-'; delay(500); }
+  { Console << '-'; delay(500); }
 
-  Serial << endl << "Connected to " << ssid << "IP address: " << WiFi.localIP() << endl;
+  Console << endl << "Connected to " << ssid << "IP address: " << WiFi.localIP() << endl;
 
   const char* name="tinytest";
-  Serial << "Starting MDNS, name= " << name;
+  Console << "Starting MDNS, name= " << name;
   if (!MDNS.begin(name))
-    Serial << "  error, not available." << endl;
+    Console << "  error, not available." << endl;
   else
-    Serial << " ok." << endl;
+    Console << " ok." << endl;
 
 
 	MqttBroker* broker = new MqttBroker(1883);
@@ -144,7 +152,7 @@ std::string getword(std::string& str, const char* if_empty/*=nullptr*/, char sep
 			{
 				sword.erase(0,1);
 				to = getint(sword);
-				if (sword[0]!=')') Serial << "Missing ')'" << endl;
+				if (sword[0]!=')') Console << "Missing ')'" << endl;
 			}
 			else
 			{
@@ -155,7 +163,7 @@ std::string getword(std::string& str, const char* if_empty/*=nullptr*/, char sep
 		}
 		else
 		{
-			Serial << "Missing '('" << endl;
+			Console << "Missing '('" << endl;
 		}
 	}
 	while(str[0]==' ') str.erase(0,1);
@@ -229,7 +237,7 @@ void convertToCommand(std::string& search)
 		search = matches;
 	else if (count>1)
 	{
-		Serial << "Ambiguous command: " << matches << endl;
+		Console << "Ambiguous command: " << matches << endl;
 		search.clear();
 	}
 }
@@ -268,10 +276,10 @@ void replaceVars(std::string& cmd)
 }
 
 // publish at regular interval
-class automatic
+class Automatic
 {
 	public:
-		automatic(MqttClient* clt, uint32_t intervl)
+		Automatic(MqttClient* clt, uint32_t intervl)
 		: client(clt), topic_(::topic)
 		{
 			interval(intervl);
@@ -290,7 +298,7 @@ class automatic
 			if (!bon) return;
 			if (interval_ && millis() > timer_)
 			{
-				Serial << "AUTO PUBLISH " << interval_ << endl;
+				Console << "AUTO PUBLISH " << interval_ << endl;
 				timer_ += interval_;
 				client->publish(topic_, std::string(String(15+millis()%10).c_str()));
 			}
@@ -306,7 +314,7 @@ class automatic
 
 		static void command(MqttClient* who, std::string cmd)
 		{
-			automatic* autop = nullptr;
+			Automatic* autop = nullptr;
 			if (autos.find(who) != autos.end())
 			{
 				autop=autos[who];
@@ -317,10 +325,10 @@ class automatic
 				std::string seconds=getword(cmd, "10000");
 				if (autop) delete autop;
 				std::string top = getword(cmd, ::topic.c_str());
-				autos[who] = new automatic(who, atol(seconds.c_str()));
+				autos[who] = new Automatic(who, atol(seconds.c_str()));
 				autos[who]->topic(top);
 				autos[who]->bon=true;
-				Serial << "New auto (" << seconds.c_str() << " topic:" << top.c_str() << ')' << endl;
+				Console << "New auto (" << seconds.c_str() << " topic:" << top.c_str() << ')' << endl;
 			}
 			else if (autop)
 			{
@@ -339,18 +347,18 @@ class automatic
 						if (i)
 							autop->interval(atol(s.c_str()));
 						else
-							Serial << "Bad value" << endl;
+							Console << "Bad value" << endl;
 					}
 				  else if (s=="view")
 					{
-						Serial << "  automatic "
+						Console << "  Automatic "
 							<< (int32_t)autop->client
 							<< " interval " << autop->interval_
 							<< (autop->bon ? " on" : " off") << endl;
 					}
 					else
 					{
-						Serial << "Unknown auto command (" << s.c_str() << ")" << endl;
+						Console << "Unknown auto command (" << s.c_str() << ")" << endl;
 						break;
 					}
 					s=getword(cmd);
@@ -362,15 +370,15 @@ class automatic
 					command(it.first, s+' '+cmd);
 			}
 			else
-				Serial << "what ? (" << s.c_str() << ")" << endl;
+				Console << "what ? (" << s.c_str() << ")" << endl;
 		}
 
 		static void help()
 		{
-					Serial << "    auto [$id] on/off" << endl;
-					Serial << "    auto [$id] view" << endl;
-					Serial << "    auto [$id] interval [s]" << endl;
-					Serial << "    auto [$id] create [millis] [topic]" << endl;
+					Console << "    auto [$id] on/off" << endl;
+					Console << "    auto [$id] view" << endl;
+					Console << "    auto [$id] interval [s]" << endl;
+					Console << "    auto [$id] create [millis] [topic]" << endl;
 		}
 
 	private:
@@ -379,10 +387,10 @@ class automatic
 		uint32_t timer_;
 		std::string topic_;
 		bool bon=false;
-		static std::map<MqttClient*, automatic*> autos;
+		static std::map<MqttClient*, Automatic*> autos;
 		float temp=19;
 };
-std::map<MqttClient*, automatic*> automatic::autos;
+std::map<MqttClient*, Automatic*> Automatic::autos;
 
 bool compare(std::string s, const char* cmd)
 {
@@ -407,13 +415,18 @@ struct Every
 
 	void dump()
 	{
-		Serial << (active ? "enabled  " : "disabled ");
-		auto mill=millis();
-		Serial << ms << "ms [" << cmd << "] next in ";
-		if (mill > next)
-			Serial << "now";
+		if (active)
+			Console << green << "enabled";
 		else
-			Serial << next-mill << "ms";
+			Console << red << "disabled";
+
+    Console << white << 
+		auto mill=millis();
+		Console << ms << "ms [" << cmd << "] next in ";
+		if (mill > next)
+			Console << "now";
+		else
+			Console << next-mill << "ms";
 	}
 };
 
@@ -424,6 +437,13 @@ bool blink_state[16];
 int16_t blink;
 
 std::vector<Every> everies;
+
+void onCommand(const std::string& command)
+{
+	std::string cmd=command;
+	if (cmd.substr(0,3)!="set") replaceVars(cmd);
+	eval(cmd);
+}
 
 void eval(std::string& cmd)
 {
@@ -453,7 +473,7 @@ void eval(std::string& cmd)
 				}
 				else
 				{
-					Serial << "Unknown class (" << s.c_str() << ")" << endl;
+					Console << red << "Unknown class (" << s.c_str() << ")" << white << endl;
 					cmd.clear();
 				}
 			}
@@ -477,14 +497,14 @@ void eval(std::string& cmd)
 					broker = brokers[s];
 				}
 				else
-					Serial << "Unable to find (" << s.c_str() << ")" << endl;
+					Console << red << "Unable to find (" << s.c_str() << ")" << << white << endl;
 			}
 			if (client)
 			{
 				for (auto it: clients)
 				{
 					if (it.second != client) continue;
-					Serial << "deleted" << endl;
+					Console << "deleted" << endl;
 					delete (it.second);
 					clients.erase(it.first);
 					break;
@@ -496,7 +516,7 @@ void eval(std::string& cmd)
 				for(auto it: brokers)
 				{
 					if (broker != it.second) continue;
-					Serial << "deleted" << endl;
+					Console << "deleted" << endl;
 					delete (it.second);
 					brokers.erase(it.first);
 					break;
@@ -504,13 +524,13 @@ void eval(std::string& cmd)
 				cmd += " ls";
 			}
 			else
-				Serial << "Nothing to delete" << endl;
+				Console << "Nothing to delete" << endl;
 		}
 		else if (broker)
 		{
 			if (compare(s,"connect"))
 			{
-				Serial << "NYI" << endl;
+				Console << "NYI" << endl;
 			}
 			else if (compare(s, "view"))
 			{
@@ -518,7 +538,7 @@ void eval(std::string& cmd)
 			}
 			else
 			{
-				Serial << "Unknown broker command (" << s << ")" << endl;
+				Console << "Unknown broker command (" << s << ")" << endl;
 				s.clear();
 			}
 		}
@@ -527,7 +547,7 @@ void eval(std::string& cmd)
 			if (compare(s,"connect"))
 			{
 				client->connect(getip(cmd,"192.168.1.40").c_str(), getint(cmd, 1883), getint(cmd, 60));
-				Serial << (client->connected() ? "connected." : "not connected") << endl;
+				Console << (client->connected() ? "connected." : "not connected") << endl;
 			}
 			else if (compare(s,"publish"))
 			{
@@ -547,7 +567,7 @@ void eval(std::string& cmd)
 			}
 			else
 			{
-				Serial << "Unknown client command (" << s << ")" << endl;
+				Console << "Unknown client command (" << s << ")" << endl;
 				s.clear();
 			}
 		}
@@ -572,10 +592,10 @@ void eval(std::string& cmd)
 				echo_on = false;
 			else
 			{
-				Serial << s << ' ';
+				Console << s << ' ';
 				while(cmd.length())
 				{
-					Serial << getword(cmd) << ' ';
+					Console << getword(cmd) << ' ';
 				}
 			}
 		}
@@ -592,7 +612,7 @@ void eval(std::string& cmd)
 					every.next=millis()+ms;
 					everies.push_back(every);
 					every.dump();
-					Serial << endl;
+					Console << endl;
 					cmd.clear();
 				}
 			}
@@ -607,7 +627,7 @@ void eval(std::string& cmd)
 					{
 						if (every.active != active)
 						{
-							Serial << "every #" << count << (active ? " on" :" off") << endl;
+							Console << "every #" << count << (active ? " on" :" off") << endl;
 							every.active = active;
 							every.underrun = 0;
 						}
@@ -618,19 +638,19 @@ void eval(std::string& cmd)
 			else if (compare(cmd, "list") or cmd.length()==0)
 			{
 				getword(cmd);
-				Serial << "List of everies (ms=" << millis() << ")" << endl;
+				Console << "List of everies (ms=" << millis() << ")" << endl;
 				uint8_t count=0;
 				for(auto& every: everies)
 				{
-					Serial << count << ": ";
+					Console << count << ": ";
 					every.dump();
-					Serial << endl;
+					Console << endl;
 					count++;
 				}
 			}
 			else if (compare(cmd, "remove"))
 			{
-				Serial << "Removing..." << endl;
+				Console << "Removing..." << endl;
 				getword(cmd);
 				int8_t every=getint(cmd, -1);
 				if (every==-1 and compare(cmd, "last") and everies.size())
@@ -648,10 +668,10 @@ void eval(std::string& cmd)
 					everies.erase(everies.begin()+every);
 				}
 				else
-					Serial << "Bad colmmand" << endl;
+					Console << "Bad colmmand" << endl;
 			}
 			else
-				Serial << "Bad command" << endl;
+				Console << "Bad command" << endl;
 		}
 		else if (compare(s, "blink"))
 		{
@@ -662,7 +682,7 @@ void eval(std::string& cmd)
 				blink_ms_off[blink_nr]=getint(cmd, blink_ms_on[blink_nr]);
 				pinMode(blink_nr, OUTPUT);
 				blink_next[blink_nr] = millis();
-				Serial << "Blink " << blink_nr << ' ' << (blink_ms_on[blink_nr] ? "on" : "off") << endl;
+				Console << "Blink " << blink_nr << ' ' << (blink_ms_on[blink_nr] ? "on" : "off") << endl;
 				if (blink_ms_on[blink_nr])
 					blink |= 1<< blink_nr;
 				else
@@ -673,7 +693,7 @@ void eval(std::string& cmd)
 		}
 		else if (compare(s, "auto"))
 		{
-			automatic::command(client, cmd);
+			Automatic::command(client, cmd);
 			if (client == nullptr)
 				cmd.clear();
 		}
@@ -682,7 +702,7 @@ void eval(std::string& cmd)
 			std::string id=getword(cmd);
       if (clients.find(id) != clients.end())
       {
-        Serial << "A client already have that name" << endl;
+        Console << "A client already have that name" << endl;
         cmd.clear();
       }
 			else if (id.length() or brokers.find(id)!=brokers.end())
@@ -694,17 +714,17 @@ void eval(std::string& cmd)
 					broker->begin();
 
 					brokers[id] = broker;
-					Serial << "new broker (" << id.c_str() << ")" << endl;
+					Console << "new broker (" << id.c_str() << ")" << endl;
 				}
 				else
         {
-					Serial << "Missing port" << endl;
+					Console << "Missing port" << endl;
           cmd.clear();
         }
 			}
 			else
       {
-				Serial << "Missing or existing broker name (" << id.c_str() << ")" << endl;
+				Console << "Missing or existing broker name (" << id.c_str() << ")" << endl;
         cmd.clear();
       }
 		}
@@ -713,7 +733,7 @@ void eval(std::string& cmd)
 			std::string id=getword(cmd);
       if (brokers.find(id) != brokers.end())
       {
-				Serial << "A broker have that name" << endl;
+				Console << "A broker have that name" << endl;
 				cmd.clear();
       }
 			else if (id.length() or clients.find(id)!=clients.end())
@@ -728,17 +748,17 @@ void eval(std::string& cmd)
 					clients[id]=client;
 					client->setCallback(onPublish);
 					client->subscribe(topic);
-					Serial << "new client (" << id.c_str() << ", " << s.c_str() << ')' << endl;
+					Console << "new client (" << id.c_str() << ", " << s.c_str() << ')' << endl;
 				}
 				else if (s.length())
 				{
-					Serial << " not found." << endl;
+					Console << " not found." << endl;
 				  cmd.clear();
 				}
 			}
 			else
       {
-				Serial << "Missing or existing client name" << endl;
+				Console << "Missing or existing client name" << endl;
         cmd.clear();
  			}
 		}
@@ -749,12 +769,12 @@ void eval(std::string& cmd)
 			{
 				for(auto it: vars)
 				{
-					Serial << "  " << it.first << " -> " << it.second << endl;
+					Console << "  " << it.first << " -> " << it.second << endl;
 				}
 			}
 			else if (commands.find(name) != commands.end())
 			{
-				Serial << "Reserved keyword (" << name << ")" << endl;
+				Console << "Reserved keyword (" << name << ")" << endl;
 				cmd.clear();
 			}
 			else
@@ -770,66 +790,66 @@ void eval(std::string& cmd)
 		}
 		else if (compare(s, "ls") or compare(s, "view"))
 		{
-			Serial << "--< " << clients.size() << " client/s. >--" << endl;
+			Console << "--< " << clients.size() << " client/s. >--" << endl;
 			for(auto it: clients)
 			{
 				it.second->dump("  ");
 			}
 
-			Serial << "--< " << brokers.size() << " brokers/s. >--" << endl;
+			Console << "--< " << brokers.size() << " brokers/s. >--" << endl;
 			for(auto it: brokers)
 			{
-				Serial << "  +-- '" << it.first.c_str() << "' " << it.second->clientsCount() << " client/s."<< endl;
+				Console << "  +-- '" << it.first.c_str() << "' " << it.second->clientsCount() << " client/s."<< endl;
 				it.second->dump("     ");
 			}
 		}
 		else if (compare(s, "reset"))
 			ESP.restart();
 		else if (compare(s, "ip"))
-			Serial << "IP: " << WiFi.localIP() << endl;
+			Console << "IP: " << WiFi.localIP() << endl;
 		else if (compare(s,"help"))
 		{
-			Serial << "syntax:" << endl;
-			Serial << "  MqttBroker:" << endl;
-			Serial << "    broker {broker_name} {port} : create a new broker" << endl;
-      Serial << "      broker_name.delete : delete a broker (buggy)" << endl;
-      Serial << "      broker_name.view   : dump a broker" << endl;
-			Serial << endl;
-			Serial << "  MqttClient:" << endl;
-			Serial << "    client {name} {parent broker} : create a client then" << endl;
-			Serial << "      name.connect  [ip] [port] [alive]" << endl;
-			Serial << "      name.[un]subscribe [topic]" << endl;
-			Serial << "      name.publish [topic][payload]" << endl;
-			Serial << "      name.view" << endl;
-			Serial << "      name.delete" << endl;
-			Serial << endl;
+			Console << "syntax:" << endl;
+			Console << "  MqttBroker:" << endl;
+			Console << "    broker {broker_name} {port} : create a new broker" << endl;
+      Console << "      broker_name.delete : delete a broker (buggy)" << endl;
+      Console << "      broker_name.view   : dump a broker" << endl;
+			Console << endl;
+			Console << "  MqttClient:" << endl;
+			Console << "    client {name} {parent broker} : create a client then" << endl;
+			Console << "      name.connect  [ip] [port] [alive]" << endl;
+			Console << "      name.[un]subscribe [topic]" << endl;
+			Console << "      name.publish [topic][payload]" << endl;
+			Console << "      name.view" << endl;
+			Console << "      name.delete" << endl;
+			Console << endl;
 
-			automatic::help();
-			Serial << endl;
-			Serial << "  help" << endl;
-			Serial << "  blink [Dx on_ms off_ms]    : make pin blink" << endl;
-			Serial << "  ls / ip / reset" << endl;
-			Serial << "  set [name][value]" << endl;
-			Serial << "  !  repeat last command" << endl;
-			Serial << endl;
-			Serial << "  echo [on|off] or strings" << endl;
-			Serial << "  every ms [command]; every list; every remove [nr|all]; every (on|off) [#]" << endl;
-			Serial << "  on {output}; off {output}" << endl;
-			Serial << "  $id : name of the client." << endl;
-			Serial << "  rnd[(min[,max])] random number." << endl;
-			Serial << "  default topic is '" << topic.c_str() << "'" << endl;
-			Serial << endl;
+			Automatic::help();
+			Console << endl;
+			Console << "  help" << endl;
+			Console << "  blink [Dx on_ms off_ms]    : make pin blink" << endl;
+			Console << "  ls / ip / reset" << endl;
+			Console << "  set [name][value]" << endl;
+			Console << "  !  repeat last command" << endl;
+			Console << endl;
+			Console << "  echo [on|off] or strings" << endl;
+			Console << "  every ms [command]; every list; every remove [nr|all]; every (on|off) [#]" << endl;
+			Console << "  on {output}; off {output}" << endl;
+			Console << "  $id : name of the client." << endl;
+			Console << "  rnd[(min[,max])] random number." << endl;
+			Console << "  default topic is '" << topic.c_str() << "'" << endl;
+			Console << endl;
 		}
 		else
 		{
 			while(s[0]==' ') s.erase(0,1);
 			if (s.length())
-				Serial << "Unknown command (" << s.c_str() << ")" << endl;
+				Console << "Unknown command (" << s.c_str() << ")" << endl;
 		}
 
 		if (retval != MqttOk)
 		{
-			Serial << "# MQTT ERROR " << retval << endl;
+			Console << "# MQTT ERROR " << retval << endl;
 		}
 	}
 }
@@ -851,7 +871,7 @@ void loop()
 			every.next += every.ms;
 			if (ms > every.next and ms > every.underrun)
 			{
-				Serial << "Underrun every #" << e << ", " <<  (ms - every.next) << "ms late" << endl;
+				Console << "Underrun every #" << e << ", " <<  (ms - every.next) << "ms late" << endl;
 				every.underrun = ms+5000;
 			}
 		}
@@ -889,30 +909,6 @@ void loop()
 	for(auto it: clients)
 		it.second->loop();
 
-	automatic::loop();
-
-	if (Serial.available())
-	{
-		static std::string cmd;
-		char c=Serial.read();
-		if (echo_on)
-			Serial << c;
-
-		if (c==10 or c==13)
-		{
-			Serial << "----------------[ " << cmd.c_str() << " ]--------------" << endl;
-			static std::string last_cmd;
-			if (cmd=="!")
-				cmd=last_cmd;
-			else
-				last_cmd=cmd;
-
-			if (cmd.substr(0,3)!="set") replaceVars(cmd);
-			eval(cmd);
-		}
-		else
-		{
-			cmd=cmd+c;
-		}
-	}
+	Automatic::loop();
+	Console::loop();
 }

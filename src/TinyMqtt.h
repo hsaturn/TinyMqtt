@@ -34,10 +34,14 @@
 #include "StringIndexer.h"
 #include <MqttStreaming.h>
 
-// #define TINY_MQTT_DEBUG
-
 #ifdef TINY_MQTT_DEBUG
-  #define debug(what) { Serial << (int)__LINE__ << ' ' << what << endl; delay(100); }
+#include <TinyConsole.h>    // https://github.com/hsaturn/TinyConsole
+  struct TinyMqtt
+  {
+    static int debug;
+  };
+
+  #define debug(what) { if (TinyMqtt::debug>=1) Console << (int)__LINE__ << ' ' << what << TinyConsole::white << endl; delay(100); }
 #else
   #define debug(what) {}
 #endif
@@ -176,7 +180,9 @@ class MqttClient
       (parent!=nullptr and client==nullptr) or
       (client and client->connected()); }
     void write(const char* buf, size_t length)
-    { if (client) client->write(buf, length); }
+    {
+      if (client) client->write(buf, length);
+    }
 
     const std::string& id() const { return clientId; }
     void id(std::string& new_id) { clientId = new_id; }
@@ -188,7 +194,7 @@ class MqttClient
     {
       callback=fun;
       #ifdef TINY_MQTT_DEBUG
-        Serial << "Callback set to " << (long)fun << endl;
+        Console << TinyConsole::magenta << "Callback set to " << (long)fun << TinyConsole::white << endl;
         if (callback) callback(this, "test/topic", "value", 5);
       #endif
     };
@@ -213,22 +219,29 @@ class MqttClient
       (void)indent;
       #ifdef TINY_MQTT_DEBUG
         uint32_t ms=millis();
-        Serial << indent << "+-- " << '\'' << clientId.c_str() << "' " << (connected() ? " ON " : " OFF");
-        Serial << ", alive=" << alive << '/' << ms << ", ka=" << keep_alive << ' ';
-        Serial << (client && client->connected() ? "" : "dis") << "connected";
+        Console << indent << "+-- " << '\'' << clientId.c_str() << "' " << (connected() ? " ON " : " OFF");
+        Console << ", alive=" << alive << '/' << ms << ", ka=" << keep_alive << ' ';
+				if (client)
+        {
+          if (client->connected())
+            Console << TinyConsole::green << "connected";
+          else
+            Console << TinyConsole::red << "disconnected";
+          Console << TinyConsole::white;
+        }
         if (subscriptions.size())
         {
           bool c = false;
-          Serial << " [";
+          Console << " [";
           for(auto s: subscriptions)
           {
-            if (c) Serial << ", ";
-            Serial << s.str().c_str();
+            if (c) Console << ", ";
+            Console << s.str().c_str();
             c=true;
           }
-          Serial << ']';
+          Console << ']';
         }
-        Serial << endl;
+        Console << TinyConsole::erase_to_end << endl;
       #endif
     }
 
@@ -256,7 +269,7 @@ class MqttClient
 
     bool mqtt_connected = false;
     char mqtt_flags;
-    uint32_t keep_alive = 60;
+    uint32_t keep_alive = 30;
     uint32_t alive;
     MqttMessage message;
 
@@ -319,7 +332,7 @@ class MqttBroker
 
     bool compareString(const char* good, const char* str, uint8_t str_len) const;
     std::vector<MqttClient*>  clients;
-    TcpServer* server;
+    TcpServer* server = nullptr;
 
     const char* auth_user = "guest";
     const char* auth_password = "guest";
