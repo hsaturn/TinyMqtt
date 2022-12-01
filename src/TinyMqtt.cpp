@@ -33,8 +33,8 @@ MqttBroker::~MqttBroker()
 }
 
 // private constructor used by broker only
-MqttClient::MqttClient(MqttBroker* parent, TcpClient* new_client)
-  : parent(parent)
+MqttClient::MqttClient(MqttBroker* local_broker, TcpClient* new_client)
+  : local_broker(local_broker)
 {
 #ifdef TINY_MQTT_ASYNC
   client = new_client;
@@ -51,12 +51,12 @@ MqttClient::MqttClient(MqttBroker* parent, TcpClient* new_client)
 #endif
 }
 
-MqttClient::MqttClient(MqttBroker* parent, const std::string& id)
-  : parent(parent), clientId(id)
+MqttClient::MqttClient(MqttBroker* local_broker, const std::string& id)
+  : local_broker(local_broker), clientId(id)
 {
     client = nullptr;
 
-    if (parent) parent->addClient(this);
+    if (local_broker) local_broker->addClient(this);
 }
 
 MqttClient::~MqttClient()
@@ -80,18 +80,18 @@ void MqttClient::close(bool bSendDisconnect)
     client->stop();
   }
 
-  if (parent)
+  if (local_broker)
   {
-    parent->removeClient(this);
-    parent = nullptr;
+    local_broker->removeClient(this);
+    local_broker = nullptr;
   }
 }
 
-void MqttClient::connect(MqttBroker* parentBroker)
+void MqttClient::connect(MqttBroker* local)
 {
   debug("MqttClient::connect_1");
   close();
-  parent = parentBroker;
+  local_broker = local;
 }
 
 void MqttClient::connect(std::string broker, uint16_t port, uint16_t ka)
@@ -126,7 +126,7 @@ void MqttBroker::connect(const std::string& host, uint16_t port)
   debug("MqttBroker::connect_2");
   if (broker == nullptr) broker = new MqttClient;
   broker->connect(host, port);
-  broker->parent = this;  // Because connect removed the link
+  broker->local_broker = this;  // Because connect removed the link
 }
 
 void MqttBroker::removeClient(MqttClient* remove)
@@ -189,7 +189,7 @@ void MqttBroker::loop()
     }
     else
     {
-      debug("Client " << client->id().c_str() << "  Disconnected, parent=" << (dbg_ptr)client->parent);
+      debug("Client " << client->id().c_str() << "  Disconnected, local_broker=" << (dbg_ptr)client->local_broker);
       // Note: deleting a client not added by the broker itself will probably crash later.
       delete client;
       break;
@@ -282,7 +282,7 @@ void MqttClient::loop()
 {
   if (alive && (millis() > alive))
   {
-    if (parent)
+    if (local_broker)
     {
       debug(red << "timeout client");
       close();
@@ -327,7 +327,7 @@ void MqttClient::onConnect(void *mqttclient_ptr, TcpClient*)
   debug("cnx: mqtt connecting");
   msg.sendTo(mqtt);
   msg.reset();
-  debug("cnx: mqtt sent " << (dbg_ptr)mqtt->parent);
+  debug("cnx: mqtt sent " << (dbg_ptr)mqtt->local_broker);
 
   mqtt->clientAlive(0);
 }
@@ -377,13 +377,13 @@ MqttError MqttClient::subscribe(Topic topic, uint8_t qos)
 
    subscriptions.insert(topic);
 
-  if (parent==nullptr) // remote broker
+  if (local_broker==nullptr) // remote broker
   {
     return sendTopic(topic, MqttMessage::Type::Subscribe, qos);
   }
   else
   {
-    return parent->subscribe(topic, qos);
+    return local_broker->subscribe(topic, qos);
   }
   return ret;
 }
@@ -395,7 +395,7 @@ MqttError MqttClient::unsubscribe(Topic topic)
   if (it != subscriptions.end())
   {
     subscriptions.erase(it);
-    if (parent==nullptr) // remote broker
+    if (local_broker==nullptr) // remote broker
     {
       return sendTopic(topic, MqttMessage::Type::UnSubscribe, 0);
     }
@@ -472,13 +472,13 @@ void MqttClient::processMessage(MqttMessage* mesg)
       if (mqtt_flags & FlagUserName)
       {
         mesg->getString(payload, len);
-        if (!parent->checkUser(payload, len)) break;
+        if (not local_broker->checkUser(payload, len)) break;
         payload += len;
       }
       if (mqtt_flags & FlagPassword)
       {
         mesg->getString(payload, len);
-        if (!parent->checkPassword(payload, len)) break;
+        if (not local_broker->checkPassword(payload, len)) break;
         payload += len;
       }
 
@@ -599,7 +599,7 @@ void MqttClient::processMessage(MqttMessage* mesg)
         // TODO reset DUP
         // TODO reset RETAIN
 
-        if (parent==nullptr or client==nullptr)  // internal MqttClient receives publish
+        if (local_broker==nullptr or client==nullptr)  // internal MqttClient receives publish
         {
           #ifdef TINY_MQTT_DEBUG
             Console << (isSubscribedTo(published) ? "not" : "") << " subscribed.\n";
@@ -610,10 +610,10 @@ void MqttClient::processMessage(MqttMessage* mesg)
             callback(this, published, payload, len);  // TODO send the real payload
           }
         }
-        else if (parent) // from outside to inside
+        else if (local_broker) // from outside to inside
         {
-          debug("publishing to parent");
-          parent->publish(this, published, *mesg);
+          debug("publishing to local_broker");
+          local_broker->publish(this, published, *mesg);
         }
         bclose = false;
       }
@@ -643,7 +643,7 @@ void MqttClient::processMessage(MqttMessage* mesg)
   }
   else
   {
-    clientAlive(parent ? 5 : 0);
+    clientAlive(local_broker ? 5 : 0);
   }
 }
 
@@ -718,9 +718,9 @@ MqttError MqttClient::publish(const Topic& topic, const char* payload, size_t pa
   msg.add(payload, pay_length, false);
   msg.complete();
 
-  if (parent)
+  if (local_broker)
   {
-    return parent->publish(this, topic, msg);
+    return local_broker->publish(this, topic, msg);
   }
   else if (client)
     return msg.sendTo(this);

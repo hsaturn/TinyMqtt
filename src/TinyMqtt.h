@@ -171,13 +171,13 @@ class MqttClient
 
     ~MqttClient();
 
-    void connect(MqttBroker* parent);
+    void connect(MqttBroker* local_broker);
     void connect(std::string broker, uint16_t port, uint16_t keep_alive = 10);
 
     // TODO it seems that connected returns true in tcp mode even if
     // no negociation occured (only if tcp link is established)
     bool connected() { return
-      (parent!=nullptr and client==nullptr) or
+      (local_broker!=nullptr and client==nullptr) or
       (client and client->connected()); }
     void write(const char* buf, size_t length)
     {
@@ -260,7 +260,7 @@ class MqttClient
     void resubscribe();
 
     friend class MqttBroker;
-    MqttClient(MqttBroker* parent, TcpClient* client);
+    MqttClient(MqttBroker* local_broker, TcpClient* client);
     // republish a received publish if topic matches any in subscriptions
     MqttError publishIfSubscribed(const Topic& topic, MqttMessage& msg);
 
@@ -274,9 +274,9 @@ class MqttClient
     MqttMessage message;
 
     // TODO  having a pointer on MqttBroker may produce larger binaries
-    // due to unecessary function linked if ever parent is not used
+    // due to unecessary function linked if ever local_broker is not used
     // (this is the case when MqttBroker isn't used except here)
-    MqttBroker* parent=nullptr;    // connection to local broker
+    MqttBroker* local_broker=nullptr;    // connection to local broker
 
     TcpClient* client=nullptr;    // connection to remote broker
     std::set<Topic>  subscriptions;
