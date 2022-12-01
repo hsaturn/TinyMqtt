@@ -157,14 +157,14 @@ class MqttClient
   {
     FlagUserName = 128,
     FlagPassword = 64,
-    FlagWillRetain = 32,  // unsupported
-    FlagWillQos = 16 | 8, // unsupported
+    FlagWillRetain = 32,   // unsupported
+    FlagWillQos = 16 | 8,  // unsupported
     FlagWill = 4,          // unsupported
     FlagCleanSession = 2,  // unsupported
     FlagReserved = 1
   };
   public:
-    /** Constructor. If broker is not null, this is the adress of a local broker.
+    /** Constructor. Broker is the adress of a local broker if not null
         If you want to connect elsewhere, leave broker null and use connect() **/
     MqttClient(MqttBroker* broker = nullptr, const std::string& id="");
     MqttClient(const std::string& id) : MqttClient(nullptr, id){}
@@ -175,10 +175,12 @@ class MqttClient
     void connect(std::string broker, uint16_t port, uint16_t keep_alive = 10);
 
     // TODO it seems that connected returns true in tcp mode even if
-    // no negociation occured (only if tcp link is established)
-    bool connected() { return
-      (local_broker!=nullptr and client==nullptr) or
-      (client and client->connected()); }
+    // no negociation occured
+    bool connected()
+    {
+      return (local_broker!=nullptr and client==nullptr) or (client and client->connected());
+    }
+
     void write(const char* buf, size_t length)
     {
       if (client) client->write(buf, length);
@@ -273,10 +275,9 @@ class MqttClient
     uint32_t alive;
     MqttMessage message;
 
-    // TODO  having a pointer on MqttBroker may produce larger binaries
-    // due to unecessary function linked if ever local_broker is not used
-    // (this is the case when MqttBroker isn't used except here)
-    MqttBroker* local_broker=nullptr;    // connection to local broker
+    // connection to local broker, or link to the parent
+    // when MqttBroker uses MqttClient for each external connexion
+    MqttBroker* local_broker=nullptr;
 
     TcpClient* client=nullptr;    // connection to remote broker
     std::set<Topic>  subscriptions;
@@ -326,17 +327,19 @@ class MqttBroker
 
     MqttError subscribe(const Topic& topic, uint8_t qos);
 
-    // For clients that are added not by the broker itself
+    // For clients that are added not by the broker itself (local clients)
     void addClient(MqttClient* client);
     void removeClient(MqttClient* client);
 
     bool compareString(const char* good, const char* str, uint8_t str_len) const;
     std::vector<MqttClient*>  clients;
+
+  private:
     TcpServer* server = nullptr;
 
     const char* auth_user = "guest";
     const char* auth_password = "guest";
-    State state = Disconnected;
-
     MqttClient* broker = nullptr;
+
+    State state = Disconnected;
 };
