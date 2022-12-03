@@ -6,6 +6,7 @@
 #include <iomanip>
 #include <sstream>
 #include <string>
+#include <iostream>
 
 /**
   * TinyMqtt network unit tests.
@@ -138,6 +139,41 @@ test(suback)
   client.loop();
 
   assertEqual(MqttClient::counters[MqttMessage::Type::SubAck], 1);
+}
+
+test(network_client_keep_alive_high)
+{
+  const uint32_t keep_alive=1000;
+  start_servers(2, true);
+  assertEqual(WiFi.status(), WL_CONNECTED);
+
+  MqttBroker broker(1883);
+  broker.begin();
+  IPAddress broker_ip = WiFi.localIP();
+
+  ESP8266WiFiClass::selectInstance(2);
+  MqttClient client;
+  client.connect(broker_ip.toString().c_str(), 1883, keep_alive);
+  broker.loop();
+
+  assertTrue(broker.clientsCount() == 1);
+  assertTrue(client.connected());
+
+  MqttClient::counters[MqttMessage::Type::SubAck] = 0;
+  client.subscribe("a/b");
+
+  // TODO how to avoid these loops ???
+  broker.loop();
+  client.loop();
+
+  assertEqual(MqttClient::counters[MqttMessage::Type::SubAck], 1);
+
+  uint32_t sz = broker.getClients().size();
+  assertEqual(sz , (uint32_t)1);
+
+  uint32_t ka = broker.getClients()[0]->keepAlive();
+  assertEqual(ka, keep_alive);
+
 }
 
 test(network_client_to_broker_connexion)

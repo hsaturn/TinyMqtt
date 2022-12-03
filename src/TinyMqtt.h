@@ -104,6 +104,11 @@ class MqttMessage
       Create=6
     };
 
+    static inline uint32_t getSize(const char* buffer)
+    {
+      const unsigned char* bun = (const unsigned char*)buffer;
+      return (*bun << 8) | bun[1]; }
+
     MqttMessage() { reset(); }
     MqttMessage(Type t, uint8_t bits_d3_d0=0) { create(t); buffer[0] |= bits_d3_d0; }
     void incoming(char byte);
@@ -250,6 +255,7 @@ class MqttClient
 #ifdef EPOXY_DUINO
     static std::map<MqttMessage::Type, int> counters;  // Number of processed messages
 #endif
+    uint32_t keepAlive() const { return keep_alive; }
 
   private:
 
@@ -311,6 +317,8 @@ class MqttBroker
       for(auto client: clients)
         client->dump(indent);
     }
+
+    const std::vector<MqttClient*>  getClients() const { return clients; }
 
   private:
     friend class MqttClient;

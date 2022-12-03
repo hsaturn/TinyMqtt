@@ -106,7 +106,7 @@ void MqttClient::connect(std::string broker, uint16_t port, uint16_t ka)
 #ifdef TINY_MQTT_ASYNC
   client->onData(onData, this);
   client->onConnect(onConnect, this);
-  client->connect(broker.c_str(), port);
+  client->connect(broker.c_str(), port, ka);
 #else
   if (client->connect(broker.c_str(), port))
   {
@@ -259,7 +259,7 @@ bool MqttBroker::compareString(
 
 void MqttMessage::getString(const char* &buff, uint16_t& len)
 {
-  len = (buff[0]<<8)|(buff[1]);
+  len = getSize(buff);
   buff+=2;
 }
 
@@ -321,8 +321,8 @@ void MqttClient::onConnect(void *mqttclient_ptr, TcpClient*)
   msg.add(0x4);  // Mqtt protocol version 3.1.1
   msg.add(0x0);  // Connect flags         TODO user / name
 
-  msg.add(0x00);      // keep_alive
-  msg.add((char)mqtt->keep_alive);
+  msg.add((char)(mqtt->keep_alive >> 8));   // keep_alive
+  msg.add((char)(mqtt->keep_alive & 0xFF));
   msg.add(mqtt->clientId);
   debug("cnx: mqtt connecting");
   msg.sendTo(mqtt);
@@ -443,7 +443,7 @@ void MqttClient::processMessage(MqttMessage* mesg)
       }
       payload = header+10;
       mqtt_flags = header[7];
-      keep_alive = (header[8]<<8)|(header[9]);
+      keep_alive = MqttMessage::getSize(header+8);
       if (strncmp("MQTT", header+2,4))
       {
         debug("bad mqtt header");
