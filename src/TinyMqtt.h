@@ -1,3 +1,4 @@
+// vim: ts=2 sw=2 expandtab
 #pragma once
 
 // TODO Should add a AUnit with both TINY_MQTT_ASYNC and not TINY_MQTT_ASYNC

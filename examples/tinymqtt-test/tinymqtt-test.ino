@@ -20,6 +20,7 @@ auto green = TinyConsole::green;
 auto red = TinyConsole::red;
 auto white = TinyConsole::white;
 auto cyan = TinyConsole::cyan;
+auto yellow = TinyConsole::yellow;
 
 /** Very complex example
   * Console allowing to make any kind of test,
@@ -420,9 +421,8 @@ struct Every
 		else
 			Console << red << "disabled";
 
-    Console << white << 
 		auto mill=millis();
-		Console << ms << "ms [" << cmd << "] next in ";
+		Console << white << ms << "ms [" << cmd << "] next in ";
 		if (mill > next)
 			Console << "now";
 		else
@@ -440,6 +440,7 @@ std::vector<Every> everies;
 
 void onCommand(const std::string& command)
 {
+  Console << endl;
 	std::string cmd=command;
 	if (cmd.substr(0,3)!="set") replaceVars(cmd);
 	eval(cmd);
@@ -497,7 +498,7 @@ void eval(std::string& cmd)
 					broker = brokers[s];
 				}
 				else
-					Console << red << "Unable to find (" << s.c_str() << ")" << << white << endl;
+					Console << red << "Unable to find (" << s.c_str() << ")" << white << endl;
 			}
 			if (client)
 			{
@@ -910,5 +911,5 @@ void loop()
 		it.second->loop();
 
 	Automatic::loop();
-	Console::loop();
+	Console.loop();
 }

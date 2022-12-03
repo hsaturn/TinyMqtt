@@ -1,3 +1,4 @@
+// vim: ts=2 sw=2 expandtab
 #include "TinyMqtt.h"
 #include <sstream>
 
@@ -589,9 +590,9 @@ void MqttClient::processMessage(MqttMessage* mesg)
         mesg->getString(payload, len);
         Topic published(payload, len);
         payload += len;
-				#ifdef TINY_MQTT_DEBUG
-				  Console << "Received Publish (" << published.str().c_str() << ") size=" << (int)len << endl;
-				#endif
+        #ifdef TINY_MQTT_DEBUG
+          Console << "Received Publish (" << published.str().c_str() << ") size=" << (int)len << endl;
+        #endif
         // << '(' << std::string(payload, len).c_str() << ')'  << " msglen=" << mesg->length() << endl;
         if (qos) payload+=2;  // ignore packet identifier if any
         len=mesg->end()-payload;
@@ -898,13 +899,13 @@ void MqttMessage::hexdump(const char* prefix) const
   Type typ=static_cast<Type>(buffer[0] & 0xF0);
   if (tts.find(typ) != tts.end())
     t=tts[typ];
-	Console.fg(cyan);
+  Console.fg(cyan);
 #ifdef NOT_ESP_CORE
   Console << "---> MESSAGE " << t << ' ' << _HEX(typ) << ' ' << " mem=???" << endl;
 #else
   Console << "---> MESSAGE " << t << ' ' << _HEX(typ) << ' ' << " mem=" << ESP.getFreeHeap() << endl;
 #endif
-	Console.fg(white);
+  Console.fg(white);
 
   uint16_t addr=0;
   const int bytes_per_row = 8;
