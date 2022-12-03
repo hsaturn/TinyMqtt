@@ -40,9 +40,6 @@ const char* password = "";
   * TODO examples of scripts
   */
 
-
-std::string topic="sensor/temperature";
-
 void onPublish(const MqttClient* srce, const Topic& topic, const char* payload, size_t length)
 {
   Console << cyan << "--> " << srce->id().c_str() << ": received " << topic.c_str() << white;
@@ -212,14 +209,15 @@ std::string getip(std::string& str, const char* if_empty=nullptr, char sep=' ')
     if (addr.length()) addr += '.';
     addr += s;
   }
+  Console << "connect address: " << addr << endl;
   return addr;
 }
 
 std::map<std::string, std::string> vars;
 
 std::set<std::string> commands = {
-  "auto", "broker", "blink", "client", "connect",
-  "create", "delete", "debug", "help", "interval",
+  "broker", "blink", "client", "connect",
+  "create", "delete", "debug", "free", "help", "interval",
   "ls", "ip", "off", "on", "set",
   "publish", "reset", "subscribe", "unsubscribe", "view", "echo", "every"
 };
@@ -280,123 +278,6 @@ void replaceVars(std::string& cmd)
   cmd.erase(cmd.find_last_not_of(" ")+1);
 
 }
-
-// publish at regular interval
-class Automatic
-{
-  public:
-    Automatic(MqttClient* clt, uint32_t intervl)
-      : client(clt), topic_(::topic)
-    {
-      interval(intervl);
-      autos[clt] = this;
-    }
-
-    void interval(uint32_t new_interval)
-    {
-      interval_ = new_interval;
-      if (interval_<1000) interval_=1000;
-      timer_ = millis() + interval_;
-    }
-
-    void loop_()
-    {
-      if (!bon) return;
-      if (interval_ && millis() > timer_)
-      {
-        Console << "AUTO PUBLISH " << interval_ << endl;
-        timer_ += interval_;
-        client->publish(topic_, std::string(String(15+millis()%10).c_str()));
-      }
-    }
-
-    void topic(std::string new_topic) { topic_ = new_topic; }
-
-    static void loop()
-    {
-      for(auto it: autos)
-        it.second->loop_();
-    }
-
-    static void command(MqttClient* who, std::string cmd)
-    {
-      Automatic* autop = nullptr;
-      if (autos.find(who) != autos.end())
-      {
-        autop=autos[who];
-      }
-      std::string s = getword(cmd);
-      if (compare(s, "create"))
-      {
-        std::string seconds=getword(cmd, "10000");
-        if (autop) delete autop;
-        std::string top = getword(cmd, ::topic.c_str());
-        autos[who] = new Automatic(who, atol(seconds.c_str()));
-        autos[who]->topic(top);
-        autos[who]->bon=true;
-        Console << "New auto (" << seconds.c_str() << " topic:" << top.c_str() << ')' << endl;
-      }
-      else if (autop)
-      {
-        while(s.length())
-        {
-          if (s=="on")
-          {
-            autop->bon = true;
-            autop->interval(autop->interval_);
-          }
-          else if (s=="off")
-            autop->bon=false;
-          else if (s=="interval")
-          {
-            int32_t i=getint(cmd);
-            if (i)
-              autop->interval(atol(s.c_str()));
-            else
-              Console << "Bad value" << endl;
-          }
-          else if (s=="view")
-          {
-            Console << "  Automatic "
-              << (int32_t)autop->client
-              << " interval " << autop->interval_
-              << (autop->bon ? " on" : " off") << endl;
-          }
-          else
-          {
-            Console << "Unknown auto command (" << s.c_str() << ")" << endl;
-            break;
-          }
-          s=getword(cmd);
-        }
-      }
-      else if (who==nullptr)
-      {
-        for(auto it: autos)
-          command(it.first, s+' '+cmd);
-      }
-      else
-        Console << "what ? (" << s.c_str() << ")" << endl;
-    }
-
-    static void help()
-    {
-      Console << "    auto [$id] on/off" << endl;
-      Console << "    auto [$id] view" << endl;
-      Console << "    auto [$id] interval [s]" << endl;
-      Console << "    auto [$id] create [millis] [topic]" << endl;
-    }
-
-  private:
-    MqttClient* client;
-    uint32_t interval_;
-    uint32_t timer_;
-    std::string topic_;
-    bool bon=false;
-    static std::map<MqttClient*, Automatic*> autos;
-    float temp=19;
-};
-std::map<MqttClient*, Automatic*> Automatic::autos;
 
 bool compare(std::string s, const char* cmd)
 {
@@ -561,15 +442,15 @@ void eval(std::string& cmd)
       }
       else if (compare(s,"publish"))
       {
-        retval = client->publish(getword(cmd, topic.c_str()), getword(cmd));
+        retval = client->publish(getword(cmd), getword(cmd));
       }
       else if (compare(s,"subscribe"))
       {
-        client->subscribe(getword(cmd, topic.c_str()));
+        client->subscribe(getword(cmd));
       }
       else if (compare(s, "unsubscribe"))
       {
-        client->unsubscribe(getword(cmd, topic.c_str()));
+        client->unsubscribe(getword(cmd));
       }
       else if (compare(s, "view"))
       {
@@ -701,12 +582,6 @@ void eval(std::string& cmd)
         }
       }
     }
-    else if (compare(s, "auto"))
-    {
-      Automatic::command(client, cmd);
-      if (client == nullptr)
-        cmd.clear();
-    }
     else if (compare(s, "broker"))
     {
       std::string id=getword(cmd);
@@ -757,7 +632,6 @@ void eval(std::string& cmd)
           client->id(id);
           clients[id]=client;
           client->setCallback(onPublish);
-          client->subscribe(topic);
           Console << "new client (" << id.c_str() << ", " << s.c_str() << ')' << endl;
         }
         else if (s.length())
@@ -839,15 +713,11 @@ void eval(std::string& cmd)
       Console << "  MqttClient:" << endl;
       Console << "    client {name} {parent broker} : create a client then" << endl;
       Console << "      name.connect  [ip] [port] [alive]" << endl;
-      Console << "      name.[un]subscribe [topic]" << endl;
-      Console << "      name.publish [topic][payload]" << endl;
+      Console << "      name.[un]subscribe topic" << endl;
+      Console << "      name.publish topic [payload]" << endl;
       Console << "      name.view" << endl;
       Console << "      name.delete" << endl;
       Console << endl;
-
-      Automatic::help();
-      Console << endl;
-      Console << "  help" << endl;
       Console << "  blink [Dx on_ms off_ms]    : make pin blink" << endl;
       Console << "  ls / ip / reset" << endl;
       Console << "  set [name][value]" << endl;
@@ -858,7 +728,6 @@ void eval(std::string& cmd)
       Console << "  on {output}; off {output}" << endl;
       Console << "  $id : name of the client." << endl;
       Console << "  rnd[(min[,max])] random number." << endl;
-      Console << "  default topic is '" << topic.c_str() << "'" << endl;
       Console << endl;
     }
     else
@@ -931,6 +800,5 @@ void loop()
   for(auto it: clients)
     it.second->loop();
 
-  Automatic::loop();
   Console.loop();
 }
