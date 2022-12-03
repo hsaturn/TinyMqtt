@@ -33,8 +33,8 @@ auto yellow = TinyConsole::yellow;
  * TODO examples of scripts
  */
 
-const char* ssid = "Freebox-786A2F";
-const char* password = "usurpavi8dalum64lumine?";
+const char* ssid = "";
+const char* password = "";
 
 std::string topic="sensor/temperature";
 
