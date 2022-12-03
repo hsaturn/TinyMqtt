@@ -1,3 +1,4 @@
+// vim: ts=2 sw=2 expandtab
 #include <Arduino.h>
 #include <AUnit.h>
 #include <TinyMqtt.h>
@@ -7,9 +8,9 @@
 #define endl "\n"
 
 /**
-	* TinyMqtt / StringIndexer unit tests.
-	*
-	**/
+  * TinyMqtt / StringIndexer unit tests.
+  *
+  **/
 
 using namespace std;
 
@@ -71,15 +72,15 @@ test(topic_matches)
 //----------------------------------------------------------------------------
 // setup() and loop()
 void setup() {
-	delay(1000);
-	Serial.begin(115200);
-	while(!Serial);
+  delay(1000);
+  Serial.begin(115200);
+  while(!Serial);
 
-	Serial.println("=============[ TinyMqtt StringIndexer TESTS ]========================");
+  Serial.println("=============[ TinyMqtt StringIndexer TESTS ]========================");
 }
 
 void loop() {
-	aunit::TestRunner::run();
+  aunit::TestRunner::run();
 
-	// if (Serial.available()) ESP.reset();
+  // if (Serial.available()) ESP.reset();
 }

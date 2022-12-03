@@ -1,3 +1,4 @@
+// vim: ts=2 sw=2 expandtab
 #include <Arduino.h>
 #include <AUnit.h>
 #include <TinyMqtt.h>
@@ -10,10 +11,10 @@
 
 /**
   * TinyMqtt network unit tests.
-	*
-	* No wifi connection unit tests.
+  *
+  * No wifi connection unit tests.
   * Checks with a local broker. Clients must connect to the local broker
-	**/
+  **/
 
 // if ascii_pos = 0, no ascii dump, else ascii dump starts after column ascii_pos
 std::string bufferToHexa(const uint8_t* buffer, size_t length, char sep = 0, size_t ascii_pos = 0)
@@ -77,7 +78,7 @@ String toString(const IPAddress& ip)
 
 MqttBroker broker(1883);
 
-std::map<std::string, std::map<Topic, int>>	published;		// map[client_id] => map[topic] = count
+std::map<std::string, std::map<Topic, int>>  published;    // map[client_id] => map[topic] = count
 
 char* lastPayload = nullptr;
 size_t lastLength;
@@ -96,12 +97,12 @@ void start_servers(int n, bool early_accept = true)
 
 void onPublish(const MqttClient* srce, const Topic& topic, const char* payload, size_t length)
 {
-	if (srce)
-		published[srce->id()][topic]++;
-	
-	if (lastPayload) free(lastPayload);
+  if (srce)
+    published[srce->id()][topic]++;
+  
+  if (lastPayload) free(lastPayload);
   lastPayload = strdup(payload);
-	lastLength = length;
+  lastLength = length;
 }
 
 test(network_single_broker_begin)
@@ -263,12 +264,12 @@ test(network_one_client_one_broker_hudge_publish_and_subscribe_through_network)
 
 test(network_client_should_unregister_when_destroyed)
 {
-	assertEqual(broker.clientsCount(), (size_t)0);
-	{
-		MqttClient client(&broker);
-		assertEqual(broker.clientsCount(), (size_t)1);
-	}
-	assertEqual(broker.clientsCount(), (size_t)0);
+  assertEqual(broker.clientsCount(), (size_t)0);
+  {
+    MqttClient client(&broker);
+    assertEqual(broker.clientsCount(), (size_t)1);
+  }
+  assertEqual(broker.clientsCount(), (size_t)0);
 }
 
 
@@ -277,113 +278,113 @@ test(network_client_should_unregister_when_destroyed)
 
 test(network_connect)
 {
-	assertEqual(broker.clientsCount(), (size_t)0);
+  assertEqual(broker.clientsCount(), (size_t)0);
 
-	MqttClient client(&broker);
-	assertTrue(client.connected());
-	assertEqual(broker.clientsCount(), (size_t)1);
+  MqttClient client(&broker);
+  assertTrue(client.connected());
+  assertEqual(broker.clientsCount(), (size_t)1);
 }
 
 test(network_publish_should_be_dispatched)
 {
-	published.clear();
-	assertEqual(broker.clientsCount(), (size_t)0);
+  published.clear();
+  assertEqual(broker.clientsCount(), (size_t)0);
 
-	MqttClient subscriber(&broker);
-	subscriber.subscribe("a/b");
-	subscriber.subscribe("a/c");
-	subscriber.setCallback(onPublish);
+  MqttClient subscriber(&broker);
+  subscriber.subscribe("a/b");
+  subscriber.subscribe("a/c");
+  subscriber.setCallback(onPublish);
 
-	MqttClient publisher(&broker);
-	publisher.publish("a/b");
-	publisher.publish("a/c");
-	publisher.publish("a/c");
+  MqttClient publisher(&broker);
+  publisher.publish("a/b");
+  publisher.publish("a/c");
+  publisher.publish("a/c");
 
-	assertEqual(published.size(), (size_t)1);	// 1 client has received something
-	assertEqual(published[""]["a/b"], 1);
-	assertEqual(published[""]["a/c"], 2);
+  assertEqual(published.size(), (size_t)1);  // 1 client has received something
+  assertEqual(published[""]["a/b"], 1);
+  assertEqual(published[""]["a/c"], 2);
 }
 
 test(network_publish_should_be_dispatched_to_clients)
 {
-	published.clear();
-	assertEqual(broker.clientsCount(), (size_t)0);
+  published.clear();
+  assertEqual(broker.clientsCount(), (size_t)0);
 
-	MqttClient subscriber_a(&broker, "A");
-	subscriber_a.setCallback(onPublish);
-	subscriber_a.subscribe("a/b");
-	subscriber_a.subscribe("a/c");
+  MqttClient subscriber_a(&broker, "A");
+  subscriber_a.setCallback(onPublish);
+  subscriber_a.subscribe("a/b");
+  subscriber_a.subscribe("a/c");
 
-	MqttClient subscriber_b(&broker, "B");
-	subscriber_b.setCallback(onPublish);
-	subscriber_b.subscribe("a/b");
+  MqttClient subscriber_b(&broker, "B");
+  subscriber_b.setCallback(onPublish);
+  subscriber_b.subscribe("a/b");
 
-	MqttClient publisher(&broker);
-	publisher.publish("a/b");		// A and B should receive this
-	publisher.publish("a/c");		// A should receive this 
+  MqttClient publisher(&broker);
+  publisher.publish("a/b");    // A and B should receive this
+  publisher.publish("a/c");    // A should receive this 
 
-	assertEqual(published.size(), (size_t)2);	// 2 clients have received something
-	assertEqual(published["A"]["a/b"], 1);
-	assertEqual(published["A"]["a/c"], 1);
-	assertEqual(published["B"]["a/b"], 1);
-	assertEqual(published["B"]["a/c"], 0);
+  assertEqual(published.size(), (size_t)2);  // 2 clients have received something
+  assertEqual(published["A"]["a/b"], 1);
+  assertEqual(published["A"]["a/c"], 1);
+  assertEqual(published["B"]["a/b"], 1);
+  assertEqual(published["B"]["a/c"], 0);
 }
 
 test(network_unsubscribe)
 {
-	published.clear();
-	assertEqual(broker.clientsCount(), (size_t)0);
+  published.clear();
+  assertEqual(broker.clientsCount(), (size_t)0);
 
-	MqttClient subscriber(&broker);
-	subscriber.setCallback(onPublish);
-	subscriber.subscribe("a/b");
+  MqttClient subscriber(&broker);
+  subscriber.setCallback(onPublish);
+  subscriber.subscribe("a/b");
 
-	MqttClient publisher(&broker);
-	publisher.publish("a/b");		// This publish is received
+  MqttClient publisher(&broker);
+  publisher.publish("a/b");    // This publish is received
 
-	subscriber.unsubscribe("a/b");
+  subscriber.unsubscribe("a/b");
 
-	publisher.publish("a/b");		// Those one, no (unsubscribed)
-	publisher.publish("a/b");
+  publisher.publish("a/b");    // Those one, no (unsubscribed)
+  publisher.publish("a/b");
 
-	assertEqual(published[""]["a/b"], 1);	// Only one publish has been received
+  assertEqual(published[""]["a/b"], 1);  // Only one publish has been received
 }
 
 test(network_nocallback_when_destroyed)
 {
-	published.clear();
-	assertEqual(broker.clientsCount(), (size_t)0);
+  published.clear();
+  assertEqual(broker.clientsCount(), (size_t)0);
 
-	MqttClient publisher(&broker);
+  MqttClient publisher(&broker);
 
-	{
-		MqttClient subscriber(&broker);
-		subscriber.setCallback(onPublish);
-		subscriber.subscribe("a/b");
-		publisher.publish("a/b");
-	}
+  {
+    MqttClient subscriber(&broker);
+    subscriber.setCallback(onPublish);
+    subscriber.subscribe("a/b");
+    publisher.publish("a/b");
+  }
 
-	publisher.publish("a/b");
+  publisher.publish("a/b");
 
-	assertEqual(published.size(), (size_t)1);	// Only one publish has been received
+  assertEqual(published.size(), (size_t)1);  // Only one publish has been received
 }
 
 test(network_small_payload)
 {
-	published.clear();
+  published.clear();
 
-	const char* payload="abcd";
+  const char* payload="abcd";
 
-	MqttClient subscriber(&broker);
-	subscriber.setCallback(onPublish);
-	subscriber.subscribe("a/b");
+  MqttClient subscriber(&broker);
+  subscriber.setCallback(onPublish);
+  subscriber.subscribe("a/b");
 
-	MqttClient publisher(&broker);
-	publisher.publish("a/b", payload, strlen(payload));		// This publish is received
+  MqttClient publisher(&broker);
+  publisher.publish("a/b", payload, strlen(payload));    // This publish is received
 
   // coming from MqttClient::publish(...)
   assertEqual(payload, lastPayload);
-	assertEqual(lastLength, (size_t)4);
+  assertEqual(lastLength, (size_t)4);
 }
 
 test(network_hudge_payload)
@@ -394,13 +395,13 @@ test(network_hudge_payload)
   subscriber.setCallback(onPublish);
   subscriber.subscribe("a/b");          // Note -> this does not send any byte .... (nowhere to send)
 
-	MqttClient publisher(&broker);
-	publisher.publish("a/b", payload);		// This publish is received
+  MqttClient publisher(&broker);
+  publisher.publish("a/b", payload);    // This publish is received
 
   // onPublish should have filled lastPayload and lastLength
   assertEqual(payload, lastPayload);
-	assertEqual(lastLength, strlen(payload));
-	assertEqual(strcmp(payload, lastPayload), 0);
+  assertEqual(lastLength, strlen(payload));
+  assertEqual(strcmp(payload, lastPayload), 0);
 }
 
 test(connack)
@@ -447,19 +448,19 @@ test(connack)
 //----------------------------------------------------------------------------
 // setup() and loop()
 void setup() {
-	/* delay(1000);
-	Serial.begin(115200);
-	while(!Serial);
-	*/
+  /* delay(1000);
+  Serial.begin(115200);
+  while(!Serial);
+  */
 
-	Serial.println("=============[ FAKE NETWORK TinyMqtt TESTS       ]========================");
+  Serial.println("=============[ FAKE NETWORK TinyMqtt TESTS       ]========================");
 
-	WiFi.mode(WIFI_STA);
-	WiFi.begin("network", "password");
+  WiFi.mode(WIFI_STA);
+  WiFi.begin("network", "password");
 }
 
 void loop() {
-	aunit::TestRunner::run();
+  aunit::TestRunner::run();
 
-	if (Serial.available()) ESP.reset();
+  if (Serial.available()) ESP.reset();
 }

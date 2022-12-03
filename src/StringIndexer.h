@@ -1,3 +1,4 @@
+// vim: ts=2 sw=2 expandtab
 #pragma once
 #include <map>
 #include <string>
