@@ -35,7 +35,7 @@ void setup()
     Serial << '.';
     delay(500);
   }
-  Connect << TinyConsole::green << "Connected to " << ssid << "IP address: " << WiFi.localIP() << endl;
+  Console << TinyConsole::green << "Connected to " << ssid << "IP address: " << WiFi.localIP() << endl;
 
   broker.begin();
   Console << "Broker ready : " << WiFi.localIP() << " on port " << PORT << endl;
