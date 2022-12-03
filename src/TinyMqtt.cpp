@@ -2,7 +2,6 @@
 #include <sstream>
 
 #ifdef TINY_MQTT_DEBUG
-static auto green = TinyConsole::green;
 static auto cyan = TinyConsole::cyan;
 static auto white = TinyConsole::white;
 static auto red = TinyConsole::red;
@@ -269,7 +268,7 @@ void MqttClient::clientAlive(uint32_t more_seconds)
   if (keep_alive)
   {
 #ifdef EPOXY_DUINO
-    alive=millis()+500000;
+    alive=millis()+500000+0*more_seconds;
 #else
     alive=millis()+1000*(keep_alive+more_seconds);
 #endif
@@ -901,9 +900,9 @@ void MqttMessage::hexdump(const char* prefix) const
     t=tts[typ];
 	Console.fg(cyan);
 #ifdef NOT_ESP_CORE
-  Console << "---> MESSAGE " << t << ' ' << _HEX(typ) << ' ' << (Complete ? "complete" : "uncomplete") << " mem=???" << endl;
+  Console << "---> MESSAGE " << t << ' ' << _HEX(typ) << ' ' << " mem=???" << endl;
 #else
-  Console << "---> MESSAGE " << t << ' ' << _HEX(typ) << ' ' << (Complete ? "complete" : "uncomplete") << " mem=" << ESP.getFreeHeap() << endl;
+  Console << "---> MESSAGE " << t << ' ' << _HEX(typ) << ' ' << " mem=" << ESP.getFreeHeap() << endl;
 #endif
 	Console.fg(white);
 

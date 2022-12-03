@@ -93,6 +93,7 @@ class MqttMessage
       PingResp    = 0xD0,
       Disconnect  = 0xE0
     };
+
     enum __attribute__((packed)) State
     {
       FixedHeader=0,
