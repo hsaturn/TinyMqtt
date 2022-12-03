@@ -4,12 +4,12 @@
 #include <TinyMqtt.h>       // https://github.com/hsaturn/TinyMqtt
 #include <MqttStreaming.h>
 #if defined(ESP8266)
-#include <ESP8266mDNS.h>
+  #include <ESP8266mDNS.h>
 #elif defined(ESP32)
-#include <WiFi.h>
-#include <ESPmDNS.h>
+  #include <WiFi.h>
+  #include <ESPmDNS.h>
 #else
-#error Unsupported platform
+  #error Unsupported platform
 #endif
 
 #include <sstream>
@@ -21,20 +21,25 @@ auto red = TinyConsole::red;
 auto white = TinyConsole::white;
 auto cyan = TinyConsole::cyan;
 auto yellow = TinyConsole::yellow;
-
-/** Very complex example
- * Console allowing to make any kind of test,
- * even some stress tests.
- *
- * Upload the sketch, the use the terminal.
- * Press H for mini help.
- *
- * tested with mqtt-spy-0.5.4
- * TODO examples of scripts
- */
+auto magenta = TinyConsole::magenta;
+auto save_cursor = TinyConsole::save_cursor;
+auto restore_cursor = TinyConsole::restore_cursor;
+auto erase_to_end = TinyConsole::erase_to_end;
 
 const char* ssid = "";
 const char* password = "";
+
+/** Very complex example
+  * Console allowing to make any kind of test,
+  * even some stress tests.
+  *
+  * Upload the sketch, the use the terminal.
+  * Press H for mini help.
+  *
+  * tested with mqtt-spy-0.5.4
+  * TODO examples of scripts
+  */
+
 
 std::string topic="sensor/temperature";
 
@@ -214,7 +219,7 @@ std::map<std::string, std::string> vars;
 
 std::set<std::string> commands = {
   "auto", "broker", "blink", "client", "connect",
-  "create", "delete", "help", "interval",
+  "create", "delete", "debug", "help", "interval",
   "ls", "ip", "off", "on", "set",
   "publish", "reset", "subscribe", "unsubscribe", "view", "echo", "every"
 };
@@ -484,6 +489,10 @@ void eval(std::string& cmd)
     if (s.length()) convertToCommand(s);
     if (s.length()==0)
     {}
+    else if (compare(s, "debug"))
+    {
+      TinyMqtt::debug = getint(cmd);
+    }
     else if (compare(s, "delete"))
     {
       if (client==nullptr && broker==nullptr)
@@ -791,17 +800,28 @@ void eval(std::string& cmd)
     }
     else if (compare(s, "ls") or compare(s, "view"))
     {
-      Console << "--< " << clients.size() << " client/s. >--" << endl;
+      bool view = compare(s, "view");
+      if (view)
+      {
+        Console << save_cursor << magenta;
+        Console.gotoxy(1,1);
+      }
+      Console << "--< " << '/' << clients.size() << " client/s. >--" << erase_to_end << endl;
       for(auto it: clients)
       {
         it.second->dump("  ");
       }
 
-      Console << "--< " << brokers.size() << " brokers/s. >--" << endl;
+      Console << "--< " << brokers.size() << " brokers/s. >--" << erase_to_end << endl;
       for(auto it: brokers)
       {
-        Console << "  +-- '" << it.first.c_str() << "' " << it.second->clientsCount() << " client/s."<< endl;
+        Console << "  +-- '" << it.first.c_str() << "' " << it.second->clientsCount() << " client/s."<< erase_to_end << endl;
         it.second->dump("     ");
+      }
+      if (view)
+      {
+        Console.bg(white);
+        Console << erase_to_end << restore_cursor;
       }
     }
     else if (compare(s, "reset"))
@@ -872,7 +892,8 @@ void loop()
       every.next += every.ms;
       if (ms > every.next and ms > every.underrun)
       {
-        Console << "Underrun every #" << e << ", " <<  (ms - every.next) << "ms late" << endl;
+        every.next += every.ms;
+        Console << yellow << "Underrun every #" << e << ", " <<  (ms - every.next) << "ms late" << endl;
         every.underrun = ms+5000;
       }
     }
