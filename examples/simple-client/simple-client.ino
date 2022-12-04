@@ -55,7 +55,7 @@ void setup()
 
   Serial << "Connected to " << ssid << "IP address: " << WiFi.localIP() << endl;  
 
-	client.connect(BROKER, BROKER_PORT);	// Put here your broker ip / port
+	client.connect(BROKER, BROKER_PORT);
 }
 
 void loop()
