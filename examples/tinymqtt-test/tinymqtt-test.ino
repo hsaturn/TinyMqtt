@@ -13,6 +13,7 @@
 #endif
 
 #include <sstream>
+#include <string>
 #include <map>
 
 bool echo_on = true;
@@ -28,6 +29,21 @@ auto erase_to_end = TinyConsole::erase_to_end;
 
 const char* ssid = "";
 const char* password = "";
+
+struct free_broker
+{
+  public:
+    free_broker(const char* s, uint16_t p, const char* comment) : url(s), port(p) {}
+
+    std::string url;
+    uint16_t port;
+};
+
+const std::map<std::string, free_broker> list =
+{
+  { "mqtthq", { "public.mqtthq.com" , 8083, "publish/subscribe" }},
+  { "hivemq", { "broker.hivemq.com", 1883, "" }}
+};
 
 /** Very complex example
   * Console allowing to make any kind of test,
@@ -330,6 +346,26 @@ void onCommand(const std::string& command)
   std::string cmd=command;
   if (cmd.substr(0,3)!="set") replaceVars(cmd);
   eval(cmd);
+  Console << endl;
+  Console.prompt();
+}
+
+void clientConnect(MqttClient* client, std::string& cmd)
+{
+  std::string remote = getword(cmd);
+  uint16_t port;
+  auto it=list.find(remote);
+  if (it != list.end())
+  {
+    Console << "Connecting to free broker: " << remote << endl;
+    remote = it->second.url;
+    port=it->second.port;
+  }
+  else
+    port=getint(cmd);
+
+  client->connect(remote.c_str(), port, getint(cmd, 60));
+  Console << (client->connected() ? "connected." : "not connected") << endl;
 }
 
 void eval(std::string& cmd)
@@ -373,6 +409,14 @@ void eval(std::string& cmd)
     else if (compare(s, "debug"))
     {
       TinyMqtt::debug = getint(cmd);
+    }
+    else if (compare(s, "list"))
+    {
+      Console << "List of free servers" << endl;
+      for(const auto& fb: list)
+      {
+        Console << "  " << fb.first << " : " << fb.second.url << ":" << fb.second.port << endl;
+      }
     }
     else if (compare(s, "delete"))
     {
@@ -437,8 +481,7 @@ void eval(std::string& cmd)
     {
       if (compare(s,"connect"))
       {
-        client->connect(getip(cmd,"192.168.1.40").c_str(), getint(cmd, 1883), getint(cmd, 60));
-        Console << (client->connected() ? "connected." : "not connected") << endl;
+        clientConnect(client, cmd);
       }
       else if (compare(s,"publish"))
       {
@@ -623,15 +666,19 @@ void eval(std::string& cmd)
       }
       else if (id.length() or clients.find(id)!=clients.end())
       {
-        s=getword(cmd);  // broker name
-        if (s=="" or brokers.find(s) != brokers.end())
+        s=getword(cmd);  // broker
+        if (s=="" or brokers.find(s) != brokers.end() or list.find(s) != list.end())
         {
           MqttBroker* broker = nullptr;
           if (s.length()) broker = brokers[s];
-          MqttClient* client = new MqttClient(broker);
-          client->id(id);
+          MqttClient* client = new MqttClient(broker, id);
           clients[id]=client;
           client->setCallback(onPublish);
+          if (list.find(s) != list.end())
+          {
+            cmd=s+' '+cmd;
+            clientConnect(client, cmd);
+          }
           Console << "new client (" << id.c_str() << ", " << s.c_str() << ')' << endl;
         }
         else if (s.length())
@@ -707,17 +754,21 @@ void eval(std::string& cmd)
       Console << "syntax:" << endl;
       Console << "  MqttBroker:" << endl;
       Console << "    broker {broker_name} {port} : create a new broker" << endl;
+      Console << "      broker_name can be one of 'list'" << endl;
       Console << "      broker_name.delete : delete a broker (buggy)" << endl;
       Console << "      broker_name.view   : dump a broker" << endl;
       Console << endl;
       Console << "  MqttClient:" << endl;
-      Console << "    client {name} {parent broker} : create a client then" << endl;
+      Console << "    client {name} {broker} : create a client then" << endl;
       Console << "      name.connect  [ip] [port] [alive]" << endl;
       Console << "      name.[un]subscribe topic" << endl;
       Console << "      name.publish topic [payload]" << endl;
       Console << "      name.view" << endl;
       Console << "      name.delete" << endl;
       Console << endl;
+      Console << "  list : list of free brokers (debug 1 advised)" << endl;
+      Console << "  debug #" << endl;
+      Console << "  list : get list of free brokers" << endl;
       Console << "  blink [Dx on_ms off_ms]    : make pin blink" << endl;
       Console << "  ls / ip / reset" << endl;
       Console << "  set [name][value]" << endl;

@@ -36,6 +36,7 @@ MqttBroker::~MqttBroker()
 MqttClient::MqttClient(MqttBroker* local_broker, TcpClient* new_client)
   : local_broker(local_broker)
 {
+  debug("MqttClient private with broker");
 #ifdef TINY_MQTT_ASYNC
   client = new_client;
   client->onData(onData, this);
@@ -89,20 +90,19 @@ void MqttClient::close(bool bSendDisconnect)
 
 void MqttClient::connect(MqttBroker* local)
 {
-  debug("MqttClient::connect_1");
+  debug("MqttClient::connect_local");
   close();
   local_broker = local;
 }
 
 void MqttClient::connect(std::string broker, uint16_t port, uint16_t ka)
 {
-  debug("MqttClient::connect_3");
+  debug("MqttClient::connect_to_host " << broker << ':' << port);
   keep_alive = ka;
   close();
   if (client) delete client;
   client = new TcpClient;
 
-  debug("Trying to connect to " << broker.c_str() << ':' << port);
 #ifdef TINY_MQTT_ASYNC
   client->onData(onData, this);
   client->onConnect(onConnect, this);
@@ -110,7 +110,12 @@ void MqttClient::connect(std::string broker, uint16_t port, uint16_t ka)
 #else
   if (client->connect(broker.c_str(), port))
   {
+    debug("link established");
     onConnect(this, client);
+  }
+  else
+  {
+    debug("unable to connect.");
   }
 #endif
 }
@@ -123,7 +128,7 @@ void MqttBroker::addClient(MqttClient* client)
 
 void MqttBroker::connect(const std::string& host, uint16_t port)
 {
-  debug("MqttBroker::connect_2");
+  debug("MqttBroker::connect");
   if (broker == nullptr) broker = new MqttClient;
   broker->connect(host, port);
   broker->local_broker = this;  // Because connect removed the link
@@ -483,7 +488,7 @@ void MqttClient::processMessage(MqttMessage* mesg)
       }
 
       #ifdef TINY_MQTT_DEBUG
-        Console << yellow << "Client connected :" << clientId.c_str() << ", keep alive=" << keep_alive << '.' << white << endl;
+        Console << yellow << "Client " << clientId << " connected : keep alive=" << keep_alive << '.' << white << endl;
       #endif
       bclose = false;
       mqtt_connected=true;
@@ -602,8 +607,11 @@ void MqttClient::processMessage(MqttMessage* mesg)
         if (local_broker==nullptr or client==nullptr)  // internal MqttClient receives publish
         {
           #ifdef TINY_MQTT_DEBUG
-            Console << (isSubscribedTo(published) ? "not" : "") << " subscribed.\n";
-            Console << "has " << (callback ? "" : "no ") << " callback.\n";
+            if (TinyMqtt::debug >= 2)
+            {
+              Console << (isSubscribedTo(published) ? "not" : "") << " subscribed.\n";
+              Console << "has " << (callback ? "" : "no ") << " callback.\n";
+            }
           #endif
           if (callback and isSubscribedTo(published))
           {
