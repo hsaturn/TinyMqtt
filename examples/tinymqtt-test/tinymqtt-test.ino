@@ -1,5 +1,4 @@
 // vim: ts=2 sw=2 expandtab smartindent
-#define TINY_MQTT_DEBUG
 #include <TinyConsole.h>
 #include <TinyMqtt.h>       // https://github.com/hsaturn/TinyMqtt
 #include <TinyStreaming.h>
@@ -410,7 +409,11 @@ void eval(std::string& cmd)
     {}
     else if (compare(s, "debug"))
     {
+#if TINY_MQTT_DEBUG
       TinyMqtt::debug = getint(cmd);
+#else
+      Console << red << "TinyMqtt not compiled in debug" << endl;
+#endif
     }
     else if (compare(s, "list"))
     {

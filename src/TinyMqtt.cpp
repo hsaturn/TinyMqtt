@@ -2,7 +2,7 @@
 #include "TinyMqtt.h"
 #include <sstream>
 
-#ifdef TINY_MQTT_DEBUG
+#if TINY_MQTT_DEBUG
 static auto cyan = TinyConsole::cyan;
 static auto white = TinyConsole::white;
 static auto red = TinyConsole::red;
@@ -221,7 +221,7 @@ MqttError MqttBroker::publish(const MqttClient* source, const Topic& topic, Mqtt
   for(auto client: clients)
   {
     i++;
-#ifdef TINY_MQTT_DEBUG
+#if TINY_MQTT_DEBUG
     Console << __LINE__ << " broker:" << (broker && broker->connected() ? "linked" : "alone") <<
        "  srce=" << (source->isLocal() ? "loc" : "rem") << " clt#" << i << ", local=" << client->isLocal() << ", con=" << client->connected() << endl;
 #endif
@@ -242,7 +242,7 @@ MqttError MqttBroker::publish(const MqttClient* source, const Topic& topic, Mqtt
     {
       doit = true;
     }
-#ifdef TINY_MQTT_DEBUG
+#if TINY_MQTT_DEBUG
     Console << ", doit=" << doit << ' ';
 #endif
 
@@ -426,7 +426,7 @@ MqttError MqttClient::sendTopic(const Topic& topic, MqttMessage::Type type, uint
 
 void MqttClient::processMessage(MqttMessage* mesg)
 {
-#ifdef TINY_MQTT_DEBUG
+#if TINY_MQTT_DEBUG
   mesg->hexdump("Incoming");
 #endif
   auto header = mesg->getVHeader();
@@ -487,7 +487,7 @@ void MqttClient::processMessage(MqttMessage* mesg)
         payload += len;
       }
 
-      #ifdef TINY_MQTT_DEBUG
+      #if TINY_MQTT_DEBUG
         Console << yellow << "Client " << clientId << " connected : keep alive=" << keep_alive << '.' << white << endl;
       #endif
       bclose = false;
@@ -585,7 +585,7 @@ void MqttClient::processMessage(MqttMessage* mesg)
       break;
 
     case MqttMessage::Type::Publish:
-      #ifdef TINY_MQTT_DEBUG
+      #if TINY_MQTT_DEBUG
         Console << "publish " << mqtt_connected << '/' << (long) client << endl;
       #endif
       if (mqtt_connected or client == nullptr)
@@ -595,7 +595,7 @@ void MqttClient::processMessage(MqttMessage* mesg)
         mesg->getString(payload, len);
         Topic published(payload, len);
         payload += len;
-        #ifdef TINY_MQTT_DEBUG
+        #if TINY_MQTT_DEBUG
           Console << "Received Publish (" << published.str().c_str() << ") size=" << (int)len << endl;
         #endif
         // << '(' << std::string(payload, len).c_str() << ')'  << " msglen=" << mesg->length() << endl;
@@ -606,7 +606,7 @@ void MqttClient::processMessage(MqttMessage* mesg)
 
         if (local_broker==nullptr or client==nullptr)  // internal MqttClient receives publish
         {
-          #ifdef TINY_MQTT_DEBUG
+          #if TINY_MQTT_DEBUG
             if (TinyMqtt::debug >= 2)
             {
               Console << (isSubscribedTo(published) ? "not" : "") << " subscribed.\n";
@@ -641,7 +641,7 @@ void MqttClient::processMessage(MqttMessage* mesg)
   };
   if (bclose)
   {
-    #ifdef TINY_MQTT_DEBUG
+    #if TINY_MQTT_DEBUG
       Console << red << "*************** Error msg 0x" << _HEX(mesg->type());
       mesg->hexdump("-------ERROR ------");
       dump();
@@ -750,7 +750,7 @@ MqttError MqttClient::publishIfSubscribed(const Topic& topic, MqttMessage& msg)
     {
       processMessage(&msg);
 
-      #ifdef TINY_MQTT_DEBUG
+      #if TINY_MQTT_DEBUG
         Console << "Should call the callback ?\n";
       #endif
       // callback(this, topic, nullptr, 0);  // TODO Payload
@@ -819,7 +819,7 @@ void MqttMessage::incoming(char in_byte)
       break;
     case Complete:
     default:
-      #ifdef TINY_MQTT_DEBUG
+      #if TINY_MQTT_DEBUG
         Console << red << "Spurious " << _HEX(in_byte) << white << endl;
         hexdump("spurious");
       #endif
@@ -888,7 +888,7 @@ MqttError MqttMessage::sendTo(MqttClient* client)
 void MqttMessage::hexdump(const char* prefix) const
 {
   (void)prefix;
-#ifdef TINY_MQTT_DEBUG
+#if TINY_MQTT_DEBUG
   if (TinyMqtt::debug<2) return;
   static std::map<Type, std::string> tts={
     { Connect, "Connect" },

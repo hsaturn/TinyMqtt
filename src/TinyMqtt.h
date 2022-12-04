@@ -1,5 +1,6 @@
 // vim: ts=2 sw=2 expandtab
 #pragma once
+#define TINY_MQTT_DEBUG 0
 
 // TODO Should add a AUnit with both TINY_MQTT_ASYNC and not TINY_MQTT_ASYNC
 // #define TINY_MQTT_ASYNC  // Uncomment this to use ESPAsyncTCP instead of normal cnx
@@ -34,7 +35,7 @@
 #include <string>
 #include "StringIndexer.h"
 
-#ifdef TINY_MQTT_DEBUG
+#if TINY_MQTT_DEBUG
 #include <TinyStreaming.h>
 #include <TinyConsole.h>    // https://github.com/hsaturn/TinyConsole
   struct TinyMqtt
@@ -202,7 +203,7 @@ class MqttClient
     void setCallback(CallBack fun)
     {
       callback=fun;
-      #ifdef TINY_MQTT_DEBUG
+      #if TINY_MQTT_DEBUG
         Console << TinyConsole::magenta << "Callback set to " << (long)fun << TinyConsole::white << endl;
         if (callback) callback(this, "test/topic", "value", 5);
       #endif
@@ -226,7 +227,7 @@ class MqttClient
     void dump(std::string indent="")
     {
       (void)indent;
-      #ifdef TINY_MQTT_DEBUG
+      #if TINY_MQTT_DEBUG
         uint32_t ms=millis();
         Console << indent << "+-- " << '\'' << clientId.c_str() << "' " << (connected() ? " ON " : " OFF");
         Console << ", alive=" << alive << '/' << ms << ", ka=" << keep_alive << ' ';
