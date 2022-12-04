@@ -33,9 +33,9 @@
 #include <set>
 #include <string>
 #include "StringIndexer.h"
-#include <MqttStreaming.h>
 
 #ifdef TINY_MQTT_DEBUG
+#include <TinyStreaming.h>
 #include <TinyConsole.h>    // https://github.com/hsaturn/TinyConsole
   struct TinyMqtt
   {

@@ -2,7 +2,7 @@
 #define TINY_MQTT_DEBUG
 #include <TinyConsole.h>
 #include <TinyMqtt.h>       // https://github.com/hsaturn/TinyMqtt
-#include <MqttStreaming.h>
+#include <TinyStreaming.h>
 #if defined(ESP8266)
   #include <ESP8266mDNS.h>
 #elif defined(ESP32)
@@ -123,6 +123,8 @@ void setup()
   MqttBroker* broker = new MqttBroker(1883);
   broker->begin();
   brokers["broker"] = broker;
+
+  if (Console.isTerm()) onCommand("every 333 view");
 }
 
 std::string getword(std::string& str, const char* if_empty=nullptr, char sep=' ');
@@ -233,8 +235,8 @@ std::map<std::string, std::string> vars;
 
 std::set<std::string> commands = {
   "broker", "blink", "client", "connect",
-  "create", "delete", "debug", "free", "help", "interval",
-  "ls", "ip", "off", "on", "set",
+  "create", "delete", "debug", "help", "interval",
+  "list", "ls", "ip", "off", "on", "set",
   "publish", "reset", "subscribe", "unsubscribe", "view", "echo", "every"
 };
 

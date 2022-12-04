@@ -1,4 +1,5 @@
-#include "TinyMqtt.h"   // https://github.com/hsaturn/TinyMqtt
+#include "TinyMqtt.h"    // https://github.com/hsaturn/TinyMqtt
+#include "TinyStreaming.h" // https://github.com/hsaturn/TinyConsole
 
 /** Simple Client (The simplest configuration)
   *
