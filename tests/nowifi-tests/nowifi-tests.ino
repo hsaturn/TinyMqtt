@@ -65,8 +65,8 @@ test(nowifi_publish_should_be_dispatched)
   publisher.publish("a/c");
 
   assertEqual(published.size(), (size_t)1);  // 1 client has received something
-  assertEqual(published[""]["a/b"], 1);
-  assertEqual(published[""]["a/c"], 2);
+  assertEqual(published[TINY_MQTT_DEFAULT_CLIENT_ID]["a/b"], 1);
+  assertEqual(published[TINY_MQTT_DEFAULT_CLIENT_ID]["a/c"], 2);
 }
 
 test(nowifi_publish_should_be_dispatched_to_clients)
@@ -209,7 +209,7 @@ test(nowifi_unsubscribe)
   publisher.publish("a/b");    // Those one, no (unsubscribed)
   publisher.publish("a/b");
 
-  assertEqual(published[""]["a/b"], 1);  // Only one publish has been received
+  assertEqual(published[TINY_MQTT_DEFAULT_CLIENT_ID]["a/b"], 1);  // Only one publish has been received
 }
 
 test(nowifi_nocallback_when_destroyed)

@@ -35,6 +35,8 @@
 #include <string>
 #include "StringIndexer.h"
 
+#define TINY_MQTT_DEFAULT_CLIENT_ID "Tiny"
+
 #if TINY_MQTT_DEBUG
 #include <TinyStreaming.h>
 #include <TinyConsole.h>    // https://github.com/hsaturn/TinyConsole
@@ -174,7 +176,7 @@ class MqttClient
   public:
     /** Constructor. Broker is the adress of a local broker if not null
         If you want to connect elsewhere, leave broker null and use connect() **/
-    MqttClient(MqttBroker* broker = nullptr, const std::string& id="");
+    MqttClient(MqttBroker* broker = nullptr, const std::string& id = TINY_MQTT_DEFAULT_CLIENT_ID);
     MqttClient(const std::string& id) : MqttClient(nullptr, id){}
 
     ~MqttClient();
@@ -183,7 +185,7 @@ class MqttClient
     void connect(std::string broker, uint16_t port, uint16_t keep_alive = 10);
 
     // TODO it seems that connected returns true in tcp mode even if
-    // no negociation occured
+    // no negociation occurred
     bool connected()
     {
       return (local_broker!=nullptr and client==nullptr) or (client and client->connected());
@@ -195,7 +197,7 @@ class MqttClient
     }
 
     const std::string& id() const { return clientId; }
-    void id(std::string& new_id) { clientId = new_id; }
+    void id(const std::string& new_id) { clientId = new_id; }
 
     /** Should be called in main loop() */
     void loop();
