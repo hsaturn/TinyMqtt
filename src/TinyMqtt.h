@@ -37,9 +37,9 @@
 
 #define TINY_MQTT_DEFAULT_CLIENT_ID "Tiny"
 
-#if TINY_MQTT_DEBUG
 #include <TinyStreaming.h>
-#include <TinyConsole.h>    // https://github.com/hsaturn/TinyConsole
+#if TINY_MQTT_DEBUG
+include <TinyConsole.h>    // https://github.com/hsaturn/TinyConsole
   struct TinyMqtt
   {
     static int debug;
