@@ -14,7 +14,6 @@
 
 using namespace std;
 
-MqttBroker broker(1883);
 
 std::map<std::string, std::map<Topic, int>>  published;    // map[client_id] => map[topic] = count
 
@@ -31,6 +30,7 @@ void onPublish(const MqttClient* srce, const Topic& topic, const char* payload, 
 
 test(local_client_should_unregister_when_destroyed)
 {
+  MqttBroker broker(1883);
   assertEqual(broker.clientsCount(), (size_t)0);
   {
     assertEqual(broker.clientsCount(), (size_t)0);  // Ensure client is not yet connected
@@ -38,6 +38,18 @@ test(local_client_should_unregister_when_destroyed)
     assertEqual(broker.clientsCount(), (size_t)1);  // Ensure client is now connected
   }
   assertEqual(broker.clientsCount(), (size_t)0);
+}
+
+test(local_client_alive)
+{
+  MqttBroker broker(1883);
+  MqttClient client(&broker);
+  for(int i=0; i<10; i++)
+  {
+    assertEqual(broker.clientsCount(), (size_t)1);  // Ensure client is now connected
+    broker.loop();
+    usleep(TINY_MQTT_DEFAULT_ALIVE*1000000/2);
+  }
 }
 
 #if 0

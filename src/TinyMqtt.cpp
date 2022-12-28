@@ -34,8 +34,8 @@ MqttBroker::~MqttBroker()
 
 // private constructor used by broker only
 MqttClient::MqttClient(MqttBroker* local_broker, TcpClient* new_client)
-  : local_broker(local_broker)
 {
+  connect(local_broker);
   debug("MqttClient private with broker");
 #ifdef TINY_MQTT_ASYNC
   client = new_client;
@@ -45,19 +45,16 @@ MqttClient::MqttClient(MqttBroker* local_broker, TcpClient* new_client)
 #else
   client = new WiFiClient(*new_client);
 #endif
-#ifdef EPOXY_DUINO
-  alive = millis()+500000;
-#else
-  alive = millis()+5000;  // TODO MAGIC client expires after 5s if no CONNECT msg
-#endif
+  alive = millis()+5000;
 }
 
 MqttClient::MqttClient(MqttBroker* local_broker, const std::string& id)
   : local_broker(local_broker), clientId(id)
 {
-    client = nullptr;
+  alive = 0;
+  client = nullptr;
 
-    if (local_broker) local_broker->addClient(this);
+  if (local_broker) local_broker->addClient(this);
 }
 
 MqttClient::~MqttClient()
@@ -69,7 +66,7 @@ MqttClient::~MqttClient()
 void MqttClient::close(bool bSendDisconnect)
 {
   debug("close " << id().c_str());
-  mqtt_connected = false;
+  mqtt_flags &= ~FlagConnected;
   if (client)  // connected to a remote broker
   {
     if (bSendDisconnect and client->connected())
@@ -91,6 +88,7 @@ void MqttClient::close(bool bSendDisconnect)
 void MqttClient::connect(MqttBroker* local)
 {
   debug("MqttClient::connect_local");
+  alive = 0;
   close();
   local_broker = local;
 }
@@ -268,16 +266,12 @@ void MqttMessage::getString(const char* &buff, uint16_t& len)
   buff+=2;
 }
 
-void MqttClient::clientAlive(uint32_t more_seconds)
+void MqttClient::clientAlive()
 {
   debug("MqttClient::clientAlive");
   if (keep_alive)
   {
-#ifdef EPOXY_DUINO
-    alive=millis()+500000+0*more_seconds;
-#else
-    alive=millis()+1000*(keep_alive+more_seconds);
-#endif
+    alive=millis()+1000*(keep_alive+local_broker ? 5 : 0);
   }
   else
     alive=0;
@@ -285,11 +279,11 @@ void MqttClient::clientAlive(uint32_t more_seconds)
 
 void MqttClient::loop()
 {
-  if (alive && (millis() > alive))
+  if (alive && (millis() >= alive))
   {
     if (local_broker)
     {
-      debug(red << "timeout client");
+      Serial << "timeout client " << clientId << endl;
       close();
       debug(red << "closed");
     }
@@ -298,7 +292,7 @@ void MqttClient::loop()
       debug("pingreq");
       uint16_t pingreq = MqttMessage::Type::PingReq;
       client->write((const char*)(&pingreq), 2);
-      clientAlive(0);
+      clientAlive();
 
       // TODO when many MqttClient passes through a local broker
       // there is no need to send one PingReq per instance.
@@ -334,7 +328,7 @@ void MqttClient::onConnect(void *mqttclient_ptr, TcpClient*)
   msg.reset();
   debug("cnx: mqtt sent " << (dbg_ptr)mqtt->local_broker);
 
-  mqtt->clientAlive(0);
+  mqtt->clientAlive();
 }
 
 #ifdef TINY_MQTT_ASYNC
@@ -441,13 +435,14 @@ void MqttClient::processMessage(MqttMessage* mesg)
   switch(mesg->type())
   {
     case MqttMessage::Type::Connect:
-      if (mqtt_connected)
+      if (mqtt_flags & FlagConnected)
       {
         debug("already connected");
         break;
       }
       payload = header+10;
-      mqtt_flags = header[7];
+      // Todo should check that reserved == 0 (spec)
+      mqtt_flags = header[7] & ~FlagConnected;
       keep_alive = MqttMessage::getSize(header+8);
       if (strncmp("MQTT", header+2,4))
       {
@@ -491,7 +486,7 @@ void MqttClient::processMessage(MqttMessage* mesg)
         Console << yellow << "Client " << clientId << " connected : keep alive=" << keep_alive << '.' << white << endl;
       #endif
       bclose = false;
-      mqtt_connected=true;
+      mqtt_flags |= FlagConnected;
       {
         MqttMessage msg(MqttMessage::Type::ConnAck);
         msg.add(0);  // Session present (not implemented)
@@ -501,14 +496,14 @@ void MqttClient::processMessage(MqttMessage* mesg)
       break;
 
     case MqttMessage::Type::ConnAck:
-      mqtt_connected = true;
+      mqtt_flags |= FlagConnected;
       bclose = false;
       resubscribe();
       break;
 
     case MqttMessage::Type::SubAck:
     case MqttMessage::Type::PubAck:
-      if (!mqtt_connected) break;
+      if (not (mqtt_flags & FlagConnected)) break;
       // Ignore acks
       bclose = false;
       break;
@@ -519,7 +514,7 @@ void MqttClient::processMessage(MqttMessage* mesg)
       break;
 
     case MqttMessage::Type::PingReq:
-      if (!mqtt_connected) break;
+      if (not (mqtt_flags & FlagConnected)) break;
       if (client)
       {
         uint16_t pingreq = MqttMessage::Type::PingResp;
@@ -536,7 +531,7 @@ void MqttClient::processMessage(MqttMessage* mesg)
     case MqttMessage::Type::Subscribe:
     case MqttMessage::Type::UnSubscribe:
       {
-        if (!mqtt_connected) break;
+        if (not (mqtt_flags & FlagConnected)) break;
         payload = header+2;
 
         debug("un/subscribe loop");
@@ -580,15 +575,15 @@ void MqttClient::processMessage(MqttMessage* mesg)
       break;
 
     case MqttMessage::Type::UnSuback:
-      if (!mqtt_connected) break;
+      if (not (mqtt_flags & FlagConnected)) break;
       bclose = false;
       break;
 
     case MqttMessage::Type::Publish:
       #if TINY_MQTT_DEBUG
-        Console << "publish " << mqtt_connected << '/' << (long) client << endl;
+        Console << "publish " << (mqtt_flags & FlagConnected) << '/' << (long) client << endl;
       #endif
-      if (mqtt_connected or client == nullptr)
+      if ((mqtt_flags & FlagConnected) or client == nullptr)
       {
         uint8_t qos = mesg->flags();
         payload = header;
@@ -629,8 +624,8 @@ void MqttClient::processMessage(MqttMessage* mesg)
 
     case MqttMessage::Type::Disconnect:
       // TODO should discard any will msg
-      if (!mqtt_connected) break;
-      mqtt_connected = false;
+      if (not (mqtt_flags & FlagConnected)) break;
+      mqtt_flags &= ~FlagConnected;
       close(false);
       bclose=false;
       break;
@@ -651,7 +646,7 @@ void MqttClient::processMessage(MqttMessage* mesg)
   }
   else
   {
-    clientAlive(local_broker ? 5 : 0);
+    clientAlive();
   }
 }
 

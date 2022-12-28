@@ -4,6 +4,9 @@
 #ifndef TINY_MQTT_DEBUG
 #define TINY_MQTT_DEBUG 0
 #endif
+#ifndef TINY_MQTT_DEFAULT_ALIVE
+#define TINY_MQTT_DEFAULT_ALIVE 10
+#endif
 
 // TODO Should add a AUnit with both TINY_MQTT_ASYNC and not TINY_MQTT_ASYNC
 // #define TINY_MQTT_ASYNC  // Uncomment this to use ESPAsyncTCP instead of normal cnx
@@ -173,7 +176,9 @@ class MqttClient
     FlagWillQos = 16 | 8,  // unsupported
     FlagWill = 4,          // unsupported
     FlagCleanSession = 2,  // unsupported
-    FlagReserved = 1
+
+    FlagReserved = 1,      // use reserved as connected (save 1 byte)
+    FlagConnected = 1
   };
   public:
 
@@ -187,7 +192,7 @@ class MqttClient
     ~MqttClient();
 
     void connect(MqttBroker* local_broker);
-    void connect(std::string broker, uint16_t port, uint16_t keep_alive = 10);
+    void connect(std::string broker, uint16_t port, uint16_t keep_alive = TINY_MQTT_DEFAULT_ALIVE);
 
     // TODO it seems that connected returns true in tcp mode even if
     // no negociation occurred
@@ -282,13 +287,14 @@ class MqttClient
     // republish a received publish if topic matches any in subscriptions
     MqttError publishIfSubscribed(const Topic& topic, MqttMessage& msg);
 
-    void clientAlive(uint32_t more_seconds);
+    void clientAlive();
     void processMessage(MqttMessage* message);
 
-    bool mqtt_connected = false;
-    char mqtt_flags;
-    uint32_t keep_alive = 30;
-    uint32_t alive;
+    char mqtt_flags = 0;
+    uint16_t keep_alive = 30;
+    // for client connected to remote broker, PingReq is sent when millis() >= alive
+    // for a client managed by a broker, disconnect it if millis() >= alive
+    uint32_t alive; // PingReq if millis() > alive,
     MqttMessage message;
 
     // connection to local broker, or link to the parent
@@ -296,7 +302,7 @@ class MqttClient
     MqttBroker* local_broker=nullptr;
 
     TcpClient* client=nullptr;    // connection to remote broker
-    std::set<Topic>  subscriptions;
+    std::set<Topic> subscriptions;
     std::string clientId;
     CallBack callback = nullptr;
 };
