@@ -88,6 +88,7 @@ void MqttClient::close(bool bSendDisconnect)
 void MqttClient::connect(MqttBroker* local)
 {
   debug("MqttClient::connect_local");
+  alive = 0;
   close();
   local_broker = local;
   clientAlive();
