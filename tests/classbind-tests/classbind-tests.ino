@@ -154,7 +154,7 @@ test(classbind_one_client_receives_the_message)
     client.loop();
     broker.loop();
   }
-  
+
   assertEqual(TestReceiver::messages["receiver"], 1);
   assertEqual(unrouted, 0);
 }
@@ -190,7 +190,7 @@ test(classbind_routes_should_be_empty_when_receiver_goes_out_of_scope)
     client.loop();
     broker.loop();
   }
-  
+
   assertEqual(TestReceiver::messages["receiver"], 0);
   assertEqual(MqttClassBinder<TestReceiver>::size(), (size_t)0);
 }
@@ -224,7 +224,7 @@ test(classbind_publish_should_be_dispatched_to_many_receivers)
     client.loop();
     broker.loop();
   }
-  
+
   assertEqual(TestReceiver::messages["receiver_1"], 1);
   assertEqual(TestReceiver::messages["receiver_2"], 1);
 }
@@ -274,7 +274,7 @@ test(classbind_register_to_many_clients)
 
   // Ensure publishes are processed
   for (int i =0; i<5; i++) loop();
-  
+
   assertEqual(TestReceiver::messages["receiver"], 4);
 }
 

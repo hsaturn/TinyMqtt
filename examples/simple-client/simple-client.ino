@@ -3,20 +3,20 @@
 
 /** Simple Client (The simplest configuration)
   *
-  *                             
-  *                   +--------+       
+  *
+  *                   +--------+
   *           +------>| broker |<--- <  Other client
-  *           |       +--------+       
-  *           |                               
+  *           |       +--------+
+  *           |
   *   +-----------------+
-  *   | ESP   |         |           
-  *   | +----------+    |          
-  *   | | internal |    |              
-  *   | | client   |    |          
-  *   | +----------+    |          
+  *   | ESP   |         |
+  *   | +----------+    |
+  *   | | internal |    |
+  *   | | client   |    |
+  *   | +----------+    |
   *   |                 |
   *   +-----------------+
-  * 
+  *
 	* 1 - change the ssid/password
 	* 2 - change BROKER values (or keep emqx.io test broker)
 	* 3 - you can use mqtt-spy to connect to the same broker and
@@ -39,7 +39,7 @@ const char* password = "";
 static float temp=19;
 static MqttClient client;
 
-void setup() 
+void setup()
 {
   Serial.begin(115200);
 	delay(500);
@@ -50,11 +50,11 @@ void setup()
 
   WiFi.mode(WIFI_STA);
   WiFi.begin(ssid, password);
- 
+
   while (WiFi.status() != WL_CONNECTED)
 	{ delay(500); Serial << '.'; }
 
-  Serial << "Connected to " << ssid << "IP address: " << WiFi.localIP() << endl;  
+  Serial << "Connected to " << ssid << "IP address: " << WiFi.localIP() << endl;
 
 	client.connect(BROKER, BROKER_PORT);
 }

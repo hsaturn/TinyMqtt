@@ -538,7 +538,7 @@ void MqttClient::processMessage(MqttMessage* mesg)
       {
         if (!mqtt_connected) break;
         payload = header+2;
-        
+
         debug("un/subscribe loop");
         std::string qoss;
         while(payload < mesg->end())
@@ -862,7 +862,7 @@ void MqttMessage::encodeLength()
       buffer[2] = (length >> 7);
       vheader = 3;
     }
-      
+
     // We could check that buffer[2] < 128 (end of length encoding)
     state = Complete;
   }

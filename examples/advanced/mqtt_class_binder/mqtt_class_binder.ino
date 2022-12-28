@@ -1,12 +1,12 @@
 #include <TinyMqtt.h>   // https://github.com/hsaturn/TinyMqtt
 #include <MqttClassBinder.h>
 
-/** 
+/**
   * Example on how to bind a class:onPublish function
   *
   * Local broker that accept connections and two local clients
   *
-  * 
+  *
   *  +-----------------------------+
   *  | ESP                         |
   *  |                 +--------+  | 1883 <--- External client/s
@@ -15,14 +15,14 @@
   *  |       |             ^       |
   *  |       |             |       |
   *  |       |             |       |     -----
-  *  |       v             v       |      ---  
-  *  | +----------+  +----------+  |       -  
+  *  |       v             v       |      ---
+  *  | +----------+  +----------+  |       -
   *  | | internal |  | internal |  +-------*  Wifi
-  *  | | client   |  | client   |  |          
-  *  | +----------+  +----------+  |          
+  *  | | client   |  | client   |  |
+  *  | +----------+  +----------+  |
   *  |                             |
   *  +-----------------------------+
-  * 
+  *
   * pros - Reduces internal latency (when publish is received by the same ESP)
   *      - Reduces wifi traffic
   *      - No need to have an external broker
@@ -50,7 +50,7 @@ MqttClient mqtt_sender(&broker);
 class MqttReceiver: public MqttClassBinder<MqttReceiver>
 {
   public:
-  
+
     void onPublish(const MqttClient* source, const Topic& topic, const char* payload, size_t /* length */)
     {
       Serial

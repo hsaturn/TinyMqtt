@@ -8,7 +8,7 @@ class MqttClassBinder
       unregister(this);
     }
     ~MqttClassBinder() { unregister(this); }
-    
+
     static void onUnpublished(MqttClient::CallBack handler)
     {
       unrouted_handler = handler;

@@ -1,7 +1,7 @@
 #include <TinyMqtt.h>   // https://github.com/hsaturn/TinyMqtt
 
 /** TinyMQTT allows a disconnected mode:
-  * 
+  *
   *  +-----------------------------+
   *  | ESP                         |
   *  |                 +--------+  |
@@ -12,8 +12,8 @@
   *  |       v             v       |
   *  | +----------+  +----------+  |
   *  | | internal |  | internal |  |
-  *  | | client   |  | client   |  |          
-  *  | +----------+  +----------+  |          
+  *  | | client   |  | client   |  |
+  *  | +----------+  +----------+  |
   *  |                             |
   *  +-----------------------------+
   *

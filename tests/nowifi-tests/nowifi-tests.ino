@@ -24,7 +24,7 @@ void onPublish(const MqttClient* srce, const Topic& topic, const char* payload, 
 {
   if (srce)
     published[srce->id()][topic]++;
-  
+
   if (lastPayload) free(lastPayload);
   lastPayload = strdup(payload);
   lastLength = length;
@@ -85,7 +85,7 @@ test(nowifi_publish_should_be_dispatched_to_clients)
 
   MqttClient publisher(&broker);
   publisher.publish("a/b");    // A and B should receive this
-  publisher.publish("a/c");    // A should receive this 
+  publisher.publish("a/c");    // A should receive this
 
   assertEqual(published.size(), (size_t)2);  // 2 clients have received something
   assertEqual(published["A"]["a/b"], 1);

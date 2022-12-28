@@ -1,9 +1,9 @@
 #include <TinyMqtt.h>   // https://github.com/hsaturn/TinyMqtt
 
-/** 
+/**
   * Local broker that accept connections and two local clients
   *
-  * 
+  *
   *  +-----------------------------+
   *  | ESP                         |
   *  |                 +--------+  | 1883 <--- External client/s
@@ -12,14 +12,14 @@
   *  |       |             ^       |
   *  |       |             |       |
   *  |       |             |       |     -----
-  *  |       v             v       |      ---  
-  *  | +----------+  +----------+  |       -  
+  *  |       v             v       |      ---
+  *  | +----------+  +----------+  |       -
   *  | | internal |  | internal |  +-------*  Wifi
-  *  | | client   |  | client   |  |          
-  *  | +----------+  +----------+  |          
+  *  | | client   |  | client   |  |
+  *  | +----------+  +----------+  |
   *  |                             |
   *  +-----------------------------+
-  * 
+  *
   * pros - Reduces internal latency (when publish is received by the same ESP)
   *      - Reduces wifi traffic
   *      - No need to have an external broker
