@@ -35,8 +35,8 @@
   *
   */
 
-const char *ssid     = "Freebox-786A2F";
-const char *password = "usurpavi8dalum64lumine?";
+const char *ssid     = "";
+const char *password = "";
 
 std::string topic_b="sensor/btemp";
 std::string topic_sender= "sensor/counter";
