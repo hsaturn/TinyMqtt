@@ -1,6 +1,9 @@
 // vim: ts=2 sw=2 expandtab
 #pragma once
+
+#ifndef TINY_MQTT_DEBUG
 #define TINY_MQTT_DEBUG 0
+#endif
 
 // TODO Should add a AUnit with both TINY_MQTT_ASYNC and not TINY_MQTT_ASYNC
 // #define TINY_MQTT_ASYNC  // Uncomment this to use ESPAsyncTCP instead of normal cnx
@@ -39,7 +42,7 @@
 
 #include <TinyStreaming.h>
 #if TINY_MQTT_DEBUG
-include <TinyConsole.h>    // https://github.com/hsaturn/TinyConsole
+  #include <TinyConsole.h>    // https://github.com/hsaturn/TinyConsole
   struct TinyMqtt
   {
     static int debug;
@@ -162,7 +165,6 @@ class MqttMessage
 class MqttBroker;
 class MqttClient
 {
-  using CallBack = void (*)(const MqttClient* source, const Topic& topic, const char* payload, size_t payload_length);
   enum __attribute__((packed)) Flags
   {
     FlagUserName = 128,
@@ -174,6 +176,9 @@ class MqttClient
     FlagReserved = 1
   };
   public:
+
+    using CallBack = void (*)(const MqttClient* source, const Topic& topic, const char* payload, size_t payload_length);
+
     /** Constructor. Broker is the adress of a local broker if not null
         If you want to connect elsewhere, leave broker null and use connect() **/
     MqttClient(MqttBroker* broker = nullptr, const std::string& id = TINY_MQTT_DEFAULT_CLIENT_ID);
