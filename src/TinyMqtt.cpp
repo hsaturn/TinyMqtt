@@ -88,9 +88,9 @@ void MqttClient::close(bool bSendDisconnect)
 void MqttClient::connect(MqttBroker* local)
 {
   debug("MqttClient::connect_local");
-  alive = 0;
   close();
   local_broker = local;
+  clientAlive();
 }
 
 void MqttClient::connect(std::string broker, uint16_t port, uint16_t ka)
@@ -271,7 +271,7 @@ void MqttClient::clientAlive()
   debug("MqttClient::clientAlive");
   if (keep_alive)
   {
-    alive=millis()+1000*(keep_alive+local_broker ? 5 : 0);
+    alive=millis()+1000*(keep_alive+(local_broker ? TINY_MQTT_CLIENT_ALIVE_TOLERANCE : 0));
   }
   else
     alive=0;

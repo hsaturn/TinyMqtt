@@ -42,14 +42,20 @@ test(local_client_should_unregister_when_destroyed)
 
 test(local_client_alive)
 {
+  set_millis(0);
   MqttBroker broker(1883);
   MqttClient client(&broker);
-  for(int i=0; i<10; i++)
-  {
-    assertEqual(broker.clientsCount(), (size_t)1);  // Ensure client is now connected
-    broker.loop();
-    usleep(TINY_MQTT_DEFAULT_ALIVE*1000000/2);
-  }
+
+  broker.loop();
+  assertEqual(broker.clientsCount(), (size_t)1);  // Ensure client is now connected
+
+  add_millis(TINY_MQTT_DEFAULT_ALIVE*1000/2);
+  broker.loop();
+  assertEqual(broker.clientsCount(), (size_t)1);  // Ensure client is still connected
+
+  add_seconds(TINY_MQTT_DEFAULT_ALIVE*5);
+  broker.loop();
+  assertEqual(broker.clientsCount(), (size_t)1);  // Ensure client is still connected
 }
 
 #if 0

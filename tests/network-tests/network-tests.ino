@@ -142,6 +142,46 @@ test(suback)
   assertEqual(MqttClient::counters[MqttMessage::Type::SubAck], 1);
 }
 
+test(network_client_alive)
+{
+  const uint32_t keep_alive=1;
+  start_servers(2, true);
+  assertEqual(WiFi.status(), WL_CONNECTED);
+  set_millis(0); // Enter simulated time
+
+  MqttBroker broker(1883);
+  broker.begin();
+  IPAddress broker_ip = WiFi.localIP();
+
+  ESP8266WiFiClass::selectInstance(2);
+  MqttClient client;
+  client.connect(broker_ip.toString().c_str(), 1883, keep_alive);
+  broker.loop();
+  client.loop();
+
+  assertTrue(broker.clientsCount() == 1);
+  assertTrue(client.connected());
+
+  uint32_t ka = broker.getClients()[0]->keepAlive();
+  assertEqual(ka, keep_alive);
+  assertEqual(broker.clientsCount(), (size_t)1);
+
+  // All is going well if we call client.loop()
+  // The client is able to send PingReq to the broker
+  add_seconds(keep_alive);
+  client.loop();
+  broker.loop();
+  assertEqual(broker.clientsCount(), (size_t)1);
+
+  // Now simulate that the client is frozen for
+  // a too long time
+  add_seconds(TINY_MQTT_CLIENT_ALIVE_TOLERANCE*2);
+  broker.loop();
+  assertEqual(broker.clientsCount(), (size_t)0);
+
+  set_real_time();
+}
+
 test(network_client_keep_alive_high)
 {
   const uint32_t keep_alive=1000;

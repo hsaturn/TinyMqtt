@@ -7,6 +7,7 @@
 #ifndef TINY_MQTT_DEFAULT_ALIVE
 #define TINY_MQTT_DEFAULT_ALIVE 10
 #endif
+#define TINY_MQTT_CLIENT_ALIVE_TOLERANCE 5
 
 // TODO Should add a AUnit with both TINY_MQTT_ASYNC and not TINY_MQTT_ASYNC
 // #define TINY_MQTT_ASYNC  // Uncomment this to use ESPAsyncTCP instead of normal cnx
