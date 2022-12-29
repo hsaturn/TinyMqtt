@@ -193,12 +193,13 @@ class MqttClient
     // no negociation occurred
     bool connected()
     {
-      return (local_broker!=nullptr and client==nullptr) or (client and client->connected());
+      return (local_broker!=nullptr and tcp_client==nullptr)
+           or (tcp_client and tcp_client->connected());
     }
 
     void write(const char* buf, size_t length)
     {
-      if (client) client->write(buf, length);
+      if (tcp_client) tcp_client->write(buf, length);
     }
 
     const std::string& id() const { return clientId; }
@@ -229,7 +230,7 @@ class MqttClient
 
     // connected to local broker
     // TODO seems to be useless
-    bool isLocal() const { return client == nullptr; }
+    bool isLocal() const { return tcp_client == nullptr; }
 
     void dump(std::string indent="")
     {
@@ -238,9 +239,9 @@ class MqttClient
         uint32_t ms=millis();
         Console << indent << "+-- " << '\'' << clientId.c_str() << "' " << (connected() ? " ON " : " OFF");
         Console << ", alive=" << alive << '/' << ms << ", ka=" << keep_alive << ' ';
-        if (client)
+        if (tcp_client)
         {
-          if (client->connected())
+          if (tcp_client->connected())
             Console << TinyConsole::green << "connected";
           else
             Console << TinyConsole::red << "disconnected";
@@ -295,7 +296,7 @@ class MqttClient
     // when MqttBroker uses MqttClient for each external connexion
     MqttBroker* local_broker=nullptr;
 
-    TcpClient* client=nullptr;    // connection to remote broker
+    TcpClient* tcp_client=nullptr;    // connection to remote broker
     std::set<Topic>  subscriptions;
     std::string clientId;
     CallBack callback = nullptr;
