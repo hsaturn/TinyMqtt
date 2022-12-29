@@ -30,7 +30,7 @@
   *      - accepts external clients
   *      - MqttClassBinder allows to mix together many mqtt sources
   *
-  * cons - Takes more memory (48 more bytes for the one MqttClassBinder<Class>
+  * cons - Takes more memory (24 more bytes for the one MqttClassBinder<Class>
   *      - a bit hard to understand
   *
   */
