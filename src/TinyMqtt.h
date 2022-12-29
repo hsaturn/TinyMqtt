@@ -37,7 +37,7 @@
   #include <rpcWiFi.h>
 #endif
 
-#include <vector>
+#include <memory>
 #include <set>
 #include <string>
 #include "StringIndexer.h"
@@ -52,7 +52,7 @@
     static int debug;
   };
 
-  #define debug(what) { if (TinyMqtt::debug>=1) Console << (int)__LINE__ << ' ' << what << TinyConsole::white << endl; delay(100); }
+  #define debug(what) { if (TinyMqtt::debug>=1) Console << (int)__LINE__ << ' ' << what << TinyConsole::white << endl; delay(10); }
 #else
   #define debug(what) {}
 #endif
@@ -303,7 +303,7 @@ class MqttClient
     // when MqttBroker uses MqttClient for each external connexion
     MqttBroker* local_broker=nullptr;
 
-    TcpClient* tcp_client=nullptr;    // connection to remote broker
+    std::unique_ptr<TcpClient> tcp_client;    // connection to remote broker
     std::set<Topic> subscriptions;
     std::string clientId;
     CallBack callback = nullptr;
@@ -320,7 +320,6 @@ class MqttBroker
   public:
     // TODO limit max number of clients
     MqttBroker(uint16_t port);
-    ~MqttBroker();
 
     void begin() { server->begin(); }
     void loop();
@@ -332,11 +331,12 @@ class MqttBroker
 
     void dump(std::string indent="")
     {
-      for(auto client: clients)
+      for(const auto& client: clients)
         client->dump(indent);
     }
 
-    const std::vector<MqttClient*>  getClients() const { return clients; }
+    using Clients = std::set<std::unique_ptr<MqttClient>>;
+    const Clients& getClients() const { return clients; }
 
   private:
     friend class MqttClient;
@@ -353,15 +353,17 @@ class MqttBroker
 
     MqttError subscribe(const Topic& topic, uint8_t qos);
 
-    // For clients that are added not by the broker itself (local clients)
-    void addClient(MqttClient* client);
-    void removeClient(MqttClient* client);
+    void addClient(MqttClient* local) { local_clients.insert(local); }
+    void addClient(TcpClient* client);
+
+    void removeClient(MqttClient* local);
 
     bool compareString(const char* good, const char* str, uint8_t str_len) const;
-    std::vector<MqttClient*>  clients;
+    Clients clients;
+    std::set<MqttClient*> local_clients;
 
   private:
-    TcpServer* server = nullptr;
+    std::unique_ptr<TcpServer> server;
 
     const char* auth_user = "guest";
     const char* auth_password = "guest";

@@ -17,19 +17,10 @@ int TinyMqtt::debug=2;
 
 MqttBroker::MqttBroker(uint16_t port)
 {
-  server = new TcpServer(port);
+  server = std::make_unique<TcpServer>(port);
 #ifdef TINY_MQTT_ASYNC
   server->onClient(onClient, this);
 #endif
-}
-
-MqttBroker::~MqttBroker()
-{
-  while(clients.size())
-  {
-    delete clients[0];
-  }
-  delete server;
 }
 
 // private constructor used by broker only
@@ -43,7 +34,7 @@ MqttClient::MqttClient(MqttBroker* local_broker, TcpClient* new_client)
   // client->onConnect() TODO
   // client->onDisconnect() TODO
 #else
-  tcp_client = new WiFiClient(*new_client);
+  tcp_client = std::make_unique<WiFiClient>(*new_client);
 #endif
   alive = millis()+5000;
 }
@@ -59,7 +50,6 @@ MqttClient::MqttClient(MqttBroker* local_broker, const std::string& id)
 MqttClient::~MqttClient()
 {
   close();
-  delete tcp_client;
   debug("*** MqttClient delete()");
 }
 
@@ -99,8 +89,7 @@ void MqttClient::connect(std::string broker, uint16_t port, uint16_t ka)
   debug("MqttClient::connect_to_host " << broker << ':' << port);
   keep_alive = ka;
   close();
-  if (tcp_client) delete tcp_client;
-  tcp_client = new TcpClient;
+  tcp_client = std::make_unique<TcpClient>();
 
 #ifdef TINY_MQTT_ASYNC
   tcp_client->onData(onData, this);
@@ -110,7 +99,7 @@ void MqttClient::connect(std::string broker, uint16_t port, uint16_t ka)
   if (tcp_client->connect(broker.c_str(), port))
   {
     debug("link established");
-    onConnect(this, tcp_client);
+    onConnect(this, tcp_client.get());
   }
   else
   {
@@ -119,10 +108,10 @@ void MqttClient::connect(std::string broker, uint16_t port, uint16_t ka)
 #endif
 }
 
-void MqttBroker::addClient(MqttClient* client)
+void MqttBroker::addClient(TcpClient* client)
 {
   debug("MqttBroker::addClient");
-  clients.push_back(client);
+  clients.insert(std::unique_ptr<MqttClient>(new MqttClient(this, client)));
 }
 
 void MqttBroker::connect(const std::string& host, uint16_t port)
@@ -135,24 +124,7 @@ void MqttBroker::connect(const std::string& host, uint16_t port)
 
 void MqttBroker::removeClient(MqttClient* remove)
 {
-  debug("removeClient");
-  for(auto it=clients.begin(); it!=clients.end(); it++)
-  {
-    auto client=*it;
-    if (client==remove)
-    {
-      // TODO if this broker is connected to an external broker
-      // we have to unsubscribe remove's topics.
-      // (but doing this, check that other clients are not subscribed...)
-      // Unless -> we could receive useless messages
-      //        -> we are using (memory) one IndexedString plus its string for nothing.
-      debug("Remove " << clients.size());
-      clients.erase(it);
-      debug("Client removed " << clients.size());
-      return;
-    }
-  }
-  debug(red << "Error cannot remove client");  // TODO should not occur
+  local_clients.erase(remove);
 }
 
 void MqttBroker::onClient(void* broker_ptr, TcpClient* client)
@@ -160,7 +132,7 @@ void MqttBroker::onClient(void* broker_ptr, TcpClient* client)
   debug("MqttBroker::onClient");
   MqttBroker* broker = static_cast<MqttBroker*>(broker_ptr);
 
-  broker->addClient(new MqttClient(broker, client));
+  broker->addClient(client);
   debug("New client");
 }
 
@@ -181,21 +153,18 @@ void MqttBroker::loop()
     remote_broker->loop();
   }
 
-  for(size_t i=0; i<clients.size(); i++)
+  // 200 bytes shorter than for(auto& client: clients) !
+  for(auto it=clients.begin(); it!=clients.end(); it++)
   {
-    MqttClient* client = clients[i];
-    if (client->connected())
+    it->get()->loop();
+    if (not it->get()->connected())
     {
-      client->loop();
-    }
-    else
-    {
-      debug("Client " << client->id().c_str() << "  Disconnected, local_broker=" << (dbg_ptr)client->local_broker);
-      // Note: deleting a client not added by the broker itself will probably crash later.
-      delete client;
+      clients.erase(it);
       break;
     }
   }
+  for(const auto& client: local_clients)
+    client->loop();
 }
 
 MqttError MqttBroker::subscribe(const Topic& topic, uint8_t qos)
@@ -213,14 +182,13 @@ MqttError MqttBroker::publish(const MqttClient* source, const Topic& topic, Mqtt
   MqttError retval = MqttOk;
 
   debug("MqttBroker::publish");
-  int i=0;
-  for(auto client: clients)
+  int clt_num = 0;
+  for(auto& client: clients)
   {
-    i++;
-#if TINY_MQTT_DEBUG
-    Console << __LINE__ << " broker:" << (remote_broker && remote_broker->connected() ? "linked" : "alone") <<
-       "  srce=" << (source->isLocal() ? "loc" : "rem") << " clt#" << i << ", local=" << client->isLocal() << ", con=" << client->connected() << endl;
-#endif
+    debug (" broker:" << (remote_broker && remote_broker->connected() ? "linked" : "alone")
+        << "  srce=" << (source->isLocal() ? "loc" : "rem") << " clt#" << ++clt_num
+        << ", local=" << client->isLocal() << ", con=" << client->connected());
+
     bool doit = false;
     if (remote_broker && remote_broker->connected())  // this (MqttBroker) is connected (to a external broker)
     {
@@ -238,9 +206,8 @@ MqttError MqttBroker::publish(const MqttClient* source, const Topic& topic, Mqtt
     {
       doit = true;
     }
-#if TINY_MQTT_DEBUG
-    Console << ", doit=" << doit << ' ';
-#endif
+
+    debug(" doit=" << doit << ' ');
 
     if (doit) retval = client->publishIfSubscribed(topic, msg);
     debug("");
@@ -359,7 +326,7 @@ void MqttClient::resubscribe()
     msg.add(0);
     msg.add(0);
 
-    for(auto topic: subscriptions)
+    for(const auto& topic: subscriptions)
     {
       msg.add(topic);
       msg.add(0);    // TODO qos
@@ -481,9 +448,8 @@ void MqttClient::processMessage(MqttMessage* mesg)
         payload += len;
       }
 
-      #if TINY_MQTT_DEBUG
-        Console << yellow << "Client " << clientId << " connected : keep alive=" << keep_alive << '.' << white << endl;
-      #endif
+      debug(yellow << "Client " << clientId << " connected : keep alive=" << keep_alive << '.' << white);
+
       bclose = false;
       mqtt_flags |= FlagConnected;
       {
@@ -579,9 +545,7 @@ void MqttClient::processMessage(MqttMessage* mesg)
       break;
 
     case MqttMessage::Type::Publish:
-      #if TINY_MQTT_DEBUG
-        Console << "publish " << (mqtt_flags & FlagConnected) << '/' << (long) tcp_client << endl;
-      #endif
+      debug("publish " << (mqtt_flags & FlagConnected) << '/' << (long) tcp_client.get());
       if ((mqtt_flags & FlagConnected) or tcp_client == nullptr)
       {
         uint8_t qos = mesg->flags();
@@ -589,9 +553,7 @@ void MqttClient::processMessage(MqttMessage* mesg)
         mesg->getString(payload, len);
         Topic published(payload, len);
         payload += len;
-        #if TINY_MQTT_DEBUG
-          Console << "Received Publish (" << published.str().c_str() << ") size=" << (int)len << endl;
-        #endif
+        debug("Received Publish (" << published.str().c_str() << ") size=" << (int)len);
         // << '(' << std::string(payload, len).c_str() << ')'  << " msglen=" << mesg->length() << endl;
         if (qos) payload+=2;  // ignore packet identifier if any
         len=mesg->end()-payload;
@@ -743,10 +705,7 @@ MqttError MqttClient::publishIfSubscribed(const Topic& topic, MqttMessage& msg)
     else
     {
       processMessage(&msg);
-
-      #if TINY_MQTT_DEBUG
-        Console << "Should call the callback ?\n";
-      #endif
+      debug("Should call the callback ?");
       // callback(this, topic, nullptr, 0);  // TODO Payload
     }
   }
