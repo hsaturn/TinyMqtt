@@ -128,9 +128,9 @@ void MqttBroker::addClient(MqttClient* client)
 void MqttBroker::connect(const std::string& host, uint16_t port)
 {
   debug("MqttBroker::connect");
-  if (broker == nullptr) broker = new MqttClient;
-  broker->connect(host, port);
-  broker->local_broker = this;  // Because connect removed the link
+  if (remote_broker == nullptr) remote_broker = new MqttClient;
+  remote_broker->connect(host, port);
+  remote_broker->local_broker = this;  // Because connect removed the link
 }
 
 void MqttBroker::removeClient(MqttClient* remove)
@@ -174,11 +174,11 @@ void MqttBroker::loop()
     onClient(this, &client);
   }
 #endif
-  if (broker)
+  if (remote_broker)
   {
     // TODO should monitor broker's activity.
     // 1 When broker disconnect and reconnect we have to re-subscribe
-    broker->loop();
+    remote_broker->loop();
   }
 
   for(size_t i=0; i<clients.size(); i++)
@@ -201,9 +201,9 @@ void MqttBroker::loop()
 MqttError MqttBroker::subscribe(const Topic& topic, uint8_t qos)
 {
   debug("MqttBroker::subscribe");
-  if (broker && broker->connected())
+  if (remote_broker && remote_broker->connected())
   {
-    return broker->subscribe(topic, qos);
+    return remote_broker->subscribe(topic, qos);
   }
   return MqttNowhereToSend;
 }
@@ -218,19 +218,19 @@ MqttError MqttBroker::publish(const MqttClient* source, const Topic& topic, Mqtt
   {
     i++;
 #if TINY_MQTT_DEBUG
-    Console << __LINE__ << " broker:" << (broker && broker->connected() ? "linked" : "alone") <<
+    Console << __LINE__ << " broker:" << (remote_broker && remote_broker->connected() ? "linked" : "alone") <<
        "  srce=" << (source->isLocal() ? "loc" : "rem") << " clt#" << i << ", local=" << client->isLocal() << ", con=" << client->connected() << endl;
 #endif
     bool doit = false;
-    if (broker && broker->connected())  // this (MqttBroker) is connected (to a external broker)
+    if (remote_broker && remote_broker->connected())  // this (MqttBroker) is connected (to a external broker)
     {
       // ext_broker -> clients or clients -> ext_broker
-      if (source == broker)  // external broker -> internal clients
+      if (source == remote_broker)  // external broker -> internal clients
         doit = true;
       else                  // external clients -> this broker
       {
         // As this broker is connected to another broker, simply forward the msg
-        MqttError ret = broker->publishIfSubscribed(topic, msg);
+        MqttError ret = remote_broker->publishIfSubscribed(topic, msg);
         if (ret != MqttOk) retval = ret;
       }
     }

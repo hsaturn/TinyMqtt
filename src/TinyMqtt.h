@@ -365,7 +365,7 @@ class MqttBroker
 
     const char* auth_user = "guest";
     const char* auth_password = "guest";
-    MqttClient* broker = nullptr;
+    MqttClient* remote_broker = nullptr;
 
     State state = Disconnected;
 };
