@@ -38,12 +38,12 @@ MqttClient::MqttClient(MqttBroker* local_broker, TcpClient* new_client)
   connect(local_broker);
   debug("MqttClient private with broker");
 #ifdef TINY_MQTT_ASYNC
-  client = new_client;
-  client->onData(onData, this);
+  tcp_client = new_client;
+  tcp_client->onData(onData, this);
   // client->onConnect() TODO
   // client->onDisconnect() TODO
 #else
-  client = new WiFiClient(*new_client);
+  tcp_client = new WiFiClient(*new_client);
 #endif
   alive = millis()+5000;
 }
@@ -52,7 +52,6 @@ MqttClient::MqttClient(MqttBroker* local_broker, const std::string& id)
   : local_broker(local_broker), clientId(id)
 {
   alive = 0;
-  client = nullptr;
 
   if (local_broker) local_broker->addClient(this);
 }
@@ -60,22 +59,23 @@ MqttClient::MqttClient(MqttBroker* local_broker, const std::string& id)
 MqttClient::~MqttClient()
 {
   close();
-  delete client;
+  delete tcp_client;
+  debug("*** MqttClient delete()");
 }
 
 void MqttClient::close(bool bSendDisconnect)
 {
   debug("close " << id().c_str());
   mqtt_flags &= ~FlagConnected;
-  if (client)  // connected to a remote broker
+  if (tcp_client)  // connected to a remote broker
   {
-    if (bSendDisconnect and client->connected())
+    if (bSendDisconnect and tcp_client->connected())
     {
       message.create(MqttMessage::Type::Disconnect);
       message.hexdump("close");
       message.sendTo(this);
     }
-    client->stop();
+    tcp_client->stop();
   }
 
   if (local_broker)
@@ -98,18 +98,18 @@ void MqttClient::connect(std::string broker, uint16_t port, uint16_t ka)
   debug("MqttClient::connect_to_host " << broker << ':' << port);
   keep_alive = ka;
   close();
-  if (client) delete client;
-  client = new TcpClient;
+  if (tcp_client) delete tcp_client;
+  tcp_client = new TcpClient;
 
 #ifdef TINY_MQTT_ASYNC
-  client->onData(onData, this);
-  client->onConnect(onConnect, this);
-  client->connect(broker.c_str(), port, ka);
+  tcp_client->onData(onData, this);
+  tcp_client->onConnect(onConnect, this);
+  tcp_client->connect(broker.c_str(), port, ka);
 #else
-  if (client->connect(broker.c_str(), port))
+  if (tcp_client->connect(broker.c_str(), port))
   {
     debug("link established");
-    onConnect(this, client);
+    onConnect(this, tcp_client);
   }
   else
   {
@@ -182,7 +182,7 @@ void MqttBroker::loop()
 
   for(size_t i=0; i<clients.size(); i++)
   {
-    auto client = clients[i];
+    MqttClient* client = clients[i];
     if (client->connected())
     {
       client->loop();
@@ -284,11 +284,12 @@ void MqttClient::loop()
       close();
       debug(red << "closed");
     }
-    else if (client && client->connected())
+    else if (tcp_client && tcp_client->connected())
     {
       debug("pingreq");
       uint16_t pingreq = MqttMessage::Type::PingReq;
-      client->write((const char*)(&pingreq), 2);
+
+      tcp_client->write((const char*)(&pingreq), 2);
       clientAlive();
 
       // TODO when many MqttClient passes through a local broker
@@ -296,9 +297,9 @@ void MqttClient::loop()
     }
   }
 #ifndef TINY_MQTT_ASYNC
-  while(client && client->available()>0)
+  while(tcp_client && tcp_client->available()>0)
   {
-    message.incoming(client->read());
+    message.incoming(tcp_client->read());
     if (message.type())
     {
       processMessage(&message);
@@ -512,11 +513,11 @@ void MqttClient::processMessage(MqttMessage* mesg)
 
     case MqttMessage::Type::PingReq:
       if (not (mqtt_flags & FlagConnected)) break;
-      if (client)
+      if (tcp_client)
       {
         uint16_t pingreq = MqttMessage::Type::PingResp;
         debug(cyan << "Ping response to client ");
-        client->write((const char*)(&pingreq), 2);
+        tcp_client->write((const char*)(&pingreq), 2);
         bclose = false;
       }
       else
@@ -578,9 +579,9 @@ void MqttClient::processMessage(MqttMessage* mesg)
 
     case MqttMessage::Type::Publish:
       #if TINY_MQTT_DEBUG
-        Console << "publish " << (mqtt_flags & FlagConnected) << '/' << (long) client << endl;
+        Console << "publish " << (mqtt_flags & FlagConnected) << '/' << (long) tcp_client << endl;
       #endif
-      if ((mqtt_flags & FlagConnected) or client == nullptr)
+      if ((mqtt_flags & FlagConnected) or tcp_client == nullptr)
       {
         uint8_t qos = mesg->flags();
         payload = header;
@@ -596,7 +597,7 @@ void MqttClient::processMessage(MqttMessage* mesg)
         // TODO reset DUP
         // TODO reset RETAIN
 
-        if (local_broker==nullptr or client==nullptr)  // internal MqttClient receives publish
+        if (local_broker==nullptr or tcp_client==nullptr)  // internal MqttClient receives publish
         {
           #if TINY_MQTT_DEBUG
             if (TinyMqtt::debug >= 2)
@@ -722,7 +723,7 @@ MqttError MqttClient::publish(const Topic& topic, const char* payload, size_t pa
   {
     return local_broker->publish(this, topic, msg);
   }
-  else if (client)
+  else if (tcp_client)
     return msg.sendTo(this);
   else
     return MqttNowhereToSend;
@@ -736,7 +737,7 @@ MqttError MqttClient::publishIfSubscribed(const Topic& topic, MqttMessage& msg)
   debug("mqttclient publishIfSubscribed " << topic.c_str() << ' ' << subscriptions.size());
   if (isSubscribedTo(topic))
   {
-    if (client)
+    if (tcp_client)
       retval = msg.sendTo(this);
     else
     {
