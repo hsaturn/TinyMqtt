@@ -17,7 +17,7 @@ int TinyMqtt::debug=2;
 
 MqttBroker::MqttBroker(uint16_t port)
 {
-  server = std::make_unique<TcpServer>(port);
+  server = std::unique_ptr<TcpServer>(new TcpServer(port));
 #ifdef TINY_MQTT_ASYNC
   server->onClient(onClient, this);
 #endif
@@ -34,7 +34,7 @@ MqttClient::MqttClient(MqttBroker* local_broker, TcpClient* new_client)
   // client->onConnect() TODO
   // client->onDisconnect() TODO
 #else
-  tcp_client = std::make_unique<WiFiClient>(*new_client);
+  tcp_client = std::unique_ptr<WiFiClient>(new WiFiClient(*new_client));
 #endif
   alive = millis()+5000;
 }
@@ -89,7 +89,7 @@ void MqttClient::connect(std::string broker, uint16_t port, uint16_t ka)
   debug("MqttClient::connect_to_host " << broker << ':' << port);
   keep_alive = ka;
   close();
-  tcp_client = std::make_unique<TcpClient>();
+  tcp_client = std::unique_ptr<TcpClient>(new TcpClient);
 
 #ifdef TINY_MQTT_ASYNC
   tcp_client->onData(onData, this);
