@@ -38,12 +38,12 @@ MqttClient::MqttClient(MqttBroker* local_broker, TcpClient* new_client)
   connect(local_broker);
   debug("MqttClient private with broker");
 #ifdef TINY_MQTT_ASYNC
-  tcp_client = new_client;
+  tcp_client.reset(new_client);
   tcp_client->onData(onData, this);
   // client->onConnect() TODO
   // client->onDisconnect() TODO
 #else
-  tcp_client = new WiFiClient(*new_client);
+  tcp_client.reset(new WiFiClient(*new_client));
 #endif
   alive = millis()+5000;
 }
@@ -59,7 +59,6 @@ MqttClient::MqttClient(MqttBroker* local_broker, const std::string& id)
 MqttClient::~MqttClient()
 {
   close();
-  delete tcp_client;
   debug("*** MqttClient delete()");
 }
 
@@ -99,8 +98,7 @@ void MqttClient::connect(std::string broker, uint16_t port, uint16_t ka)
   debug("MqttClient::connect_to_host " << broker << ':' << port);
   keep_alive = ka;
   close();
-  if (tcp_client) delete tcp_client;
-  tcp_client = new TcpClient;
+  tcp_client.reset(new TcpClient);
 
 #ifdef TINY_MQTT_ASYNC
   tcp_client->onData(onData, this);
@@ -110,7 +108,7 @@ void MqttClient::connect(std::string broker, uint16_t port, uint16_t ka)
   if (tcp_client->connect(broker.c_str(), port))
   {
     debug("link established");
-    onConnect(this, tcp_client);
+    onConnect(this, tcp_client.get());
   }
   else
   {
@@ -580,7 +578,7 @@ void MqttClient::processMessage(MqttMessage* mesg)
 
     case MqttMessage::Type::Publish:
       #if TINY_MQTT_DEBUG
-        Console << "publish " << (mqtt_flags & FlagConnected) << '/' << (long) tcp_client << endl;
+        Console << "publish " << (mqtt_flags & FlagConnected) << '/' << (long) tcp_client.get() << endl;
       #endif
       if ((mqtt_flags & FlagConnected) or tcp_client == nullptr)
       {

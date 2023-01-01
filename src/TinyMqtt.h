@@ -303,7 +303,7 @@ class MqttClient
     // when MqttBroker uses MqttClient for each external connexion
     MqttBroker* local_broker=nullptr;
 
-    TcpClient* tcp_client=nullptr;    // connection to remote broker
+    std::unique_ptr<TcpClient> tcp_client;    // connection to remote broker
     std::set<Topic> subscriptions;
     std::string clientId;
     CallBack callback = nullptr;
