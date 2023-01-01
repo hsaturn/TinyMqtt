@@ -142,6 +142,15 @@ test(suback)
   assertEqual(MqttClient::counters[MqttMessage::Type::SubAck], 1);
 }
 
+uint32_t getClientKeepAlive(MqttBroker& broker)
+{
+  if (broker.getClients().size() == 1)
+    for (auto& it : broker.getClients())
+      return it->keepAlive();
+
+  return 9999;
+}
+
 test(network_client_alive)
 {
   const uint32_t keep_alive=1;
@@ -162,7 +171,7 @@ test(network_client_alive)
   assertTrue(broker.clientsCount() == 1);
   assertTrue(client.connected());
 
-  uint32_t ka = broker.getClients()[0]->keepAlive();
+  uint32_t ka = getClientKeepAlive(broker);
   assertEqual(ka, keep_alive);
   assertEqual(broker.clientsCount(), (size_t)1);
 
@@ -212,9 +221,8 @@ test(network_client_keep_alive_high)
   uint32_t sz = broker.getClients().size();
   assertEqual(sz , (uint32_t)1);
 
-  uint32_t ka = broker.getClients()[0]->keepAlive();
+  uint32_t ka = getClientKeepAlive(broker);
   assertEqual(ka, keep_alive);
-
 }
 
 test(network_client_to_broker_connexion)

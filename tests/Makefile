@@ -1,4 +1,4 @@
-SUB=
+SUB=n
 
 tests:
 	set -e; \

@@ -327,7 +327,6 @@ class MqttBroker
     void connect(const std::string& host, uint16_t port=1883);
     bool connected() const { return state == Connected; }
 
-    size_t clientsCount() const { return clients.size(); }
 
     void dump(std::string indent="")
     {
@@ -336,7 +335,13 @@ class MqttBroker
     }
 
     using Clients = std::set<std::unique_ptr<MqttClient>>;
+    using LocalClients = std::set<MqttClient*>;
+
     const Clients& getClients() const { return clients; }
+    const LocalClients& getLocalClients() const { return local_clients; }
+
+    size_t clientsCount() const { return clients.size(); }
+    size_t localClientsCount() const { return local_clients.size(); }
 
   private:
     friend class MqttClient;
@@ -360,7 +365,7 @@ class MqttBroker
 
     bool compareString(const char* good, const char* str, uint8_t str_len) const;
     Clients clients;
-    std::set<MqttClient*> local_clients;
+    LocalClients local_clients;
 
   private:
     std::unique_ptr<TcpServer> server;
