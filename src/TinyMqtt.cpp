@@ -17,7 +17,7 @@ int TinyMqtt::debug=2;
 
 MqttBroker::MqttBroker(uint16_t port)
 {
-  server = new TcpServer(port);
+  server.reset(new TcpServer(port));
 #ifdef TINY_MQTT_ASYNC
   server->onClient(onClient, this);
 #endif
@@ -29,7 +29,6 @@ MqttBroker::~MqttBroker()
   {
     delete clients[0];
   }
-  delete server;
 }
 
 // private constructor used by broker only
@@ -165,6 +164,7 @@ void MqttBroker::onClient(void* broker_ptr, TcpClient* client)
 void MqttBroker::loop()
 {
 #ifndef TINY_MQTT_ASYNC
+  if (not server) return;
   WiFiClient client = server->available();
 
   if (client)

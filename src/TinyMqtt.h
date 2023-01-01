@@ -322,7 +322,7 @@ class MqttBroker
     MqttBroker(uint16_t port);
     ~MqttBroker();
 
-    void begin() { server->begin(); }
+    void begin() { if (server) server->begin(); }
     void loop();
 
     void connect(const std::string& host, uint16_t port=1883);
@@ -361,7 +361,7 @@ class MqttBroker
     std::vector<MqttClient*>  clients;
 
   private:
-    TcpServer* server = nullptr;
+    std::unique_ptr<TcpServer> server;
 
     const char* auth_user = "guest";
     const char* auth_password = "guest";
