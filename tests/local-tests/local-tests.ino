@@ -57,36 +57,26 @@ test(local_client_alive)
   assertEqual(broker.localClientsCount(), (size_t)1);  // Ensure client is still connected
 }
 
+test(local_wildcard_subscribe)
+{
+  set_millis(0);
+  MqttBroker broker(1883);
+  MqttClient client(&broker, "client");
+  MqttClient sender(&broker, "sender");
+  broker.loop();
+
+  client.subscribe("#");
+  client.subscribe("test");
+  client.setCallback(onPublish);
+  assertEqual(broker.localClientsCount(), (size_t)2);
+
+  sender.publish("test", "value");
+  broker.loop();
+
+  assertEqual(published.size(), (size_t)1);  // client has received something
+}
+
 #if 0
-test(local_connect)
-{
-  assertEqual(broker.localClientsCount(), (size_t)0);
-
-  MqttClient client;
-  assertTrue(client.connected());
-  assertEqual(broker.localClientsCount(), (size_t)1);
-}
-
-test(local_publish_should_be_dispatched)
-{
-  published.clear();
-  assertEqual(broker.localClientsCount(), (size_t)0);
-
-  MqttClient subscriber;
-  subscriber.subscribe("a/b");
-  subscriber.subscribe("a/c");
-  subscriber.setCallback(onPublish);
-
-  MqttClient publisher;
-  publisher.publish("a/b");
-  publisher.publish("a/c");
-  publisher.publish("a/c");
-
-  assertEqual(published.size(), (size_t)1);  // 1 client has received something
-  assertEqual(published[""]["a/b"], 1);
-  assertEqual(published[""]["a/c"], 2);
-}
-
 test(local_publish_should_be_dispatched_to_local_clients)
 {
   published.clear();
