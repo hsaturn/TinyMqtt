@@ -127,6 +127,49 @@ void reset_and_start_servers(int n, bool early_accept = true)
   }
 }
 
+test(classbind_two_subscribers_binded_one_sender_wildcard)
+{
+  set_millis(0);
+  reset_and_start_servers(2, true);
+  assertEqual(WiFi.status(), WL_CONNECTED);
+
+  MqttBroker broker(1883);
+  broker.begin();
+  IPAddress ip_broker = WiFi.localIP();
+
+  // We have a 2nd ESP in order to test through wifi (opposed to local)
+  ESP8266WiFiClass::selectInstance(2);
+  MqttClient mqtt_a(&broker, "mqtt_a");
+  MqttClient mqtt_b(&broker, "mqtt_a");
+  MqttClient mqtt_sender(&broker, "sender");
+
+  broker.loop();
+
+  assertTrue(mqtt_a.connected());
+  assertTrue(mqtt_b.connected());
+
+  TestReceiver receiver("receiver");
+  MqttClassBinder<TestReceiver>::onPublish(&mqtt_a, &receiver);
+  MqttClassBinder<TestReceiver>::onPublish(&mqtt_b, &receiver);
+
+  mqtt_a.subscribe("#");
+  mqtt_b.subscribe("#");
+  mqtt_sender.publish("a/b", "ab");
+
+  for (int i =0; i<10; i++)
+  {
+    add_millis(100);
+    mqtt_a.loop();
+    mqtt_b.loop();
+    mqtt_sender.loop();
+    broker.loop();
+  }
+
+  assertEqual(TestReceiver::messages["receiver"], 2);
+  assertEqual(unrouted, 0);
+  set_real_time();
+}
+
 test(classbind_one_client_receives_the_message)
 {
   set_millis(0);
