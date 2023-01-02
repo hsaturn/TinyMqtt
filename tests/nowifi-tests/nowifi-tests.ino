@@ -32,27 +32,27 @@ void onPublish(const MqttClient* srce, const Topic& topic, const char* payload, 
 
 test(nowifi_client_should_unregister_when_destroyed)
 {
-  assertEqual(broker.clientsCount(), (size_t)0);
+  assertEqual(broker.localClientsCount(), (size_t)0);
   {
     MqttClient client(&broker);
-    assertEqual(broker.clientsCount(), (size_t)1);
+    assertEqual(broker.localClientsCount(), (size_t)1);
   }
-  assertEqual(broker.clientsCount(), (size_t)0);
+  assertEqual(broker.localClientsCount(), (size_t)0);
 }
 
 test(nowifi_connect)
 {
-  assertEqual(broker.clientsCount(), (size_t)0);
+  assertEqual(broker.localClientsCount(), (size_t)0);
 
   MqttClient client(&broker);
   assertTrue(client.connected());
-  assertEqual(broker.clientsCount(), (size_t)1);
+  assertEqual(broker.localClientsCount(), (size_t)1);
 }
 
 test(nowifi_publish_should_be_dispatched)
 {
   published.clear();
-  assertEqual(broker.clientsCount(), (size_t)0);
+  assertEqual(broker.localClientsCount(), (size_t)0);
 
   MqttClient subscriber(&broker);
   subscriber.subscribe("a/b");
@@ -72,7 +72,7 @@ test(nowifi_publish_should_be_dispatched)
 test(nowifi_publish_should_be_dispatched_to_clients)
 {
   published.clear();
-  assertEqual(broker.clientsCount(), (size_t)0);
+  assertEqual(broker.localClientsCount(), (size_t)0);
 
   MqttClient subscriber_a(&broker, "A");
   subscriber_a.setCallback(onPublish);
@@ -97,7 +97,7 @@ test(nowifi_publish_should_be_dispatched_to_clients)
 test(nowifi_subscribe_with_star_wildcard)
 {
   published.clear();
-  assertEqual(broker.clientsCount(), (size_t)0);
+  assertEqual(broker.localClientsCount(), (size_t)0);
 
   MqttClient subscriber(&broker, "A");
   subscriber.setCallback(onPublish);
@@ -118,7 +118,7 @@ test(nowifi_subscribe_with_star_wildcard)
 test(nowifi_subscribe_with_plus_wildcard)
 {
   published.clear();
-  assertEqual(broker.clientsCount(), (size_t)0);
+  assertEqual(broker.localClientsCount(), (size_t)0);
 
   MqttClient subscriber(&broker, "A");
   subscriber.setCallback(onPublish);
@@ -139,7 +139,7 @@ test(nowifi_subscribe_with_plus_wildcard)
 test(nowifi_should_not_receive_sys_msg)
 {
   published.clear();
-  assertEqual(broker.clientsCount(), (size_t)0);
+  assertEqual(broker.localClientsCount(), (size_t)0);
 
   MqttClient subscriber(&broker, "A");
   subscriber.setCallback(onPublish);
@@ -154,7 +154,7 @@ test(nowifi_should_not_receive_sys_msg)
 test(nowifi_subscribe_with_mixed_wildcards)
 {
   published.clear();
-  assertEqual(broker.clientsCount(), (size_t)0);
+  assertEqual(broker.localClientsCount(), (size_t)0);
 
   MqttClient subscriber(&broker, "A");
   subscriber.setCallback(onPublish);
@@ -173,7 +173,7 @@ test(nowifi_subscribe_with_mixed_wildcards)
 test(nowifi_unsubscribe_with_wildcards)
 {
   published.clear();
-  assertEqual(broker.clientsCount(), (size_t)0);
+  assertEqual(broker.localClientsCount(), (size_t)0);
 
   MqttClient subscriber(&broker, "A");
   subscriber.setCallback(onPublish);
@@ -195,7 +195,7 @@ test(nowifi_unsubscribe_with_wildcards)
 test(nowifi_unsubscribe)
 {
   published.clear();
-  assertEqual(broker.clientsCount(), (size_t)0);
+  assertEqual(broker.localClientsCount(), (size_t)0);
 
   MqttClient subscriber(&broker);
   subscriber.setCallback(onPublish);
@@ -215,7 +215,7 @@ test(nowifi_unsubscribe)
 test(nowifi_nocallback_when_destroyed)
 {
   published.clear();
-  assertEqual(broker.clientsCount(), (size_t)0);
+  assertEqual(broker.localClientsCount(), (size_t)0);
 
   MqttClient publisher(&broker);
 

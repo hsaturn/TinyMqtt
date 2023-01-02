@@ -332,11 +332,13 @@ class MqttBroker
 
     void dump(std::string indent="")
     {
-      for(auto client: clients)
+      for(auto& client: clients)
         client->dump(indent);
     }
 
-    const std::vector<MqttClient*>  getClients() const { return clients; }
+    size_t localClientsCount() const { return local_clients.size(); }
+    using Clients = std::vector<MqttClient*>;
+    const Clients& getClients() const { return clients; }
 
   private:
     friend class MqttClient;
@@ -354,11 +356,12 @@ class MqttBroker
     MqttError subscribe(const Topic& topic, uint8_t qos);
 
     // For clients that are added not by the broker itself (local clients)
-    void addClient(MqttClient* client);
+    void addClient(MqttClient* local) { local_clients.insert(local); }
     void removeClient(MqttClient* client);
 
     bool compareString(const char* good, const char* str, uint8_t str_len) const;
-    std::vector<MqttClient*>  clients;
+    Clients clients;
+    std::set<MqttClient*> local_clients;
 
   private:
     std::unique_ptr<TcpServer> server;

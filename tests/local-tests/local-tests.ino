@@ -31,13 +31,12 @@ void onPublish(const MqttClient* srce, const Topic& topic, const char* payload, 
 test(local_client_should_unregister_when_destroyed)
 {
   MqttBroker broker(1883);
-  assertEqual(broker.clientsCount(), (size_t)0);
+  assertEqual(broker.localClientsCount(), (size_t)0);
   {
-    assertEqual(broker.clientsCount(), (size_t)0);  // Ensure client is not yet connected
     MqttClient client(&broker);
-    assertEqual(broker.clientsCount(), (size_t)1);  // Ensure client is now connected
+    assertEqual(broker.localClientsCount(), (size_t)1);  // Ensure client is now connected
   }
-  assertEqual(broker.clientsCount(), (size_t)0);
+  assertEqual(broker.localClientsCount(), (size_t)0);
 }
 
 test(local_client_alive)
@@ -47,31 +46,31 @@ test(local_client_alive)
   MqttClient client(&broker);
 
   broker.loop();
-  assertEqual(broker.clientsCount(), (size_t)1);  // Ensure client is now connected
+  assertEqual(broker.localClientsCount(), (size_t)1);  // Ensure client is now connected
 
   add_millis(TINY_MQTT_DEFAULT_ALIVE*1000/2);
   broker.loop();
-  assertEqual(broker.clientsCount(), (size_t)1);  // Ensure client is still connected
+  assertEqual(broker.localClientsCount(), (size_t)1);  // Ensure client is still connected
 
   add_seconds(TINY_MQTT_DEFAULT_ALIVE*5);
   broker.loop();
-  assertEqual(broker.clientsCount(), (size_t)1);  // Ensure client is still connected
+  assertEqual(broker.localClientsCount(), (size_t)1);  // Ensure client is still connected
 }
 
 #if 0
 test(local_connect)
 {
-  assertEqual(broker.clientsCount(), (size_t)0);
+  assertEqual(broker.localClientsCount(), (size_t)0);
 
   MqttClient client;
   assertTrue(client.connected());
-  assertEqual(broker.clientsCount(), (size_t)1);
+  assertEqual(broker.localClientsCount(), (size_t)1);
 }
 
 test(local_publish_should_be_dispatched)
 {
   published.clear();
-  assertEqual(broker.clientsCount(), (size_t)0);
+  assertEqual(broker.localClientsCount(), (size_t)0);
 
   MqttClient subscriber;
   subscriber.subscribe("a/b");
@@ -91,7 +90,7 @@ test(local_publish_should_be_dispatched)
 test(local_publish_should_be_dispatched_to_local_clients)
 {
   published.clear();
-  assertEqual(broker.clientsCount(), (size_t)0);
+  assertEqual(broker.localClientsCount(), (size_t)0);
 
   MqttClient subscriber_a("A");
   subscriber_a.setCallback(onPublish);
@@ -116,7 +115,7 @@ test(local_publish_should_be_dispatched_to_local_clients)
 test(local_unsubscribe)
 {
   published.clear();
-  assertEqual(broker.clientsCount(), (size_t)0);
+  assertEqual(broker.localClientsCount(), (size_t)0);
 
   MqttClient subscriber;
   subscriber.setCallback(onPublish);
@@ -136,7 +135,7 @@ test(local_unsubscribe)
 test(local_nocallback_when_destroyed)
 {
   published.clear();
-  assertEqual(broker.clientsCount(), (size_t)0);
+  assertEqual(broker.localClientsCount(), (size_t)0);
 
   MqttClient publisher;
   {

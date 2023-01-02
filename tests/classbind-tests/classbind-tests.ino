@@ -129,6 +129,7 @@ void reset_and_start_servers(int n, bool early_accept = true)
 
 test(classbind_one_client_receives_the_message)
 {
+  set_millis(0);
   reset_and_start_servers(2, true);
   assertEqual(WiFi.status(), WL_CONNECTED);
 
@@ -138,7 +139,7 @@ test(classbind_one_client_receives_the_message)
 
   // We have a 2nd ESP in order to test through wifi (opposed to local)
   ESP8266WiFiClass::selectInstance(2);
-  MqttClient client;
+  MqttClient client("sender");
   client.connect(ip_broker.toString().c_str(), 1883);
   broker.loop();
   assertTrue(client.connected());
@@ -151,12 +152,14 @@ test(classbind_one_client_receives_the_message)
 
   for (int i =0; i<10; i++)
   {
+    add_millis(100);
     client.loop();
     broker.loop();
   }
 
   assertEqual(TestReceiver::messages["receiver"], 1);
   assertEqual(unrouted, 0);
+  set_real_time();
 }
 
 test(classbind_routes_should_be_empty_when_receiver_goes_out_of_scope)

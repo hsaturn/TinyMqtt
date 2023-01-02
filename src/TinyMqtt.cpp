@@ -116,12 +116,6 @@ void MqttClient::connect(std::string broker, uint16_t port, uint16_t ka)
 #endif
 }
 
-void MqttBroker::addClient(MqttClient* client)
-{
-  debug("MqttBroker::addClient");
-  clients.push_back(client);
-}
-
 void MqttBroker::connect(const std::string& host, uint16_t port)
 {
   debug("MqttBroker::connect");
@@ -132,24 +126,13 @@ void MqttBroker::connect(const std::string& host, uint16_t port)
 
 void MqttBroker::removeClient(MqttClient* remove)
 {
-  debug("removeClient");
-  for(auto it=clients.begin(); it!=clients.end(); it++)
-  {
-    auto client=*it;
-    if (client==remove)
+  local_clients.erase(remove);
+  for(auto it = clients.begin(); it!=clients.end(); it++)
+    if (*it == remove)
     {
-      // TODO if this broker is connected to an external broker
-      // we have to unsubscribe remove's topics.
-      // (but doing this, check that other clients are not subscribed...)
-      // Unless -> we could receive useless messages
-      //        -> we are using (memory) one IndexedString plus its string for nothing.
-      debug("Remove " << clients.size());
       clients.erase(it);
-      debug("Client removed " << clients.size());
-      return;
+      break;
     }
-  }
-  debug(red << "Error cannot remove client");  // TODO should not occur
 }
 
 void MqttBroker::onClient(void* broker_ptr, TcpClient* client)
@@ -157,7 +140,7 @@ void MqttBroker::onClient(void* broker_ptr, TcpClient* client)
   debug("MqttBroker::onClient");
   MqttBroker* broker = static_cast<MqttBroker*>(broker_ptr);
 
-  broker->addClient(new MqttClient(broker, client));
+  broker->clients.push_back(new MqttClient(broker, client));
   debug("New client");
 }
 
@@ -179,9 +162,12 @@ void MqttBroker::loop()
     remote_broker->loop();
   }
 
-  for(size_t i=0; i<clients.size(); i++)
+  // keep track on size because loop can remove a client from containers
+  // loop on remote clients (connected through network)
+  auto size = clients.size();
+  for(auto it = clients.begin(); it!=clients.end(); it++)
   {
-    MqttClient* client = clients[i];
+    MqttClient* client = *it;
     if (client->connected())
     {
       client->loop();
@@ -190,9 +176,16 @@ void MqttBroker::loop()
     {
       debug("Client " << client->id().c_str() << "  Disconnected, local_broker=" << (dbg_ptr)client->local_broker);
       // Note: deleting a client not added by the broker itself will probably crash later.
-      delete client;
-      break;
     }
+    if (size != clients.size()) break;
+  }
+
+  // loop on local clients (on same device as the broker's)
+  size = local_clients.size();
+  for(auto& client: local_clients)
+  {
+    client->loop();
+    if (local_clients.size() != size) break;
   }
 }
 
@@ -208,40 +201,28 @@ MqttError MqttBroker::subscribe(const Topic& topic, uint8_t qos)
 
 MqttError MqttBroker::publish(const MqttClient* source, const Topic& topic, MqttMessage& msg) const
 {
-  MqttError retval = MqttOk;
+  MqttError retval = MqttOk;  // TODO here retval is badly computed
 
   debug("MqttBroker::publish");
-  int i=0;
-  for(auto client: clients)
-  {
-    i++;
-#if TINY_MQTT_DEBUG
-    Console << __LINE__ << " broker:" << (remote_broker && remote_broker->connected() ? "linked" : "alone") <<
-       "  srce=" << (source->isLocal() ? "loc" : "rem") << " clt#" << i << ", local=" << client->isLocal() << ", con=" << client->connected() << endl;
-#endif
-    bool doit = false;
-    if (remote_broker && remote_broker->connected())  // this (MqttBroker) is connected (to a external broker)
-    {
-      // ext_broker -> clients or clients -> ext_broker
-      if (source == remote_broker)  // external broker -> internal clients
-        doit = true;
-      else                  // external clients -> this broker
-      {
-        // As this broker is connected to another broker, simply forward the msg
-        MqttError ret = remote_broker->publishIfSubscribed(topic, msg);
-        if (ret != MqttOk) retval = ret;
-      }
-    }
-    else // Disconnected
-    {
-      doit = true;
-    }
-#if TINY_MQTT_DEBUG
-    Console << ", doit=" << doit << ' ';
-#endif
 
-    if (doit) retval = client->publishIfSubscribed(topic, msg);
-    debug("");
+  if (remote_broker == nullptr or source == remote_broker)  // external broker -> internal clients
+  {
+    for(auto& client: clients)
+    {
+      retval = client->publishIfSubscribed(topic, msg);
+    }
+    for(auto& client: local_clients)
+    {
+      retval = client->publishIfSubscribed(topic, msg);
+    }
+  }
+  else
+  {
+    if (remote_broker && remote_broker->connected())
+    {
+      MqttError ret = remote_broker->publishIfSubscribed(topic, msg);
+      if (ret != MqttOk) retval = ret;
+    }
   }
   return retval;
 }
