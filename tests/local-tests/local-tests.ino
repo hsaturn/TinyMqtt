@@ -76,6 +76,34 @@ test(local_wildcard_subscribe)
   assertEqual(published.size(), (size_t)1);  // client has received something
 }
 
+test(local_client_do_not_disconnect_after_publishing)
+{
+  set_millis(0);
+  MqttBroker broker(1883);
+  MqttClient client(&broker, "client");
+  MqttClient sender(&broker, "sender");
+  broker.loop();
+
+  client.subscribe("#");
+  client.subscribe("test");
+  client.setCallback(onPublish);
+  assertEqual(broker.localClientsCount(), (size_t)2);
+
+  sender.publish("test", "value");
+  broker.loop();
+
+  add_seconds(60);
+  client.loop();
+  sender.loop();
+  broker.loop();
+
+  assertEqual(broker.localClientsCount(), (size_t)2);
+  assertEqual(sender.connected(), true);
+  assertEqual(client.connected(), true);
+
+  assertEqual(published.size(), (size_t)1);  // client has received something
+}
+
 #if 0
 test(local_publish_should_be_dispatched_to_local_clients)
 {

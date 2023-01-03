@@ -51,6 +51,7 @@ MqttClient::MqttClient(MqttBroker* local_broker, const std::string& id)
   : local_broker(local_broker), clientId(id)
 {
   alive = 0;
+  keep_alive = 0;
 
   if (local_broker) local_broker->addClient(this);
 }
@@ -256,7 +257,7 @@ void MqttClient::clientAlive()
 
 void MqttClient::loop()
 {
-  if (alive && (millis() >= alive))
+  if (keep_alive && (millis() >= alive))
   {
     if (local_broker)
     {
