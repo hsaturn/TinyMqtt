@@ -157,7 +157,7 @@ test(network_client_alive)
   const uint32_t keep_alive=1;
   start_servers(2, true);
   assertEqual(WiFi.status(), WL_CONNECTED);
-  set_millis(0); // Enter simulated time
+  EpoxyTest::set_millis(0); // Enter simulated time
 
   MqttBroker broker(1883);
   broker.begin();
@@ -178,18 +178,18 @@ test(network_client_alive)
 
   // All is going well if we call client.loop()
   // The client is able to send PingReq to the broker
-  add_seconds(keep_alive);
+  EpoxyTest::add_seconds(keep_alive);
   client.loop();
   broker.loop();
   assertEqual(broker.clientsCount(), (size_t)1);
 
   // Now simulate that the client is frozen for
   // a too long time
-  add_seconds(TINY_MQTT_CLIENT_ALIVE_TOLERANCE*2);
+  EpoxyTest::add_seconds(TINY_MQTT_CLIENT_ALIVE_TOLERANCE*2);
   broker.loop();
   assertEqual(broker.clientsCount(), (size_t)0);
 
-  set_real_time();
+  EpoxyTest::set_real_time();
 }
 
 test(network_client_keep_alive_high)

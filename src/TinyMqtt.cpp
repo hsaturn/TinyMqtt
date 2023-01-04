@@ -34,6 +34,7 @@ MqttBroker::~MqttBroker()
 // private constructor used by broker only
 MqttClient::MqttClient(MqttBroker* local_broker, TcpClient* new_client)
 {
+  dclass;
   connect(local_broker);
   debug("MqttClient private with broker");
 #ifdef TINY_MQTT_ASYNC
@@ -50,6 +51,7 @@ MqttClient::MqttClient(MqttBroker* local_broker, TcpClient* new_client)
 MqttClient::MqttClient(MqttBroker* local_broker, const std::string& id)
   : local_broker(local_broker), clientId(id)
 {
+  dclass;
   alive = 0;
   keep_alive = 0;
 
@@ -58,6 +60,7 @@ MqttClient::MqttClient(MqttBroker* local_broker, const std::string& id)
 
 MqttClient::~MqttClient()
 {
+  dtor;
   close();
   debug("*** MqttClient delete()");
 }

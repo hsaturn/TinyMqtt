@@ -129,7 +129,7 @@ void reset_and_start_servers(int n, bool early_accept = true)
 
 test(classbind_two_subscribers_binded_one_sender_wildcard)
 {
-  set_millis(0);
+  EpoxyTest::set_millis(0);
   reset_and_start_servers(2, true);
   assertEqual(WiFi.status(), WL_CONNECTED);
 
@@ -158,7 +158,7 @@ test(classbind_two_subscribers_binded_one_sender_wildcard)
 
   for (int i =0; i<10; i++)
   {
-    add_millis(100);
+    EpoxyTest::add_millis(100);
     mqtt_a.loop();
     mqtt_b.loop();
     mqtt_sender.loop();
@@ -167,12 +167,12 @@ test(classbind_two_subscribers_binded_one_sender_wildcard)
 
   assertEqual(TestReceiver::messages["receiver"], 2);
   assertEqual(unrouted, 0);
-  set_real_time();
+  EpoxyTest::set_real_time();
 }
 
 test(classbind_one_client_receives_the_message)
 {
-  set_millis(0);
+  EpoxyTest::set_millis(0);
   reset_and_start_servers(2, true);
   assertEqual(WiFi.status(), WL_CONNECTED);
 
@@ -195,14 +195,14 @@ test(classbind_one_client_receives_the_message)
 
   for (int i =0; i<10; i++)
   {
-    add_millis(100);
+    EpoxyTest::add_millis(100);
     client.loop();
     broker.loop();
   }
 
   assertEqual(TestReceiver::messages["receiver"], 1);
   assertEqual(unrouted, 0);
-  set_real_time();
+  EpoxyTest::set_real_time();
 }
 
 test(classbind_routes_should_be_empty_when_receiver_goes_out_of_scope)

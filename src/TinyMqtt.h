@@ -57,6 +57,15 @@
   #define debug(what) {}
 #endif
 
+#include <TinyConsole.h>
+#if 0
+#define dclass { Console << __LINE__ << ':' << __PRETTY_FUNCTION__ <<  ", this=" << (long)this << endl; }
+#define dtor { Console << __LINE__ << ": ~" << __PRETTY_FUNCTION__ << ", this=" << (long)this << endl; }
+#else
+#define dclass
+#define dtor
+#endif
+
 #ifdef TINY_MQTT_ASYNC
   using TcpClient = AsyncClient;
   using TcpServer = AsyncServer;
@@ -188,7 +197,7 @@ class MqttClient
     /** Constructor. Broker is the adress of a local broker if not null
         If you want to connect elsewhere, leave broker null and use connect() **/
     MqttClient(MqttBroker* broker = nullptr, const std::string& id = TINY_MQTT_DEFAULT_CLIENT_ID);
-    MqttClient(const std::string& id) : MqttClient(nullptr, id){}
+    MqttClient(const std::string& id) : MqttClient(nullptr, id){ dclass; }
 
     ~MqttClient();
 
