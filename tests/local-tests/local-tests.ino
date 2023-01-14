@@ -42,7 +42,7 @@ test(local_client_should_unregister_when_destroyed)
 
 test(local_client_do_not_disconnect_after_publishing)
 {
-  set_millis(0);
+  EpoxyTest::set_millis(0);
   MqttBroker broker(1883);
   MqttClient client(&broker, "client");
   MqttClient sender(&broker, "sender");
@@ -56,7 +56,7 @@ test(local_client_do_not_disconnect_after_publishing)
   sender.publish("test", "value");
   broker.loop();
 
-  add_seconds(60);
+  EpoxyTest::add_seconds(60);
   client.loop();
   sender.loop();
   broker.loop();

@@ -19,7 +19,8 @@ class TestReceiver : public MqttClassBinder<TestReceiver>
 
     void onPublish(const MqttClient* /* source */, const Topic& topic, const char* payload, size_t /* length */)
     {
-      Serial << "--> routed message received by " << name_ << ':' << topic.c_str() << " = " << payload << endl;
+      (void) topic;
+      // Serial << "--> routed message received by " << name_ << ':' << topic.c_str() << " = " << payload << endl;
       messages[name_]++;
     }
 
@@ -35,7 +36,8 @@ std::map<std::string, int> TestReceiver::messages;
 static int unrouted = 0;
 void onUnrouted(const MqttClient*, const Topic& topic, const char*, size_t)
 {
-  Serial << "--> unrouted: " << topic.c_str() << endl;
+  (void) topic;
+  // Serial << "--> unrouted: " << topic.c_str() << endl;
   unrouted++;
 }
 
