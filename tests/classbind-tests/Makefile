@@ -3,9 +3,6 @@
 
 EXTRA_CXXFLAGS=-g3 -O0 -DTINY_MQTT_TESTS
 
-# Remove flto flag from EpoxyDuino (too many <optimized out>)
-CXXFLAGS = -Wextra -Wall -std=gnu++11 -fno-exceptions -fno-threadsafe-statics
-
 APP_NAME := classbind-tests
 ARDUINO_LIBS := AUnit AceCommon AceTime TinyMqtt EspMock ESP8266WiFi  ESPAsyncTCP TinyConsole
 ARDUINO_LIB_DIRS := ../../../EspMock/libraries
