@@ -1,6 +1,9 @@
 // vim: ts=2 sw=2 expandtab
 #pragma once
+#include <assert.h>
 #include <map>
+#include <unordered_map>
+#include "TinyString.h"
 #include <string>
 #include <string.h>
 
@@ -10,9 +13,11 @@
  */
 class StringIndexer
 {
+  private:
+
   class StringCounter
   {
-    std::string str;
+    TinyString str;
     uint8_t used=0;
     friend class StringIndexer;
 
@@ -29,13 +34,13 @@ class StringIndexer
   public:
     using index_t = uint8_t;
 
-   static const std::string& str(const index_t& index)
-    {
-      static std::string dummy;
-      const auto& it=strings.find(index);
-      if (it == strings.end()) return dummy;
-      return it->second.str;
-    }
+   static const TinyString& str(const index_t& index)
+   {
+     static TinyString dummy;
+     const auto& it=strings.find(index);
+     if (it == strings.end()) return dummy;
+     return it->second.str;
+   }
 
     static void use(const index_t& index)
     {
@@ -77,7 +82,7 @@ class StringIndexer
       {
         if (strings.find(index)==strings.end())
         {
-          strings[index].str = std::string(str, len);
+          strings[index].str = TinyString(str, len);
           strings[index].used++;
           // Serial << "Creating index " << index << " for (" << strings[index].str.c_str() << ") len=" << len << endl;
           return index;
@@ -86,7 +91,9 @@ class StringIndexer
       return 0;  // TODO out of indexes
     }
 
-    static std::map<index_t, StringCounter> strings;
+    using Strings = std::unordered_map<index_t, StringCounter>;
+
+    static Strings strings;
 };
 
 class IndexedString
@@ -103,7 +110,7 @@ class IndexedString
       index=StringIndexer::strToIndex(str, len);
     }
 
-    IndexedString(const std::string& str) : IndexedString(str.c_str(), str.length()) {};
+    IndexedString(const TinyString& str) : IndexedString(str.c_str(), str.length()) {};
 
     ~IndexedString() { StringIndexer::release(index); }
 
@@ -124,7 +131,7 @@ class IndexedString
       return i1.index == i2.index;
     }
 
-    const std::string& str() const { return StringIndexer::str(index); }
+    const TinyString& str() const { return StringIndexer::str(index); }
 
     const StringIndexer::index_t& getIndex() const { return index; }
 

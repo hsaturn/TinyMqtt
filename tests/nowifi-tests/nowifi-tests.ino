@@ -15,7 +15,7 @@ using namespace std;
 
 MqttBroker broker(1883);
 
-std::map<std::string, std::map<Topic, int>>  published;    // map[client_id] => map[topic] = count
+std::map<TinyString, std::map<Topic, int>>  published;    // map[client_id] => map[topic] = count
 
 char* lastPayload = nullptr;
 size_t lastLength;
@@ -279,4 +279,5 @@ void loop() {
   aunit::TestRunner::run();
 
   if (Serial.available()) ESP.reset();
+  published.clear();  // Avoid crash at exit handlers
 }

@@ -340,7 +340,7 @@ void setup() {
   while(!Serial);
   */
 
-  Serial.println("=============[ FAKE NETWORK TinyMqtt TESTS       ]========================");
+  Serial.println("=============[ TinyMqtt class-bind TESTS       ]========================");
 
   WiFi.mode(WIFI_STA);
   WiFi.begin("network", "password");

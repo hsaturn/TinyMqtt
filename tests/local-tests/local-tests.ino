@@ -16,7 +16,7 @@ using namespace std;
 
 MqttBroker broker(1883);
 
-std::map<std::string, std::map<Topic, int>>  published;    // map[client_id] => map[topic] = count
+std::map<TinyString, std::map<Topic, int>>  published;    // map[client_id] => map[topic] = count
 
 const char* lastPayload;
 size_t lastLength;
@@ -40,7 +40,7 @@ test(local_client_should_unregister_when_destroyed)
   assertEqual(broker.clientsCount(), (size_t)0);
 }
 
-test(local_client_do_not_disconnect_after_publishing)
+test(local_client_do_not_disconnect_after_publishing_and_long_inactivity)
 {
   EpoxyTest::set_millis(0);
   MqttBroker broker(1883);
@@ -56,8 +56,13 @@ test(local_client_do_not_disconnect_after_publishing)
   sender.publish("test", "value");
   broker.loop();
 
-  EpoxyTest::add_seconds(60);
+  EpoxyTest::add_seconds(600);
   client.loop();
+  sender.loop();
+  broker.loop();
+
+  sender.publish("test", "value");
+  broker.loop();
   sender.loop();
   broker.loop();
 

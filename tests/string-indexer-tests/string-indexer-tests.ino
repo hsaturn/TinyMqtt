@@ -84,7 +84,7 @@ test(indexer_indexed_operator_eq)
 
 test(indexer_get_string)
 {
-  std::string sone("one");
+  TinyString sone("one");
   IndexedString one(sone);
 
   assertTrue(sone==one.str());

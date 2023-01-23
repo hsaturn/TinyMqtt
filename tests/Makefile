@@ -1,9 +1,18 @@
+SUB=
+
 tests:
 	@set -e; \
 	for i in $(SUB)*-tests/Makefile; do \
-		$(MAKE) -C $$(dirname $$i) -j clean; \
 		echo '==== Making:' $$(dirname $$i); \
 		$(MAKE) -C $$(dirname $$i) -j; \
+	done
+
+valgrind:
+	@set -e; \
+	$(MAKE) tests; \
+	for i in $(SUB)*-tests/Makefile; do \
+		echo '==== Running:' $$(dirname $$i); \
+		valgrind $$(dirname $$i)/$$(dirname $$i).out; \
 	done
 
 debugtest:
@@ -12,10 +21,9 @@ debugtest:
 	$(MAKE) -C debug-mode -j; \
 	debug-mode/debug-tests.out
 
-runtests: debugtest
-	@$(MAKE) clean
-	@$(MAKE) tests
+runtests:
 	@set -e; \
+	$(MAKE) tests; \
 	for i in $(SUB)*-tests/Makefile; do \
 		echo '==== Running:' $$(dirname $$i); \
 		$$(dirname $$i)/$$(dirname $$i).out; \
