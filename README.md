@@ -10,6 +10,15 @@
 
 TinyMqtt is a small, fast and capable Mqtt Broker and Client for Esp8266 / Esp32 / Esp WROOM
 
+## TinyMqtt dependencies
+
+| Project    | Unit tests result |
+| ---------- | ------------ |
+| TinyMqtt   | No setup yet |
+| EpoxyDuino | [![AUnit Tests](https://github.com/hsaturn/EpoxyDuino/actions/workflows/aunit_tests.yml/badge.svg)](https://github.com/hsaturn/EpoxyDuino/actions/workflows/aunit_tests.yml) |
+| EspMock    | [![AUnit Tests](https://github.com/hsaturn/EspMock/actions/workflows/aunit.yml/badge.svg)](https://github.com/hsaturn/EspMock/actions/workflows/aunit.yml) |
+| AUnit | [![AUnit Tests](https://github.com/hsaturn/AUnit/actions/workflows/aunit_tests.yml/badge.svg)](https://github.com/hsaturn/AUnit/actions/workflows/aunit_tests.yml) |
+
 ## Features
 
 - Very fast broker I saw it re-sent 1000 topics per second for two
