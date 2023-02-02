@@ -10,11 +10,12 @@
 
 TinyMqtt is a small, fast and capable Mqtt Broker and Client for Esp8266 / Esp32 / Esp WROOM
 
-## TinyMqtt dependencies
+### Statuses of all unit tests of TinyMqtt and its dependencies
 
 | Project    | Unit tests result |
 | ---------- | ------------ |
-| TinyMqtt   | No setup yet |
+| TinyMqtt   | [![AUnit Tests](https://github.com/hsaturn/TinyMqtt/actions/workflows/aunit.yml/badge.svg)](https://github.com/hsaturn/TinyMqtt/actions/workflows/aunit.yml) |
+| Dependencies                  ||
 | EpoxyDuino | [![AUnit Tests](https://github.com/hsaturn/EpoxyDuino/actions/workflows/aunit_tests.yml/badge.svg)](https://github.com/hsaturn/EpoxyDuino/actions/workflows/aunit_tests.yml) |
 | EspMock    | [![AUnit Tests](https://github.com/hsaturn/EspMock/actions/workflows/aunit.yml/badge.svg)](https://github.com/hsaturn/EspMock/actions/workflows/aunit.yml) |
 | AUnit | [![AUnit Tests](https://github.com/hsaturn/AUnit/actions/workflows/aunit_tests.yml/badge.svg)](https://github.com/hsaturn/AUnit/actions/workflows/aunit_tests.yml) |
