@@ -455,7 +455,7 @@ void MqttClient::processMessage(MqttMessage* mesg)
       }
       if (header[6]!=0x04)
       {
-        debug("unknown level");
+        debug("Unsupported MQTT version (" << (int) header[6] << "), only version=4 supported" << endl);
         break;  // Level 3.1.1
       }
 
