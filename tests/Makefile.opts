@@ -1,0 +1,9 @@
+
+# GCC
+# CXXFLAGS = -Wextra -Wall -std=gnu++11 -fno-exceptions -fno-threadsafe-statics
+# EXTRA_CXXFLAGS=-g3 -O0
+
+# CLANG SANITIZE
+# CXX=clang
+# EXTRA_CXXFLAGS=-g3 -O0 -fsanitize=memory
+# LDFLAGS = -lpthread -lstdc++
