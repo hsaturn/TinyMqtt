@@ -8,9 +8,20 @@
 class TinyString
 {
   public:
-    using size_t = uint16_t;
+    class size_t
+    {
+      public:
+        using type = uint16_t;
+        size_t (const size_t& s) : s_(s) {}
+        size_t (int i) : s_(static_cast<type>) {}
+
+        type operator() const { return s_; }
+
+      private:
+        type s_;
+    };
     using value_type = char;
-    static constexpr size_t npos = std::numeric_limits<uint16_t>::max();
+    constexpr size_t::type npos = std::numeric_limits<size_t::type>::max();
 
     TinyString() = default;
     TinyString(int, int base=10);
