@@ -8,18 +8,19 @@
 class TinyString
 {
   public:
+    using size_t = uint16_t;
     using value_type = char;
-    static constexpr uint16_t npos = std::numeric_limits<uint16_t>::max();
+    static constexpr size_t npos = std::numeric_limits<uint16_t>::max();
 
     TinyString() = default;
     TinyString(int, int base=10);
     TinyString(const TinyString&);
-    TinyString(const char*, uint16_t size);
+    TinyString(const char*, size_t size);
     TinyString(const char* s) : TinyString(s, strlen(s)){};
     TinyString& operator= (const TinyString&);
     ~TinyString() { clear(); }
 
-    int compare(const char* buf, uint16_t len) const;
+    int compare(const char* buf, size_t len) const;
     int compare(const char* buf) const { return compare(buf, strlen(buf)); }
 
     friend bool operator == (const TinyString& l, const TinyString& r) { return l.compare(r) == 0; }
@@ -27,16 +28,18 @@ class TinyString
     friend bool operator < (const TinyString& l, const TinyString& r) { return l.compare(r) <0; }
 
     const char* c_str() const { return str; }
-    uint16_t length() const { return size_; }
-    uint16_t size() const { return length(); }
-    void concat(const char* buf, uint16_t len);
+    size_t length() const { return size_; }
+    size_t size() const { return length(); }
+    void concat(const char* buf, size_t len);
 
-    bool starts_with(const char* buf, uint16_t len) const;
+    bool starts_with(const char* buf, size_t len) const;
     bool starts_with(const char* buf) const { return starts_with(buf, strlen(buf)); }
 
-    TinyString substr(uint16_t pos, uint16_t len = npos);
+    size_t find(const char c, const size_t from=0) const;
 
-    char& operator[](uint16_t index) const { assert(index < size_); return str[index]; }
+    TinyString substr(size_t pos, size_t len = npos);
+
+    char& operator[](size_t index) const { assert(index < size_); return str[index]; }
     TinyString& operator = (const char c);
     TinyString& operator +=(const char c);
     TinyString& operator +=(const char* buf) { concat(buf, strlen(buf)); return *this; }
@@ -45,11 +48,11 @@ class TinyString
 
     operator const char*() const { return str; }
 
-    void reserve(uint16_t size) { reserve(size, 0); }
+    void reserve(size_t size) { reserve(size, 0); }
 
-    void erase(uint16_t pos, uint16_t size = npos);
+    void erase(size_t pos, size_t size = npos);
 
-    void dup(const char* buffer, uint16_t size, uint8_t extent = 4);
+    void dup(const char* buffer, size_t size, uint8_t extent = 4);
 
     void push_back(const char c);
     void clear();
@@ -61,15 +64,15 @@ class TinyString
     iterator begin() const { return str; }
     iterator end() const { return str + size_; }
 
-    uint16_t capacity() const { return size_ + free_; }
+    size_t capacity() const { return size_ + free_; }
     void collect(); // Save memory
 
   private:
-    void reserve(uint16_t new_size, uint8_t extent);
+    void reserve(size_t new_size, uint8_t extent);
     void copy(const TinyString& t) { dup(t.str, t.size_); };
 
     char* str = const_cast<char *>(emptyString);
-    uint16_t size_ = 0;   // if size_ == 0 no allocation, but str = emptyString
+    size_t size_ = 0;   // if size_ == 0 no allocation, but str = emptyString
     uint8_t free_ = 0;    // malloc(str) = size_ + free_
 
     static const char* emptyString;

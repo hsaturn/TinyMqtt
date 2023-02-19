@@ -3,7 +3,7 @@
 
 const char* TinyString::emptyString = "";
 
-TinyString::TinyString(const char* buffer, uint16_t s)
+TinyString::TinyString(const char* buffer, size_t s)
 {
   dup(buffer, s);
 }
@@ -43,7 +43,7 @@ TinyString& TinyString::operator +=(int i)
   return *this;
 }
 
-void TinyString::concat(const char* buf, uint16_t len)
+void TinyString::concat(const char* buf, size_t len)
 {
   reserve(size_ + len + 1);
   strcpy(str + size_, buf);
@@ -59,7 +59,7 @@ void TinyString::push_back(const char c)
   free_--;
 }
 
-void TinyString::erase(uint16_t pos, uint16_t size)
+void TinyString::erase(size_t pos, size_t size)
 {
   if (size == npos) size = size_;
   if (pos > size_) return;
@@ -90,7 +90,7 @@ TinyString& TinyString::operator = (const char c)
   return *this;
 }
 
-TinyString TinyString::substr(uint16_t pos, uint16_t size)
+TinyString TinyString::substr(size_t pos, size_t size)
 {
   if (size == npos) size = size_;
   if (pos > size_) return TinyString();
@@ -98,7 +98,7 @@ TinyString TinyString::substr(uint16_t pos, uint16_t size)
   return TinyString(str+pos, size);
 }
 
-bool TinyString::starts_with(const char* buf, uint16_t size) const
+bool TinyString::starts_with(const char* buf, size_t size) const
 {
   const_iterator it(str);
   while(size and it != end() and (*it == *buf))
@@ -110,7 +110,7 @@ bool TinyString::starts_with(const char* buf, uint16_t size) const
   return size == 0;
 }
 
-int TinyString::compare(const char* s, uint16_t len) const
+int TinyString::compare(const char* s, size_t len) const
 {
   if (len > size_)
     return memcmp(str, s, size_ + 1);
@@ -118,7 +118,7 @@ int TinyString::compare(const char* s, uint16_t len) const
     return memcmp(str, s, len + 1);
 }
 
-void TinyString::reserve(uint16_t sz, uint8_t extent)
+void TinyString::reserve(size_t sz, uint8_t extent)
 {
   if (sz == 0)
   {
@@ -147,7 +147,18 @@ void TinyString::collect()
   }
 }
 
-void TinyString::dup(const char* buffer, uint16_t sz, uint8_t extent)
+TinyString::size_t TinyString::find(const char c, size_t from) const
+{
+  if (size_ == 0 or from > size_) return npos;
+
+  const char* f = str + from;
+  const char* end = str + size_;
+  while(f != end) if (*f++ == c) return f-str-1;
+
+  return npos;
+}
+
+void TinyString::dup(const char* buffer, size_t sz, uint8_t extent)
 {
   reserve(sz + 1, extent);
   memcpy(str, buffer, sz);
