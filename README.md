@@ -12,12 +12,13 @@ TinyMqtt is a small, fast and capable Mqtt Broker and Client for Esp8266 / Esp32
 
 ### Statuses of all unit tests of TinyMqtt and its dependencies
 
-| Project    | Unit tests result |
-| ---------- | ------------ |
-| TinyMqtt   | [![](https://github.com/hsaturn/TinyMqtt/actions/workflows/aunit.yml/badge.svg)](https://github.com/hsaturn/TinyMqtt/actions/workflows/aunit.yml) |
+| Project     | Unit tests result |
+| ----------- | ------------ |
+| TinyMqtt    | [![](https://github.com/hsaturn/TinyMqtt/actions/workflows/aunit.yml/badge.svg)](https://github.com/hsaturn/TinyMqtt/actions/workflows/aunit.yml) |
+| TinyConsole | [![](https://github.com/hsaturn/TinyConsole/actions/workflows/aunit.yml/badge.svg)](https://github.com/hsaturn/TinyConsole/actions/workflows/aunit.yml) |
 | Dependencies                  ||
-| EpoxyDuino | [![AUnit Tests](https://github.com/hsaturn/EpoxyDuino/actions/workflows/aunit_tests.yml/badge.svg)](https://github.com/hsaturn/EpoxyDuino/actions/workflows/aunit_tests.yml) |
-| EspMock    | [![AUnit Tests](https://github.com/hsaturn/EspMock/actions/workflows/aunit.yml/badge.svg)](https://github.com/hsaturn/EspMock/actions/workflows/aunit.yml) |
+| EpoxyDuino  | [![AUnit Tests](https://github.com/hsaturn/EpoxyDuino/actions/workflows/aunit_tests.yml/badge.svg)](https://github.com/hsaturn/EpoxyDuino/actions/workflows/aunit_tests.yml) |
+| EspMock     | [![AUnit Tests](https://github.com/hsaturn/EspMock/actions/workflows/aunit.yml/badge.svg)](https://github.com/hsaturn/EspMock/actions/workflows/aunit.yml) |
 | AUnit | [![AUnit Tests](https://github.com/hsaturn/AUnit/actions/workflows/aunit_tests.yml/badge.svg)](https://github.com/hsaturn/AUnit/actions/workflows/aunit_tests.yml) |
 | AceRoutine | [![AUnit Tests](https://github.com/bxparks/AceRoutine/actions/workflows/aunit_tests.yml/badge.svg)](https://github.com/bxparks/AceRoutine/actions/workflows/aunit_tests.yml) |
 
