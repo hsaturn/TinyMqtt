@@ -7,6 +7,8 @@
 #include <string>
 #include <map>
 
+using string = TinyConsole::string;
+
 bool echo_on = true;
 auto green = TinyConsole::green;
 auto red = TinyConsole::red;
@@ -24,13 +26,13 @@ const char* password = "";
 struct free_broker
 {
   public:
-    free_broker(const char* s, uint16_t p, const char* comment) : url(s), port(p) {}
+    free_broker(const char* s, uint16_t p, const char* /* comment */) : url(s), port(p) {}
 
-    TinyString url;
+    string url;
     uint16_t port;
 };
 
-const std::map<TinyString, free_broker> list =
+const std::map<string, free_broker> list =
 {
   { "mqtthq", { "public.mqtthq.com" , 8083, "publish/subscribe" }},
   { "hivemq", { "broker.hivemq.com", 1883, "" }}
@@ -65,13 +67,13 @@ void onPublish(const MqttClient* srce, const Topic& topic, const char* payload, 
   }
 }
 
-std::map<TinyString, MqttClient*> clients;
-std::map<TinyString, MqttBroker*> brokers;
-std::map<TinyString, TinyString> vars;
+std::map<string, MqttClient*> clients;
+std::map<string, MqttBroker*> brokers;
+std::map<string, string> vars;
 
-void eval(TinyString& cmd);
+void eval(string& cmd);
 
-void replace(const char* d, TinyString& str, TinyString srch, TinyString to)
+void replace(const char* d, string& str, string srch, string to)
 {
   if (d[0] && d[1])
   {
@@ -79,7 +81,7 @@ void replace(const char* d, TinyString& str, TinyString srch, TinyString to)
     to=d[0]+to+d[1];
 
     size_t pos = 0;
-    while((pos=str.find(srch, pos)) != TinyString::npos)
+    while((pos=str.find(srch, pos)) != string::npos)
     {
       str.erase(pos, srch.length());
       str.insert(pos, to);
@@ -88,7 +90,7 @@ void replace(const char* d, TinyString& str, TinyString srch, TinyString to)
   }
 }
 
-void replaceVars(TinyString& cmd)
+void replaceVars(string& cmd)
 {
   cmd = ' '+cmd+' ';
 
@@ -104,10 +106,10 @@ void replaceVars(TinyString& cmd)
 
 }
 
-void onCommand(const TinyString& command)
+void onCommand(const string& command)
 {
   Console << endl;
-  TinyString cmd=command;
+  string cmd=command;
   if (cmd.substr(0,3)!="set") replaceVars(cmd);
   eval(cmd);
   Console << endl;
@@ -158,12 +160,12 @@ void setup()
   if (Console.isTerm()) onCommand("every 333 view");
 }
 
-TinyString getword(TinyString& str, const char* if_empty=nullptr, char sep=' ');
+string getword(string& str, const char* if_empty=nullptr, char sep=' ');
 
-int getint(TinyString& str, const int if_empty=0)
+int getint(string& str, const int if_empty=0)
 {
-  TinyString str2=str;
-  TinyString sword = getword(str);
+  string str2=str;
+  string sword = getword(str);
   if (sword[0] and isdigit(sword[0]))
   {
     int ret=atoi(sword.c_str());
@@ -175,11 +177,11 @@ int getint(TinyString& str, const int if_empty=0)
   return if_empty;
 }
 
-TinyString getword(TinyString& str, const char* if_empty/*=nullptr*/, char sep/*=' '*/)
+string getword(string& str, const char* if_empty/*=nullptr*/, char sep/*=' '*/)
 {
   char quote=(str[0]=='"' or str[0]=='\'' ? str[0] : 0);
   if (quote) str.erase(0,1);
-  TinyString sword;
+  string sword;
   while(str.length() and (str[0]!=sep or quote))
   {
     if (str[0]==quote)
@@ -222,7 +224,7 @@ TinyString getword(TinyString& str, const char* if_empty/*=nullptr*/, char sep/*
   return sword;
 }
 
-bool isaddr(TinyString s)
+bool isaddr(string s)
 {
   if (s.length()==0 or s.length()>3) return false;
   for(char c: s)
@@ -230,14 +232,14 @@ bool isaddr(TinyString s)
   return true;
 }
 
-TinyString getip(TinyString& str, const char* if_empty=nullptr, char sep=' ')
+string getip(string& str, const char* if_empty=nullptr, char sep=' ')
 {
-  TinyString addr=getword(str, if_empty, sep);
-  TinyString ip=addr;
-  std::vector<TinyString> build;
+  string addr=getword(str, if_empty, sep);
+  string ip=addr;
+  std::vector<string> build;
   while(ip.length())
   {
-    TinyString b=getword(ip,nullptr,'.');
+    string b=getword(ip,nullptr,'.');
     if (isaddr(b) && build.size()<4)
     {
       build.push_back(b);
@@ -253,7 +255,7 @@ TinyString getip(TinyString& str, const char* if_empty=nullptr, char sep=' ')
     b << (int)local[3-build.size()];
     build.insert(build.begin(), b.str().c_str());
   }
-  for(TinyString s: build)
+  for(string s: build)
   {
     if (addr.length()) addr += '.';
     addr += s;
@@ -262,20 +264,20 @@ TinyString getip(TinyString& str, const char* if_empty=nullptr, char sep=' ')
   return addr;
 }
 
-std::set<TinyString> commands = {
+std::set<string> commands = {
   "broker", "blink", "client", "connect",
   "create", "delete", "debug", "help", "interval",
   "list", "ls", "ip", "off", "on", "set",
   "publish", "reset", "subscribe", "unsubscribe", "view", "echo", "every"
 };
 
-void convertToCommand(TinyString& search)
+void convertToCommand(string& search)
 {
   while(search[0]==' ') search.erase(0,1);
   if (search.length()==0) return;
-  TinyString matches;
+  string matches;
   int count=0;
-  for(TinyString cmd: commands)
+  for(string cmd: commands)
   {
     if (cmd.substr(0, search.length()) == search)
     {
@@ -293,7 +295,7 @@ void convertToCommand(TinyString& search)
   }
 }
 
-bool compare(TinyString s, const char* cmd)
+bool compare(string s, const char* cmd)
 {
   uint8_t p=0;
   while(s[p++]==*cmd++)
@@ -304,11 +306,11 @@ bool compare(TinyString s, const char* cmd)
   return false;
 }
 
-using ClientFunction = void(*)(TinyString& cmd, MqttClient* publish);
+using ClientFunction = void(*)(string& cmd, MqttClient* publish);
 
 struct Every
 {
-  TinyString cmd;
+  string cmd;
   uint32_t ms;
   uint32_t next;
   uint32_t underrun=0;
@@ -338,9 +340,9 @@ int16_t blink;
 
 std::vector<Every> everies;
 
-void clientConnect(MqttClient* client, TinyString& cmd)
+void clientConnect(MqttClient* client, string& cmd)
 {
-  TinyString remote = getword(cmd);
+  string remote = getword(cmd);
   uint16_t port;
   auto it=list.find(remote);
   if (it != list.end())
@@ -356,18 +358,18 @@ void clientConnect(MqttClient* client, TinyString& cmd)
   Console << (client->connected() ? "connected." : "not connected") << endl;
 }
 
-void eval(TinyString& cmd)
+void eval(string& cmd)
 {
   while(cmd.length())
   {
     MqttError retval = MqttOk;
 
-    TinyString s;
+    string s;
     MqttBroker* broker = nullptr;
     MqttClient* client = nullptr;
 
     // client.function notation
-    if (cmd.find('.') != TinyString::npos &&
+    if (cmd.find('.') != string::npos &&
         cmd.find('.') < cmd.find(' '))
     {
       s=getword(cmd, nullptr, '.');
@@ -619,7 +621,7 @@ void eval(TinyString& cmd)
     }
     else if (compare(s, "broker"))
     {
-      TinyString id=getword(cmd);
+      string id=getword(cmd);
       if (clients.find(id) != clients.end())
       {
         Console << "A client already have that name" << endl;
@@ -650,7 +652,7 @@ void eval(TinyString& cmd)
     }
     else if (compare(s, "client"))
     {
-      TinyString id=getword(cmd);
+      string id=getword(cmd);
       if (brokers.find(id) != brokers.end())
       {
         Console << "A broker have that name" << endl;
@@ -687,7 +689,7 @@ void eval(TinyString& cmd)
     }
     else if (compare(s, "set"))
     {
-      TinyString name(getword(cmd));
+      string name(getword(cmd));
       if (name.length()==0)
       {
         for(auto it: vars)
@@ -799,7 +801,7 @@ void loop()
     if (not every.active) continue;
     if (every.ms && every.cmd.length() && ms > every.next)
     {
-      TinyString cmd(every.cmd);
+      string cmd(every.cmd);
       eval(cmd);
       every.next += every.ms;
       if (ms > every.next and ms > every.underrun)
@@ -832,7 +834,6 @@ void loop()
     out++;
   }
 
-  static long count;
 #if defined(ESP9266)
   MDNS.update();
 #endif
