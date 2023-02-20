@@ -178,6 +178,13 @@ class MqttClient
     FlagCleanSession = 2,  // unsupported
     FlagReserved = 1
   };
+
+  enum __attribute__((packed)) CltFlags
+  {
+    CltFlagNone = 0,
+    CltFlagConnected = 1,
+    CltFlagToDelete = 2
+  };
   public:
 
     using CallBack = void (*)(const MqttClient* source, const Topic& topic, const char* payload, size_t payload_length);
@@ -272,6 +279,9 @@ class MqttClient
     uint32_t keepAlive() const { return keep_alive; }
 
   private:
+    bool mqtt_connected() const { return cltFlags & CltFlagConnected; }
+    void setFlag(CltFlags f) { cltFlags |= f; }
+    void resetFlag(CltFlags f) { cltFlags &= ~f; }
 
     // event when tcp/ip link established (real or fake)
     static void onConnect(void * client_ptr, TcpClient*);
@@ -289,7 +299,7 @@ class MqttClient
     void clientAlive(uint32_t more_seconds);
     void processMessage(MqttMessage* message);
 
-    bool mqtt_connected = false;
+    uint8_t cltFlags = CltFlagNone;
     char mqtt_flags;
     uint32_t keep_alive = 30;
     uint32_t alive;

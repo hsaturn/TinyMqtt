@@ -406,6 +406,20 @@ test(network_hudge_payload)
   assertEqual(strcmp(payload, lastPayload), 0);
 }
 
+test(disconnected_when_broker_is_deleted)
+{
+  MqttBroker* broker = new MqttBroker(1883);
+  broker->begin();
+
+  MqttClient client;
+  client.connect(broker);
+  assertEqual(client.connected(), true);
+  client.publish("a", "b");
+
+  delete broker;
+  assertEqual(client.connected(), false);
+}
+
 test(connack)
 {
   const bool view = false;

@@ -27,7 +27,14 @@ MqttBroker::~MqttBroker()
 {
   while(clients.size())
   {
-    delete clients[0];
+    auto client = clients[0];
+    client->local_broker = nullptr;
+    if (client->cltFlags & MqttClient::CltFlags::CltFlagToDelete)
+    {
+      // std::cout << "Deleting client" << std::endl;
+      delete client;
+    }
+    clients.erase(clients.begin());
   }
   delete server;
 }
@@ -71,7 +78,7 @@ MqttClient::~MqttClient()
 void MqttClient::close(bool bSendDisconnect)
 {
   debug("close " << id().c_str());
-  mqtt_connected = false;
+  resetFlag(CltFlagConnected);
   if (tcp_client)  // connected to a remote broker
   {
     if (bSendDisconnect and tcp_client->connected())
@@ -95,6 +102,7 @@ void MqttClient::connect(MqttBroker* local)
   debug("MqttClient::connect_local");
   close();
   local_broker = local;
+  local_broker->addClient(this);
 }
 
 void MqttClient::connect(string broker, uint16_t port, uint16_t ka)
@@ -163,7 +171,9 @@ void MqttBroker::onClient(void* broker_ptr, TcpClient* client)
   debug("MqttBroker::onClient");
   MqttBroker* broker = static_cast<MqttBroker*>(broker_ptr);
 
-  broker->addClient(new MqttClient(broker, client));
+  MqttClient* mqtt = new MqttClient(broker, client);
+  mqtt->setFlag(MqttClient::CltFlags::CltFlagToDelete);
+  broker->addClient(mqtt);
   debug("New client");
 }
 
@@ -440,7 +450,7 @@ void MqttClient::processMessage(MqttMessage* mesg)
   switch(mesg->type())
   {
     case MqttMessage::Type::Connect:
-      if (mqtt_connected)
+      if (mqtt_connected())
       {
         debug("already connected");
         break;
@@ -490,7 +500,7 @@ void MqttClient::processMessage(MqttMessage* mesg)
         Console << yellow << "Client " << clientId << " connected : keep alive=" << keep_alive << '.' << white << endl;
       #endif
       bclose = false;
-      mqtt_connected=true;
+      setFlag(CltFlagConnected);
       {
         MqttMessage msg(MqttMessage::Type::ConnAck);
         msg.add(0);  // Session present (not implemented)
@@ -500,14 +510,14 @@ void MqttClient::processMessage(MqttMessage* mesg)
       break;
 
     case MqttMessage::Type::ConnAck:
-      mqtt_connected = true;
+      setFlag(CltFlagConnected);
       bclose = false;
       resubscribe();
       break;
 
     case MqttMessage::Type::SubAck:
     case MqttMessage::Type::PubAck:
-      if (!mqtt_connected) break;
+      if (not mqtt_connected()) break;
       // Ignore acks
       bclose = false;
       break;
@@ -518,7 +528,7 @@ void MqttClient::processMessage(MqttMessage* mesg)
       break;
 
     case MqttMessage::Type::PingReq:
-      if (!mqtt_connected) break;
+      if (not mqtt_connected()) break;
       if (tcp_client)
       {
         uint16_t pingreq = MqttMessage::Type::PingResp;
@@ -535,7 +545,7 @@ void MqttClient::processMessage(MqttMessage* mesg)
     case MqttMessage::Type::Subscribe:
     case MqttMessage::Type::UnSubscribe:
       {
-        if (!mqtt_connected) break;
+        if (not mqtt_connected()) break;
         payload = header+2;
 
         debug("un/subscribe loop");
@@ -579,15 +589,15 @@ void MqttClient::processMessage(MqttMessage* mesg)
       break;
 
     case MqttMessage::Type::UnSuback:
-      if (!mqtt_connected) break;
+      if (not mqtt_connected()) break;
       bclose = false;
       break;
 
     case MqttMessage::Type::Publish:
       #if TINY_MQTT_DEBUG
-        Console << "publish " << mqtt_connected << '/' << (long) tcp_client << endl;
+        Console << "publish " << mqtt_connected() << '/' << (long) tcp_client << endl;
       #endif
-      if (mqtt_connected or tcp_client == nullptr)
+      if (mqtt_connected() or tcp_client == nullptr)
       {
         uint8_t qos = mesg->flags();
         payload = header;
@@ -628,8 +638,8 @@ void MqttClient::processMessage(MqttMessage* mesg)
 
     case MqttMessage::Type::Disconnect:
       // TODO should discard any will msg
-      if (!mqtt_connected) break;
-      mqtt_connected = false;
+      if (not mqtt_connected()) break;
+      resetFlag(CltFlagConnected);
       close(false);
       bclose=false;
       break;
