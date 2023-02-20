@@ -17,7 +17,7 @@ class TestReceiver : public MqttClassBinder<TestReceiver>
   public:
     TestReceiver(const char* name) : MqttClassBinder(), name_(name) {}
 
-    void onPublish(const MqttClient* /* source */, const Topic& topic, const char* payload, size_t /* length */)
+    void onPublish(const MqttClient* /* source */, const Topic& topic, const char* /* payload */, size_t /* length */)
     {
       (void) topic;
       // Serial << "--> routed message received by " << name_ << ':' << topic.c_str() << " = " << payload << endl;

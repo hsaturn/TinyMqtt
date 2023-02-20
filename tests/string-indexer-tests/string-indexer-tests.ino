@@ -9,8 +9,6 @@
   *
   **/
 
-using namespace std;
-
 test(indexer_empty)
 {
   assertEqual(StringIndexer::count(), 0);

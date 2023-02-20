@@ -12,8 +12,6 @@
   * Also, this will allow to mock and thus run Action on github
   **/
 
-using namespace std;
-
 MqttBroker broker(1883);
 
 std::map<TinyString, std::map<Topic, int>>  published;    // map[client_id] => map[topic] = count

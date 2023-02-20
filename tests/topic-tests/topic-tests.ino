@@ -5,26 +5,22 @@
 #include <map>
 #include <iostream>
 
-#define endl "\n"
-
 /**
   * TinyMqtt / StringIndexer unit tests.
   *
   **/
-
-using namespace std;
 
 bool testTopicMatch(const char* a, const char* b, bool expected)
 {
   Topic ta(a);
   Topic tb(b);
   bool match(ta.matches(tb));
-  cout << "  " << ta.c_str() << ' ';
+  std::cout << "  " << ta.c_str() << ' ';
   if (match != expected)
-    cout << (expected ? " should match " : " should not match ");
+    std::cout << (expected ? " should match " : " should not match ");
   else
-    cout << (expected ? " matches " : " unmatches ");
-  cout << tb.c_str() << endl;
+    std::cout << (expected ? " matches " : " unmatches ");
+  std::cout << tb.c_str() << std::endl;
   return expected == match;
 }
 

@@ -11,8 +11,6 @@
   * Checks with a local broker. Clients must connect to the local broker
   **/
 
-using namespace std;
-
 MqttBroker broker(1883);
 
 std::map<TinyString, std::map<Topic, int>>  published;    // map[client_id] => map[topic] = count
