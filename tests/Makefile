@@ -6,6 +6,7 @@ tests:
 		echo '==== Making:' $$(dirname $$i); \
 		$(MAKE) -C $$(dirname $$i) -j; \
 	done
+	$(MAKE) -C compile-test
 
 valgrind:
 	@set -e; \
