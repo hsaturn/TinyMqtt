@@ -170,7 +170,7 @@ void MqttBroker::onClient(void* broker_ptr, TcpClient* client)
 void MqttBroker::loop()
 {
 #ifndef TINY_MQTT_ASYNC
-  WiFiClient client = server->available();
+  WiFiClient client = server->accept();
 
   if (client)
   {
