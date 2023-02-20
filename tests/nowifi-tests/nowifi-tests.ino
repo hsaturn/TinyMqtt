@@ -11,9 +11,11 @@
   * Checks with a local broker. Clients must connect to the local broker
   **/
 
+using string = TinyConsole::string;
+
 MqttBroker broker(1883);
 
-std::map<TinyString, std::map<Topic, int>>  published;    // map[client_id] => map[topic] = count
+std::map<string, std::map<Topic, int>>  published;    // map[client_id] => map[topic] = count
 
 char* lastPayload = nullptr;
 size_t lastLength;

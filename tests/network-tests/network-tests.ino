@@ -16,6 +16,8 @@
   * Checks with a local broker. Clients must connect to the local broker
   **/
 
+using string = TinyConsole::string;
+
 // if ascii_pos = 0, no ascii dump, else ascii dump starts after column ascii_pos
 std::string bufferToHexa(const uint8_t* buffer, size_t length, char sep = 0, size_t ascii_pos = 0)
 {
@@ -78,7 +80,7 @@ String toString(const IPAddress& ip)
 
 MqttBroker broker(1883);
 
-std::map<TinyString, std::map<Topic, int>>  published;    // map[client_id] => map[topic] = count
+std::map<string, std::map<Topic, int>>  published;    // map[client_id] => map[topic] = count
 
 char* lastPayload = nullptr;
 size_t lastLength;

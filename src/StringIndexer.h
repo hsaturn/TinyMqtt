@@ -3,9 +3,11 @@
 #include <assert.h>
 #include <map>
 #include <unordered_map>
-#include "TinyString.h"
+#include "TinyConsole.h"
 #include <string>
 #include <string.h>
+
+using string = TinyConsole::string;
 
 /***
  * Allows to store up to 255 different strings with one byte class
@@ -17,7 +19,7 @@ class StringIndexer
 
   class StringCounter
   {
-    TinyString str;
+    string str;
     uint8_t used=0;
     friend class StringIndexer;
 
@@ -34,9 +36,9 @@ class StringIndexer
   public:
     using index_t = uint8_t;
 
-   static const TinyString& str(const index_t& index)
+   static const string& str(const index_t& index)
    {
-     static TinyString dummy;
+     static string dummy;
      const auto& it=strings.find(index);
      if (it == strings.end()) return dummy;
      return it->second.str;
@@ -82,7 +84,7 @@ class StringIndexer
       {
         if (strings.find(index)==strings.end())
         {
-          strings[index].str = TinyString(str, len);
+          strings[index].str = string(str, len);
           strings[index].used++;
           // Serial << "Creating index " << index << " for (" << strings[index].str.c_str() << ") len=" << len << endl;
           return index;
@@ -110,7 +112,7 @@ class IndexedString
       index=StringIndexer::strToIndex(str, len);
     }
 
-    IndexedString(const TinyString& str) : IndexedString(str.c_str(), str.length()) {};
+    IndexedString(const string& str) : IndexedString(str.c_str(), str.length()) {};
 
     ~IndexedString() { StringIndexer::release(index); }
 
@@ -131,7 +133,7 @@ class IndexedString
       return i1.index == i2.index;
     }
 
-    const TinyString& str() const { return StringIndexer::str(index); }
+    const string& str() const { return StringIndexer::str(index); }
 
     const StringIndexer::index_t& getIndex() const { return index; }
 

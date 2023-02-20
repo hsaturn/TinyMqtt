@@ -9,6 +9,8 @@
   *
   **/
 
+using string = TinyConsole::string;
+
 test(indexer_empty)
 {
   assertEqual(StringIndexer::count(), 0);
@@ -82,7 +84,7 @@ test(indexer_indexed_operator_eq)
 
 test(indexer_get_string)
 {
-  TinyString sone("one");
+  string sone("one");
   IndexedString one(sone);
 
   assertTrue(sone==one.str());

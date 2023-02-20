@@ -12,9 +12,11 @@
   * Also, this will allow to mock and thus run Action on github
   **/
 
+using string = TinyConsole::string;
+
 MqttBroker broker(1883);
 
-std::map<TinyString, std::map<Topic, int>>  published;    // map[client_id] => map[topic] = count
+std::map<string, std::map<Topic, int>>  published;    // map[client_id] => map[topic] = count
 
 const char* lastPayload;
 size_t lastLength;

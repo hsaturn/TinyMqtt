@@ -68,13 +68,15 @@ enum __attribute__((packed)) MqttError
   MqttInvalidMessage=2,
 };
 
+using string = TinyConsole::string;
+
 class Topic : public IndexedString
 {
   public:
-    Topic(const TinyString& m) : IndexedString(m){}
+    Topic(const string& m) : IndexedString(m){}
     Topic(const char* s, uint8_t len) : IndexedString(s,len){}
     Topic(const char* s) : Topic(s, strlen(s)) {}
-    // Topic(const TinyString s) : Topic(s.c_str(), s.length()){};
+    // Topic(const string s) : Topic(s.c_str(), s.length()){};
 
     const char* c_str() const { return str().c_str(); }
 
@@ -123,7 +125,7 @@ class MqttMessage
     void incoming(char byte);
     void add(char byte) { incoming(byte); }
     void add(const char* p, size_t len, bool addLength=true );
-    void add(const TinyString& s) { add(s.c_str(), s.length()); }
+    void add(const string& s) { add(s.c_str(), s.length()); }
     void add(const Topic& t) { add(t.str()); }
     const char* end() const { return &buffer[0]+buffer.size(); }
     const char* getVHeader() const { return &buffer[vheader]; }
@@ -157,7 +159,7 @@ class MqttMessage
   private:
     void encodeLength();
 
-    TinyString buffer;
+    string buffer;
     uint8_t vheader;
     uint16_t size;  // bytes left to receive
     State state;
@@ -182,13 +184,13 @@ class MqttClient
 
     /** Constructor. Broker is the adress of a local broker if not null
         If you want to connect elsewhere, leave broker null and use connect() **/
-    MqttClient(MqttBroker* broker = nullptr, const TinyString& id = TINY_MQTT_DEFAULT_CLIENT_ID);
-    MqttClient(const TinyString& id) : MqttClient(nullptr, id){}
+    MqttClient(MqttBroker* broker = nullptr, const string& id = TINY_MQTT_DEFAULT_CLIENT_ID);
+    MqttClient(const string& id) : MqttClient(nullptr, id){}
 
     ~MqttClient();
 
     void connect(MqttBroker* local_broker);
-    void connect(TinyString broker, uint16_t port, uint16_t keep_alive = 10);
+    void connect(string broker, uint16_t port, uint16_t keep_alive = 10);
 
     // TODO it seems that connected returns true in tcp mode even if
     // no negociation occurred
@@ -203,8 +205,8 @@ class MqttClient
       if (tcp_client) tcp_client->write(buf, length);
     }
 
-    const TinyString& id() const { return clientId; }
-    void id(const TinyString& new_id) { clientId = new_id; }
+    const string& id() const { return clientId; }
+    void id(const string& new_id) { clientId = new_id; }
 
     /** Should be called in main loop() */
     void loop();
@@ -222,7 +224,7 @@ class MqttClient
     MqttError publish(const Topic&, const char* payload, size_t pay_length);
     MqttError publish(const Topic& t, const char* payload) { return publish(t, payload, strlen(payload)); }
     MqttError publish(const Topic& t, const String& s) { return publish(t, s.c_str(), s.length()); }
-    MqttError publish(const Topic& t, const TinyString& s) { return publish(t,s.c_str(),s.length());}
+    MqttError publish(const Topic& t, const string& s) { return publish(t,s.c_str(),s.length());}
     MqttError publish(const Topic& t) { return publish(t, nullptr, 0);};
 
     MqttError subscribe(Topic topic, uint8_t qos=0);
@@ -233,7 +235,7 @@ class MqttClient
     // TODO seems to be useless
     bool isLocal() const { return tcp_client == nullptr; }
 
-    void dump(TinyString indent="")
+    void dump(string indent="")
     {
       (void)indent;
       #if TINY_MQTT_DEBUG
@@ -299,7 +301,7 @@ class MqttClient
 
     TcpClient* tcp_client=nullptr;    // connection to remote broker
     std::set<Topic>  subscriptions;
-    TinyString clientId;
+    string clientId;
     CallBack callback = nullptr;
 };
 
@@ -319,12 +321,12 @@ class MqttBroker
     void begin() { server->begin(); }
     void loop();
 
-    void connect(const TinyString& host, uint16_t port=1883);
+    void connect(const string& host, uint16_t port=1883);
     bool connected() const { return state == Connected; }
 
     size_t clientsCount() const { return clients.size(); }
 
-    void dump(TinyString indent="")
+    void dump(string indent="")
     {
       for(auto client: clients)
         client->dump(indent);

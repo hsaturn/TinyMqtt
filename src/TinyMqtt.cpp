@@ -52,7 +52,7 @@ MqttClient::MqttClient(MqttBroker* local_broker, TcpClient* new_client)
 #endif
 }
 
-MqttClient::MqttClient(MqttBroker* local_broker, const TinyString& id)
+MqttClient::MqttClient(MqttBroker* local_broker, const string& id)
   : local_broker(local_broker), clientId(id)
 {
   alive = 0;
@@ -97,7 +97,7 @@ void MqttClient::connect(MqttBroker* local)
   local_broker = local;
 }
 
-void MqttClient::connect(TinyString broker, uint16_t port, uint16_t ka)
+void MqttClient::connect(string broker, uint16_t port, uint16_t ka)
 {
   debug("MqttClient::connect_to_host " << broker << ':' << port);
   keep_alive = ka;
@@ -128,7 +128,7 @@ void MqttBroker::addClient(MqttClient* client)
   clients.push_back(client);
 }
 
-void MqttBroker::connect(const TinyString& host, uint16_t port)
+void MqttBroker::connect(const string& host, uint16_t port)
 {
   debug("MqttBroker::connect");
   if (remote_broker == nullptr) remote_broker = new MqttClient;
@@ -461,7 +461,7 @@ void MqttClient::processMessage(MqttMessage* mesg)
 
       // ClientId
       mesg->getString(payload, len);
-      clientId = TinyString(payload, len);
+      clientId = string(payload, len);
       payload += len;
 
       if (mqtt_flags & FlagWill)  // Will topic
@@ -539,11 +539,11 @@ void MqttClient::processMessage(MqttMessage* mesg)
         payload = header+2;
 
         debug("un/subscribe loop");
-        TinyString qoss;
+        string qoss;
         while(payload < mesg->end())
         {
           mesg->getString(payload, len);  // Topic
-          debug( "  topic (" << TinyString(payload, len) << ')');
+          debug( "  topic (" << string(payload, len) << ')');
           // subscribe(Topic(payload, len));
           Topic topic(payload, len);
 
@@ -597,7 +597,7 @@ void MqttClient::processMessage(MqttMessage* mesg)
         #if TINY_MQTT_DEBUG
           Console << "Received Publish (" << published.str().c_str() << ") size=" << (int)len << endl;
         #endif
-        // << '(' << TinyString(payload, len).c_str() << ')'  << " msglen=" << mesg->length() << endl;
+        // << '(' << string(payload, len).c_str() << ')'  << " msglen=" << mesg->length() << endl;
         if (qos) payload+=2;  // ignore packet identifier if any
         len=mesg->end()-payload;
         // TODO reset DUP
@@ -889,7 +889,7 @@ void MqttMessage::hexdump(const char* prefix) const
   (void)prefix;
 #if TINY_MQTT_DEBUG
   if (TinyMqtt::debug<2) return;
-  static std::map<Type, TinyString> tts={
+  static std::map<Type, string> tts={
     { Connect, "Connect" },
     { ConnAck, "Connack" },
     { Publish, "Publish" },
@@ -902,7 +902,7 @@ void MqttMessage::hexdump(const char* prefix) const
     { PingResp, "Pingresp" },
     { Disconnect, "Disconnect" }
   };
-  TinyString t("Unknown");
+  string t("Unknown");
   Type typ=static_cast<Type>(buffer[0] & 0xF0);
   if (tts.find(typ) != tts.end())
     t=tts[typ];
@@ -919,7 +919,7 @@ void MqttMessage::hexdump(const char* prefix) const
   const char* hex_to_str = " | ";
   const char* separator = hex_to_str;
   const char* half_sep = " - ";
-  TinyString ascii;
+  string ascii;
 
   Console << prefix << " size(" << buffer.size() << "), state=" << state << endl;
 
