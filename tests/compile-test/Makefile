@@ -4,7 +4,7 @@
 include ../Makefile.opts
 
 APP_NAME := tinymqtt-test
-ARDUINO_LIBS := AUnit AceCommon AceTime TinyMqtt EspMock ESP8266WiFi  ESPAsync TinyConsole
+ARDUINO_LIBS := AUnit AceCommon AceTime TinyMqtt EspMock ESP8266WiFi  ESPAsync ESP8266mDNS TinyConsole
 ARDUINO_LIB_DIRS := ../../../EspMock/libraries
 EPOXY_CORE := EPOXY_CORE_ESP8266
 DUMMY := 1

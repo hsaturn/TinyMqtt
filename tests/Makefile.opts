@@ -1,7 +1,9 @@
 
 # GCC
 # CXXFLAGS = -Wextra -Wall -std=gnu++11 -fno-exceptions -fno-threadsafe-statics
-CXXFLAGS=-D_GNU_SOURCE -Werror=return-type -std=gnu++11 -Wall
+EXTRA_CXXFLAGS=-g3 -O0
+
+CXXFLAGS=-D_GNU_SOURCE -Werror=return-type -std=gnu++17 -Wall -g3 -O0
 
 # CLANG SANITIZE
 # CXX=clang

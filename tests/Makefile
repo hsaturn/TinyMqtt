@@ -1,5 +1,7 @@
 SUB=
 
+all:runtests
+
 tests:
 	@set -e; \
 	for i in $(SUB)*-tests/Makefile; do \

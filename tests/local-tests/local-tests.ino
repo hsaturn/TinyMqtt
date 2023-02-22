@@ -29,6 +29,15 @@ void onPublish(const MqttClient* srce, const Topic& topic, const char* payload, 
   lastLength = length;
 }
 
+test(local_not_connected_by_default)
+{
+  MqttClient client;
+  assertEqual(client.connected(), false);
+
+  MqttBroker broker(1883);
+  assertEqual(broker.connected(), false);
+}
+
 test(local_client_should_unregister_when_destroyed)
 {
   assertEqual(broker.clientsCount(), (size_t)0);
@@ -73,14 +82,23 @@ test(local_client_do_not_disconnect_after_publishing_and_long_inactivity)
   assertEqual(published.size(), (size_t)1);  // client has received something
 }
 
-#if 0
 test(local_connect)
 {
   assertEqual(broker.clientsCount(), (size_t)0);
 
-  MqttClient client;
+  MqttClient client(&broker);
   assertTrue(client.connected());
   assertEqual(broker.clientsCount(), (size_t)1);
+}
+
+test(local_publish_to_nowhere)
+{
+  published.clear();
+  assertEqual(broker.clientsCount(), (size_t)0);
+
+  MqttClient publisher;
+  MqttError status = publisher.publish("a/b");
+  assertEqual(status, MqttError::MqttNowhereToSend);
 }
 
 test(local_publish_should_be_dispatched)
@@ -88,12 +106,12 @@ test(local_publish_should_be_dispatched)
   published.clear();
   assertEqual(broker.clientsCount(), (size_t)0);
 
-  MqttClient subscriber;
+  MqttClient subscriber(&broker, "");
   subscriber.subscribe("a/b");
   subscriber.subscribe("a/c");
   subscriber.setCallback(onPublish);
 
-  MqttClient publisher;
+  MqttClient publisher(&broker);
   publisher.publish("a/b");
   publisher.publish("a/c");
   publisher.publish("a/c");
@@ -108,16 +126,16 @@ test(local_publish_should_be_dispatched_to_local_clients)
   published.clear();
   assertEqual(broker.clientsCount(), (size_t)0);
 
-  MqttClient subscriber_a("A");
+  MqttClient subscriber_a(&broker, "A");
   subscriber_a.setCallback(onPublish);
   subscriber_a.subscribe("a/b");
   subscriber_a.subscribe("a/c");
 
-  MqttClient subscriber_b("B");
+  MqttClient subscriber_b(&broker, "B");
   subscriber_b.setCallback(onPublish);
   subscriber_b.subscribe("a/b");
 
-  MqttClient publisher;
+  MqttClient publisher(&broker);
   publisher.publish("a/b");
   publisher.publish("a/c");
 
@@ -133,11 +151,11 @@ test(local_unsubscribe)
   published.clear();
   assertEqual(broker.clientsCount(), (size_t)0);
 
-  MqttClient subscriber;
+  MqttClient subscriber(&broker, "");
   subscriber.setCallback(onPublish);
   subscriber.subscribe("a/b");
 
-  MqttClient publisher;
+  MqttClient publisher(&broker);
   publisher.publish("a/b");
 
   subscriber.unsubscribe("a/b");
@@ -153,9 +171,9 @@ test(local_nocallback_when_destroyed)
   published.clear();
   assertEqual(broker.clientsCount(), (size_t)0);
 
-  MqttClient publisher;
+  MqttClient publisher(&broker);
   {
-    MqttClient subscriber;
+    MqttClient subscriber(&broker);
     subscriber.setCallback(onPublish);
     subscriber.subscribe("a/b");
     publisher.publish("a/b");
@@ -165,7 +183,6 @@ test(local_nocallback_when_destroyed)
 
   assertEqual(published.size(), (size_t)1);  // Only one publish has been received
 }
-#endif
 
 //----------------------------------------------------------------------------
 // setup() and loop()
