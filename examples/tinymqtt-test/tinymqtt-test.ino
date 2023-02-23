@@ -849,6 +849,7 @@ void loop()
       {
         every.next += every.ms;
         Console << yellow << "Underrun every #" << e << ", " << (ms - every.next) << "ms late" << endl;
+        Console.fg(white);
         every.underrun = ms + 5000;
       }
     }
