@@ -15,8 +15,6 @@
 #include <string>
 #include <map>
 
-using string = TinyString;
-
 bool echo_on = true;
 auto green = TinyConsole::green;
 auto red = TinyConsole::red;
@@ -30,6 +28,9 @@ auto erase_to_end = TinyConsole::erase_to_end;
 
 const char* ssid = "";
 const char* password = "";
+
+void onCommand(const string& command);
+void eval(string& cmd);
 
 struct free_broker
 {
