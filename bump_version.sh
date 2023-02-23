@@ -4,6 +4,8 @@ if [ "$1" == "" ]; then
 	echo
 	echo "Syntax: $0 {new_version}"
 	echo
+	echo "  Current version: $current_version"
+	echo
 else
 	echo "Current version: ($current_version)"
 	echo "New version    : ($1)"
