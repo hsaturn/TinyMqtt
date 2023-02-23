@@ -1,0 +1,18 @@
+{
+    "name": "#name",
+    "keywords": "ethernet, mqtt, m2m, iot",
+    "description": "#paragraph",
+    "repository": {
+        "type": "git",
+        "url": "https://github.com/hsaturn/TinyMqtt.git"
+    },
+    "version": "#version",
+    "exclude": "",
+    "examples": "examples/*/*.ino",
+    "frameworks": "arduino",
+    "platforms": [
+        "atmelavr",
+        "espressif8266",
+        "espressif32"
+    ]
+}

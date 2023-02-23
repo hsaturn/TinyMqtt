@@ -1,5 +1,12 @@
 #!/bin/bash
 current_version=$(git describe --tags --abbrev=0)
+cp library.json.skeleton library.json
+while ifs= read -r line; do
+  name=$(echo "$line" | sed "s/=.*//g")
+  value=$(echo "$line" | cut -d= -f 2 | sed 's/"//g')
+  sed -i "s/#$name/$value/g" library.json
+done < library.properties
+
 if [ "$1" == "" ]; then
 	echo
 	echo "Syntax: $0 {new_version}"
@@ -16,13 +23,16 @@ else
 		grep $current_version library.properties
 		if [ "$?" == "0" ]; then
 			sed -i "s/$current_version/$1/" library.properties
-			sed -i "s/$current_version/$1/" library.json
-			git tag $1
-			git add library.properties
-			git add library.json
-			git commit -m "Release $1"
-			git push
-			git push --tags
+			if [ 0 == 1 ]; then
+        git tag $1
+        git add library.properties
+        git add library.json
+        git commit -m "Release $1"
+        git push
+        git push --tags
+      else
+        echo "No git operation made"
+      fi
 		else
 			echo "Current version does not match library.property version, aborting"
 		fi
