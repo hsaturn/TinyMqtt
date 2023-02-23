@@ -321,7 +321,7 @@ class MqttBroker
   {
     Disconnected,  // Also the initial state
     Connecting,    // connect and sends a fake publish to avoid circular cnx
-    Connected,    // this->broker is connected and circular cnx avoided
+    Connected,     // this->broker is connected and circular cnx avoided
   };
   public:
     // TODO limit max number of clients
@@ -331,7 +331,9 @@ class MqttBroker
     void begin() { server->begin(); }
     void loop();
 
+    /** Connect the broker to a parent broker */
     void connect(const string& host, uint16_t port=1883);
+    /** returns true if connected to another broker */
     bool connected() const { return state == Connected; }
 
     size_t clientsCount() const { return clients.size(); }
