@@ -116,7 +116,7 @@ void MqttClient::connect(string broker, uint16_t port, uint16_t ka)
 #ifdef TINY_MQTT_ASYNC
   tcp_client->onData(onData, this);
   tcp_client->onConnect(onConnect, this);
-  tcp_client->connect(broker.c_str(), port, ka);
+  tcp_client->connect(broker.c_str(), port);
 #else
   if (tcp_client->connect(broker.c_str(), port))
   {
