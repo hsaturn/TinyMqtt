@@ -24,6 +24,7 @@ TinyMqtt is a small, fast and capable Mqtt Broker and Client for Esp8266 / Esp32
 
 ## Features
 
+- Async Wifi compatible (me-no-dev/ESPAsyncTCP@^1.2.2)
 - Very fast broker I saw it re-sent 1000 topics per second for two
   clients that had subscribed (payload ~15 bytes ESP8266). No topic lost.
   The max I've seen was 2k msg/s (1 client 1 subscription)
