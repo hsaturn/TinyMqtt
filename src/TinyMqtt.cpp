@@ -15,8 +15,10 @@ int TinyMqtt::debug=2;
   std::map<MqttMessage::Type, int> MqttClient::counters;
 #endif
 
-MqttBroker::MqttBroker(uint16_t port)
+MqttBroker::MqttBroker(uint16_t port, uint8_t max_retain_size)
 {
+  debug("New broker" << port);
+  retain_size = max_retain_size;
   server = new TcpServer(port);
 #ifdef TINY_MQTT_ASYNC
   server->onClient(onClient, this);
@@ -211,9 +213,19 @@ void MqttBroker::loop()
   }
 }
 
-MqttError MqttBroker::subscribe(const Topic& topic, uint8_t qos)
+// Obvioulsy called when the broker is connected to another broker.
+MqttError MqttBroker::subscribe(MqttClient* client, const Topic& topic, uint8_t qos)
 {
-  debug("MqttBroker::subscribe");
+  debug("MqttBroker::subscribe to " << topic.str() << ", retained=" << retained.size() );
+  for(auto& [retained_topic, retain]: retained)
+  {
+    debug("  retained: " << retained_topic.str());
+    if (topic.matches(retained_topic))
+    {
+      debug("  -> sending");
+      client->publishIfSubscribed(retained_topic, retain.msg);
+    }
+  }
   if (remote_broker && remote_broker->connected())
   {
     return remote_broker->subscribe(topic, qos);
@@ -221,9 +233,11 @@ MqttError MqttBroker::subscribe(const Topic& topic, uint8_t qos)
   return MqttNowhereToSend;
 }
 
-MqttError MqttBroker::publish(const MqttClient* source, const Topic& topic, MqttMessage& msg) const
+MqttError MqttBroker::publish(const MqttClient* source, const Topic& topic, MqttMessage& msg)
 {
   MqttError retval = MqttOk;
+
+  retain(topic, msg);
 
   debug("MqttBroker::publish");
   int i=0;
@@ -389,15 +403,15 @@ MqttError MqttClient::subscribe(Topic topic, uint8_t qos)
   debug("MqttClient::subsribe(" << topic.c_str() << ")");
   MqttError ret = MqttOk;
 
-   subscriptions.insert(topic);
+  subscriptions.insert(topic);
 
-  if (local_broker==nullptr) // remote broker
+  if (local_broker==nullptr) // connected to a remote broker
   {
     return sendTopic(topic, MqttMessage::Type::Subscribe, qos);
   }
   else
   {
-    return local_broker->subscribe(topic, qos);
+    return local_broker->subscribe(this, topic, qos);
   }
   return ret;
 }
@@ -568,7 +582,7 @@ void MqttClient::processMessage(MqttMessage* mesg)
             }
             else
               qoss.push_back(qos);
-            subscriptions.insert(topic);
+            subscribe(topic);
           }
           else
           {
@@ -618,8 +632,8 @@ void MqttClient::processMessage(MqttMessage* mesg)
           #if TINY_MQTT_DEBUG
             if (TinyMqtt::debug >= 2)
             {
-              Console << (isSubscribedTo(published) ? "not" : "") << " subscribed.\n";
-              Console << "has " << (callback ? "" : "no ") << " callback.\n";
+              Console << (isSubscribedTo(published) ? "not" : "") << " subscribed.\r\n";
+              Console << "has " << (callback ? "" : "no ") << " callback.\r\n";
             }
           #endif
           if (callback and isSubscribedTo(published))
@@ -728,9 +742,9 @@ bool Topic::matches(const Topic& topic) const
 
 
 // publish from local client
-MqttError MqttClient::publish(const Topic& topic, const char* payload, size_t pay_length)
+MqttError MqttClient::publish(const Topic& topic, const char* payload, size_t pay_length, bool retain)
 {
-  MqttMessage msg(MqttMessage::Publish);
+  MqttMessage msg(MqttMessage::Publish, retain ? 1 : 0);
   msg.add(topic);
   msg.add(payload, pay_length, false);
   msg.complete();
@@ -892,6 +906,35 @@ MqttError MqttMessage::sendTo(MqttClient* client)
     return MqttInvalidMessage;
   }
   return MqttOk;
+}
+
+void MqttBroker::retainDrop()
+{
+  if (retained.size() >= retain_size)
+  {
+    std::map<Topic, Retain>::iterator oldest = retained.begin();
+    auto it = oldest;
+    while(++it != retained.end())
+    {
+      if (oldest->second.timestamp > it->second.timestamp)
+        oldest = it;
+    }
+    retained.erase(oldest);
+  }
+}
+
+void MqttBroker::retain(const Topic& topic, const MqttMessage& msg)
+{
+  debug("MqttBroker::retain msg_type=" << _HEX(msg.type()));
+  if (retain_size==0 or msg.type() != MqttMessage::Publish) return;
+  if (msg.flags() & 1)  // flag RETAIN
+  {
+    debug("  retaining " << topic.str());
+    if (retained.find(topic) == retained.end()) retainDrop();
+    // FIXME if payload size == 0 remove message from retained
+    Retain r(micros(), msg);
+    retained.insert({ topic, std::move(r)});
+  }
 }
 
 void MqttMessage::hexdump(const char* prefix) const

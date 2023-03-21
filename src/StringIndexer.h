@@ -107,6 +107,8 @@ class IndexedString
       index = source.index;
     }
 
+    IndexedString(IndexedString&& i) : index(i.index) {}
+
     IndexedString(const char* str, uint8_t len)
     {
       index=StringIndexer::strToIndex(str, len);

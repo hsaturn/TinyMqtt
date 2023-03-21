@@ -121,7 +121,10 @@ class MqttMessage
       return (*bun << 8) | bun[1]; }
 
     MqttMessage() { reset(); }
-    MqttMessage(Type t, uint8_t bits_d3_d0=0) { create(t); buffer[0] |= bits_d3_d0; }
+    MqttMessage(Type t, uint8_t bits_d3_d0=0) { create(t); buffer[0] |= (bits_d3_d0 & 0xF); }
+    MqttMessage(const MqttMessage& m)
+      : buffer(m.buffer), vheader(m.vheader), size(m.size), state(m.state) {}
+
     void incoming(char byte);
     void add(char byte) { incoming(byte); }
     void add(const char* p, size_t len, bool addLength=true );
@@ -155,6 +158,15 @@ class MqttMessage
     }
     MqttError sendTo(MqttClient*);
     void hexdump(const char* prefix=nullptr) const;
+
+    MqttMessage& operator = (MqttMessage&& m)
+    {
+      buffer = std::move(m.buffer);
+      vheader = m.vheader;
+      size = m.size;
+      state = m.state;
+      return *this;
+    }
 
   private:
     void encodeLength();
@@ -228,11 +240,11 @@ class MqttClient
     };
 
     // Publish from client to the world
-    MqttError publish(const Topic&, const char* payload, size_t pay_length);
-    MqttError publish(const Topic& t, const char* payload) { return publish(t, payload, strlen(payload)); }
-    MqttError publish(const Topic& t, const String& s) { return publish(t, s.c_str(), s.length()); }
-    MqttError publish(const Topic& t, const string& s) { return publish(t,s.c_str(),s.length());}
-    MqttError publish(const Topic& t) { return publish(t, nullptr, 0);};
+    MqttError publish(const Topic&, const char* payload, size_t pay_length, bool retain=false);
+    MqttError publish(const Topic& t, const char* payload, bool retain=false) { return publish(t, payload, strlen(payload), retain); }
+    MqttError publish(const Topic& t, const String& s, bool retain=false) { return publish(t, s.c_str(), s.length(), retain); }
+    MqttError publish(const Topic& t, const string& s, bool retain=false) { return publish(t,s.c_str(),s.length(), retain);}
+    MqttError publish(const Topic& t, bool retain=false) { return publish(t, nullptr, 0, retain);};
 
     MqttError subscribe(Topic topic, uint8_t qos=0);
     MqttError unsubscribe(Topic topic);
@@ -325,7 +337,7 @@ class MqttBroker
   };
   public:
     // TODO limit max number of clients
-    MqttBroker(uint16_t port);
+    MqttBroker(uint16_t port, uint8_t retain_size=0);
     ~MqttBroker();
 
     void begin() { server->begin(); }
@@ -337,6 +349,7 @@ class MqttBroker
     bool connected() const { return state == Connected; }
 
     size_t clientsCount() const { return clients.size(); }
+    void retain(uint8_t size) { retain_size = size; }
 
     void dump(string indent="")
     {
@@ -356,10 +369,9 @@ class MqttBroker
     bool checkPassword(const char* password, uint8_t len) const
     { return compareString(auth_password, password, len); }
 
+    MqttError publish(const MqttClient* source, const Topic& topic, MqttMessage& msg);
 
-    MqttError publish(const MqttClient* source, const Topic& topic, MqttMessage& msg) const;
-
-    MqttError subscribe(const Topic& topic, uint8_t qos);
+    MqttError subscribe(MqttClient*, const Topic& topic, uint8_t qos);
 
     // For clients that are added not by the broker itself (local clients)
     void addClient(MqttClient* client);
@@ -376,4 +388,26 @@ class MqttBroker
     MqttClient* remote_broker = nullptr;
 
     State state = Disconnected;
+
+    void retain(const Topic& topic, const MqttMessage& msg);
+    void retainDrop();
+
+    struct Retain
+    {
+      Retain(unsigned long ts, const MqttMessage& m) : timestamp(ts), msg(m) {}
+      Retain(Retain&& r) : timestamp(r.timestamp), msg(std::move(r.msg)) {}
+
+      Retain& operator=(Retain&& r)
+      {
+        timestamp = r.timestamp;
+        msg = std::move(r.msg);
+        return *this;
+      }
+
+      unsigned long timestamp;
+      MqttMessage msg;
+    };
+
+    std::map<Topic, Retain> retained;
+    uint8_t retain_size;
 };
