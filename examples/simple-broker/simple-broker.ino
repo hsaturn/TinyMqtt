@@ -1,7 +1,9 @@
 #include "TinyMqtt.h"   // https://github.com/hsaturn/TinyMqtt
 
-#define PORT 1883
-MqttBroker broker(PORT);
+const uint16_t PORT 1883;
+const uint8_t  RETAIN = 10;  // Max retained messages
+
+MqttBroker broker(PORT, RETAIN);
 
 /** Basic Mqtt Broker
   *
@@ -15,6 +17,8 @@ MqttBroker broker(PORT);
   *
   *  Your ESP will become a MqttBroker.
 	*  You can test it with any client such as mqtt-spy for example
+	*
+	* Messages are retained *only* if retain > 0
 	*
   */
 
