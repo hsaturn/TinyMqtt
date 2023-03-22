@@ -65,6 +65,13 @@ TinyMqtt is a small, fast and capable Mqtt Broker and Client for Esp8266 / Esp32
 - tinymqtt-test : This is a complex sketch with a terminal console
   that allows to add clients publish, connect etc with interpreted commands.
 
+## Retained messages
+
+Qos 1 is not supported, but retained messages are. So a new subscription is able to send old messages.
+This feature is disabled by default.
+The default retain parameter of MqttBroker::MqttBroker takes an optional (0 by default) number of retained messages.
+MqttBroker::retain(n) will also make the broker store n messages at max.
+
 ## Standalone mode (zeroconf)
 -> The zeroconf mode is not yet implemented
 zeroconf clients to connect to broker on local network.
