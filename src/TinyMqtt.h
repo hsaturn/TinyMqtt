@@ -210,6 +210,8 @@ class MqttClient
 
     void connect(MqttBroker* local_broker);
     void connect(string broker, uint16_t port, uint16_t keep_alive = 10);
+    void connect(const IPAddress& ip, uint16_t port, uint16_t keep_alive = 10)
+    { connect(ip.toString().c_str(), port, keep_alive); }
 
     // TODO it seems that connected returns true in tcp mode even if
     // no negociation occurred
