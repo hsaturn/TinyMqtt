@@ -8,7 +8,7 @@ else
 fi
 if [ "$1" == "" ]; then
 	echo
-	echo "Syntax: $0 [-d] {new_version}"
+	echo "Syntax: $0 [-d] {new_version} [commit message]"
 	echo
 	echo "  -d : dry run, generate json and update properties but do not run git commands"
 	echo ""
@@ -34,7 +34,6 @@ else
           depends=$(echo "$value" | sed "s/,/ /g")
           echo "  Depends=$depends"
         fi
-        echo "  " sed -i "s@#$name@$value@g" library.json
         sed -i "s@#$name@$value@g" library.json
       done < library.properties
       deps=""
@@ -47,10 +46,11 @@ else
       sed -i "s@#dependencies@$deps@g" library.json
       sed -i "s/'/\"/g" library.json
       if [ "$do" == "1" ]; then
+        echo "Pushing all"
         git tag $1
         git add library.properties
         git add library.json
-        git commit -m "Release $1"
+        git commit -m "Release $1 $2"
         git push
         git push --tags
       fi

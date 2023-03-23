@@ -18,14 +18,14 @@ MqttBroker broker(1883);
 
 std::map<string, std::map<Topic, int>>  published;    // map[client_id] => map[topic] = count
 
-const char* lastPayload;
+std::string lastPayload;
 size_t lastLength;
 
 void onPublish(const MqttClient* srce, const Topic& topic, const char* payload, size_t length)
 {
   if (srce)
     published[srce->id()][topic]++;
-  lastPayload = payload;
+  lastPayload = std::string(payload, length);
   lastLength = length;
 }
 
@@ -51,6 +51,7 @@ test(local_client_should_unregister_when_destroyed)
 
 test(local_client_do_not_disconnect_after_publishing_and_long_inactivity)
 {
+  published.clear();
   EpoxyTest::set_millis(0);
   MqttBroker broker(1883);
   MqttClient client(&broker, "client");
@@ -119,6 +120,25 @@ test(local_publish_should_be_dispatched)
   assertEqual(published.size(), (size_t)1);  // 1 client has received something
   assertEqual(published[""]["a/b"], 1);
   assertEqual(published[""]["a/c"], 2);
+}
+
+test(hudge_payload)
+{
+  published.clear();
+  const char* payload="This payload is hudge, just because its length exceeds 127. Thus when encoding length, we have to encode it on two bytes at min. This should not prevent the message from being encoded and decoded successfully !";
+
+  MqttClient subscriber(&broker);
+  assertEqual(broker.clientsCount(), (size_t)1);
+  subscriber.setCallback(onPublish);
+  subscriber.subscribe("a/b");          // Note -> this does not send any byte .... (nowhere to send)
+
+  MqttClient publisher(&broker);
+  publisher.publish("a/b", payload);    // This publish is received
+
+  // onPublish should have filled lastPayload and lastLength
+  assertEqual(payload, lastPayload.c_str());
+  assertEqual(lastLength, strlen(payload));
+  assertEqual(strncmp(payload, lastPayload.c_str(), lastLength), 0);
 }
 
 test(local_publish_should_be_dispatched_to_local_clients)
