@@ -329,12 +329,6 @@ class MqttClient
 
 class MqttBroker
 {
-  enum __attribute__((packed)) State
-  {
-    Disconnected,  // Also the initial state
-    Connecting,    // connect and sends a fake publish to avoid circular cnx
-    Connected,     // this->broker is connected and circular cnx avoided
-  };
   public:
     // TODO limit max number of clients
     MqttBroker(uint16_t port, uint8_t retain_size=0);
@@ -346,7 +340,7 @@ class MqttBroker
     /** Connect the broker to a parent broker */
     void connect(const string& host, uint16_t port=1883);
     /** returns true if connected to another broker */
-    bool connected() const { return state == Connected; }
+    bool connected() const { return remote_broker ? remote_broker->connected() : false; }
 
     size_t clientsCount() const { return clients.size(); }
     void retain(uint8_t size) { retain_size = size; }
@@ -386,8 +380,6 @@ class MqttBroker
     const char* auth_user = "guest";
     const char* auth_password = "guest";
     MqttClient* remote_broker = nullptr;
-
-    State state = Disconnected;
 
     void retain(const Topic& topic, const MqttMessage& msg);
     void retainDrop();

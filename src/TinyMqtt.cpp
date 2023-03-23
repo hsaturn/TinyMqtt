@@ -144,6 +144,7 @@ void MqttBroker::connect(const string& host, uint16_t port)
   if (remote_broker == nullptr) remote_broker = new MqttClient;
   remote_broker->connect(host, port);
   remote_broker->local_broker = this;  // Because connect removed the link
+  // TODO shouldn't we resubscribe to all client subscriptions ?
 }
 
 void MqttBroker::removeClient(MqttClient* remove)
@@ -308,25 +309,26 @@ void MqttClient::clientAlive(uint32_t more_seconds)
 
 void MqttClient::loop()
 {
-  if (keep_alive && (millis() >= alive))
+  if (keep_alive && (millis() >= alive - 5000))
   {
-    if (local_broker)
-    {
-      debug(red << "timeout client");
-      close();
-      debug(red << "closed");
-    }
-    else if (tcp_client && tcp_client->connected())
+    if (tcp_client && tcp_client->connected())
     {
       debug("pingreq");
-      uint16_t pingreq = MqttMessage::Type::PingReq;
-      tcp_client->write((const char*)(&pingreq), 2);
+      static MqttMessage pingreq(MqttMessage::Type::PingReq);
+      pingreq.sendTo(this);
       clientAlive(0);
 
       // TODO when many MqttClient passes through a local broker
       // there is no need to send one PingReq per instance.
     }
+    else if (local_broker)
+    {
+      debug(red << "timeout client");
+      close();
+      debug(red << "closed");
+    }
   }
+
 #ifndef TINY_MQTT_ASYNC
   while(tcp_client && tcp_client->available()>0)
   {
