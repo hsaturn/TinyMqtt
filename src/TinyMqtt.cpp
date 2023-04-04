@@ -207,11 +207,14 @@ void MqttBroker::loop()
     else
     {
       debug("Client " << client->id().c_str() << "  Disconnected, local_broker=" << (dbg_ptr)client->local_broker);
-      // Note: deleting a client not added by the broker itself will probably crash later.
-      // TODO: shouldn't this have the same checks on the delete as the constructor has?
-      //      (client->cltFlags & MqttClient::CltFlags::CltFlagToDelete)
-      delete client;
+      // Erasing the client before calling delete to ensure
+      // that if the client does a close() we don't get into a state where
+      // we try and access a deleted pointer
       clients.erase(clients.begin() + i);
+      i--;
+      if (client->cltFlags & MqttClient::CltFlags::CltFlagToDelete) {
+        delete client;
+      }
     }
   }
 }
