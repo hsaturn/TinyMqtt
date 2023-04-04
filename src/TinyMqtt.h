@@ -231,7 +231,7 @@ class MqttClient
 
     /** Should be called in main loop() */
     void loop();
-    void close(bool bSendDisconnect=true);
+    void close(bool bSendDisconnect=true, bool removeFromLocal=true);
     void setCallback(CallBack fun)
     {
       callback=fun;
