@@ -218,8 +218,10 @@ void MqttBroker::loop()
 MqttError MqttBroker::subscribe(MqttClient* client, const Topic& topic, uint8_t qos)
 {
   debug("MqttBroker::subscribe to " << topic.str() << ", retained=" << retained.size() );
-  for(auto& [retained_topic, retain]: retained)
+  for(auto& retainItem: retained)
   {
+    auto &retained_topic = retainItem.first;
+    auto &retain = retainItem.second;
     debug("  retained: " << retained_topic.str());
     if (topic.matches(retained_topic))
     {
