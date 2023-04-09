@@ -144,6 +144,40 @@ test(suback)
   assertEqual(MqttClient::counters[MqttMessage::Type::SubAck], 1);
 }
 
+test(broker_connect_and_client_deletion)
+{
+  assertEqual(MqttClient::instances, 0);
+  {
+    start_many_wifi_esp(2, true);
+    assertEqual(WiFi.status(), WL_CONNECTED);
+
+    MqttBroker broker(1883);
+    broker.begin();
+
+    ESP8266WiFiClass::selectInstance(2);
+    MqttBroker remote_broker(1883);
+    remote_broker.begin();
+    IPAddress remote_broker_ip = WiFi.localIP();
+    assertEqual(MqttClient::instances, 0);
+
+    ESP8266WiFiClass::selectInstance(1);
+    broker.connect(remote_broker_ip.toString().c_str());
+    remote_broker.loop();
+    assertEqual(remote_broker.clientsCount(), (size_t)1);
+
+    // Here, we have two MqttClient
+    // The client that connects broker to remote_broker
+    // The client created by remote_broker
+    assertEqual(MqttClient::instances, 2);
+
+    broker.connect("");
+    remote_broker.loop(); broker.loop();
+    remote_broker.loop(); broker.loop();
+    assertEqual(remote_broker.clientsCount(), (size_t)0);
+  }
+  assertEqual(MqttClient::instances, 0);
+}
+
 test(client_keep_alive_high)
 {
   const uint32_t keep_alive=1000;

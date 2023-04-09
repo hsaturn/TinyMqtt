@@ -289,6 +289,7 @@ class MqttClient
 
 #ifdef EPOXY_DUINO
     static std::map<MqttMessage::Type, int> counters;  // Number of processed messages
+    static int instances;
 #endif
     uint32_t keepAlive() const { return keep_alive; }
 
@@ -354,6 +355,9 @@ class MqttBroker
     }
 
     const std::vector<MqttClient*>  getClients() const { return clients; }
+#ifdef EPOXY_DUINO
+    static int instances;
+#endif
 
   private:
     friend class MqttClient;

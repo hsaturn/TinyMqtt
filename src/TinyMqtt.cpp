@@ -9,10 +9,14 @@ static auto red = TinyConsole::red;
 static auto yellow = TinyConsole::yellow;
 
 int TinyMqtt::debug=2;
+
 #endif
 
 #ifdef EPOXY_DUINO
   std::map<MqttMessage::Type, int> MqttClient::counters;
+  int MqttBroker::instances = 0;
+  int MqttClient::instances = 0;
+
 #endif
 
 MqttBroker::MqttBroker(uint16_t port, uint8_t max_retain_size)
@@ -23,10 +27,16 @@ MqttBroker::MqttBroker(uint16_t port, uint8_t max_retain_size)
 #ifdef TINY_MQTT_ASYNC
   server->onClient(onClient, this);
 #endif
+#ifdef EPOXY_DUINO
+  instances++;
+#endif
 }
 
 MqttBroker::~MqttBroker()
 {
+#ifdef EPOXY_DUINO
+  instances--;
+#endif
   while(clients.size())
   {
     auto client = clients[0];
@@ -56,6 +66,7 @@ MqttClient::MqttClient(MqttBroker* local_broker, TcpClient* new_client)
 #endif
 #ifdef EPOXY_DUINO
   alive = millis()+500000;
+  instances++;
 #else
   alive = millis()+5000;  // TODO MAGIC client expires after 5s if no CONNECT msg
 #endif
@@ -68,10 +79,16 @@ MqttClient::MqttClient(MqttBroker* local_broker, const string& id)
   keep_alive = 0;
 
   if (local_broker) local_broker->addClient(this);
+#ifdef EPOXY_DUINO
+  instances++;
+#endif
 }
 
 MqttClient::~MqttClient()
 {
+#ifdef EPOXY_DUINO
+  instances--;
+#endif
   close();
   delete tcp_client;
   debug("*** MqttClient delete()");
