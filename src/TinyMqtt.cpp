@@ -37,6 +37,7 @@ MqttBroker::~MqttBroker()
 #ifdef EPOXY_DUINO
   instances--;
 #endif
+  closeRemoteBroker();
   while(clients.size())
   {
     auto client = clients[0];
@@ -155,9 +156,19 @@ void MqttBroker::addClient(MqttClient* client)
   clients.push_back(client);
 }
 
+void MqttBroker::closeRemoteBroker()
+{
+  if (remote_broker)
+  {
+    delete remote_broker;
+    remote_broker = nullptr;
+  }
+}
+
 void MqttBroker::connect(const string& host, uint16_t port)
 {
   debug("MqttBroker::connect");
+  closeRemoteBroker();
   if (remote_broker == nullptr) remote_broker = new MqttClient;
   remote_broker->connect(host, port);
   remote_broker->local_broker = this;  // Because connect removed the link

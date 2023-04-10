@@ -209,8 +209,8 @@ class MqttClient
     ~MqttClient();
 
     void connect(MqttBroker* local_broker);
-    void connect(string broker, uint16_t port, uint16_t keep_alive = 10);
-    void connect(const IPAddress& ip, uint16_t port, uint16_t keep_alive = 10)
+    void connect(string broker, uint16_t port = 1883, uint16_t keep_alive = 10);
+    void connect(const IPAddress& ip, uint16_t port = 1883, uint16_t keep_alive = 10)
     { connect(ip.toString().c_str(), port, keep_alive); }
 
     // TODO it seems that connected returns true in tcp mode even if
@@ -386,6 +386,8 @@ class MqttBroker
     const char* auth_user = "guest";
     const char* auth_password = "guest";
     MqttClient* remote_broker = nullptr;
+
+    void closeRemoteBroker();
 
     void retain(const Topic& topic, const MqttMessage& msg);
     void retainDrop();
