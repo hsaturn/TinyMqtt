@@ -8,13 +8,15 @@
 // TODO Should add a AUnit with both TINY_MQTT_ASYNC and not TINY_MQTT_ASYNC
 // #define TINY_MQTT_ASYNC  // Uncomment this to use ESPAsyncTCP instead of normal cnx
 
-#define USE_ETHERNET true     // comment for WiFi
+//#define USE_ETHERNET true     // comment for WiFi
 
 #if defined(ESP8266) && defined(USE_ETHERNET)
+  #pragma message("Compiled for Ethernet use")
   #include <ESP8266WiFi.h>
   #include <SPI.h>
   #include <Ethernet.h>  
 #elif defined(ESP8266) || defined(EPOXY_DUINO)
+  #pragma message("Compiled for WiFi use")
   #ifdef TINY_MQTT_ASYNC
     #include <ESPAsyncTCP.h>
   #else
