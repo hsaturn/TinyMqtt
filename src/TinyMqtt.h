@@ -8,7 +8,13 @@
 // TODO Should add a AUnit with both TINY_MQTT_ASYNC and not TINY_MQTT_ASYNC
 // #define TINY_MQTT_ASYNC  // Uncomment this to use ESPAsyncTCP instead of normal cnx
 
-#if defined(ESP8266) || defined(EPOXY_DUINO)
+#define USE_ETHERNET true     // comment for WiFi
+
+#if defined(ESP8266) && defined(USE_ETHERNET)
+  #include <ESP8266WiFi.h>
+  #include <SPI.h>
+  #include <Ethernet.h>  
+#elif defined(ESP8266) || defined(EPOXY_DUINO)
   #ifdef TINY_MQTT_ASYNC
     #include <ESPAsyncTCP.h>
   #else
@@ -40,9 +46,9 @@
 
 #define TINY_MQTT_DEFAULT_CLIENT_ID "Tiny"
 
-#include <TinyStreaming.h>
+#include "TinyStreaming.h"
 #if TINY_MQTT_DEBUG
-  #include <TinyConsole.h>    // https://github.com/hsaturn/TinyConsole
+  #include "TinyConsole.h"    // https://github.com/hsaturn/TinyConsole
   struct TinyMqtt
   {
     static int debug;
@@ -57,8 +63,13 @@
   using TcpClient = AsyncClient;
   using TcpServer = AsyncServer;
 #else
-  using TcpClient = WiFiClient;
-  using TcpServer = WiFiServer;
+  #if defined(USE_ETHERNET)
+    using TcpClient = EthernetClient;
+    using TcpServer = EthernetServer;
+  #else
+    using TcpClient = WiFiClient;
+    using TcpServer = WiFiServer;
+  #endif
 #endif
 
 enum __attribute__((packed)) MqttError
@@ -121,7 +132,7 @@ class MqttMessage
       return (*bun << 8) | bun[1]; }
 
     MqttMessage() { reset(); }
-    MqttMessage(Type t, uint8_t bits_d3_d0=0) { create(t); buffer[0] |= (bits_d3_d0 & 0xF); }
+    MqttMessage(Type t, uint8_t bits_d3_d0=0) { create(t); buffer[0] |= bits_d3_d0; }
     MqttMessage(const MqttMessage& m)
       : buffer(m.buffer), vheader(m.vheader), size(m.size), state(m.state) {}
 
@@ -210,8 +221,6 @@ class MqttClient
 
     void connect(MqttBroker* local_broker);
     void connect(string broker, uint16_t port, uint16_t keep_alive = 10);
-    void connect(const IPAddress& ip, uint16_t port, uint16_t keep_alive = 10)
-    { connect(ip.toString().c_str(), port, keep_alive); }
 
     // TODO it seems that connected returns true in tcp mode even if
     // no negociation occurred
@@ -242,11 +251,11 @@ class MqttClient
     };
 
     // Publish from client to the world
-    MqttError publish(const Topic&, const char* payload, size_t pay_length, bool retain=false);
-    MqttError publish(const Topic& t, const char* payload, bool retain=false) { return publish(t, payload, strlen(payload), retain); }
-    MqttError publish(const Topic& t, const String& s, bool retain=false) { return publish(t, s.c_str(), s.length(), retain); }
-    MqttError publish(const Topic& t, const string& s, bool retain=false) { return publish(t,s.c_str(),s.length(), retain);}
-    MqttError publish(const Topic& t, bool retain=false) { return publish(t, nullptr, 0, retain);};
+    MqttError publish(const Topic&, const char* payload, size_t pay_length);
+    MqttError publish(const Topic& t, const char* payload) { return publish(t, payload, strlen(payload)); }
+    MqttError publish(const Topic& t, const String& s) { return publish(t, s.c_str(), s.length()); }
+    MqttError publish(const Topic& t, const string& s) { return publish(t,s.c_str(),s.length());}
+    MqttError publish(const Topic& t) { return publish(t, nullptr, 0);};
 
     MqttError subscribe(Topic topic, uint8_t qos=0);
     MqttError unsubscribe(Topic topic);
@@ -331,9 +340,15 @@ class MqttClient
 
 class MqttBroker
 {
+  enum __attribute__((packed)) State
+  {
+    Disconnected,  // Also the initial state
+    Connecting,    // connect and sends a fake publish to avoid circular cnx
+    Connected,     // this->broker is connected and circular cnx avoided
+  };
   public:
     // TODO limit max number of clients
-    MqttBroker(uint16_t port, uint8_t retain_size=0);
+    MqttBroker(uint16_t port);
     ~MqttBroker();
 
     void begin() { server->begin(); }
@@ -342,10 +357,9 @@ class MqttBroker
     /** Connect the broker to a parent broker */
     void connect(const string& host, uint16_t port=1883);
     /** returns true if connected to another broker */
-    bool connected() const { return remote_broker ? remote_broker->connected() : false; }
+    bool connected() const { return state == Connected; }
 
     size_t clientsCount() const { return clients.size(); }
-    void retain(uint8_t size) { retain_size = size; }
 
     void dump(string indent="")
     {
@@ -365,9 +379,10 @@ class MqttBroker
     bool checkPassword(const char* password, uint8_t len) const
     { return compareString(auth_password, password, len); }
 
-    MqttError publish(const MqttClient* source, const Topic& topic, MqttMessage& msg);
 
-    MqttError subscribe(MqttClient*, const Topic& topic, uint8_t qos);
+    MqttError publish(const MqttClient* source, const Topic& topic, MqttMessage& msg) const;
+
+    MqttError subscribe(const Topic& topic, uint8_t qos);
 
     // For clients that are added not by the broker itself (local clients)
     void addClient(MqttClient* client);
@@ -383,8 +398,7 @@ class MqttBroker
     const char* auth_password = "guest";
     MqttClient* remote_broker = nullptr;
 
-    void retain(const Topic& topic, const MqttMessage& msg);
-    void retainDrop();
+    State state = Disconnected;
 
     struct Retain
     {
@@ -401,7 +415,4 @@ class MqttBroker
       unsigned long timestamp;
       MqttMessage msg;
     };
-
-    std::map<Topic, Retain> retained;
-    uint8_t retain_size;
 };
