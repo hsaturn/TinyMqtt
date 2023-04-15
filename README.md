@@ -8,7 +8,7 @@
 [![Gpl 3.0](https://img.shields.io/github/license/hsaturn/TinyMqtt)](https://www.gnu.org/licenses/gpl-3.0.fr.html)
 [![Mqtt 3.1.1](https://img.shields.io/badge/Mqtt-%203.1.1-yellow)](https://docs.oasis-open.org/mqtt/mqtt/v3.1.1/errata01/os/mqtt-v3.1.1-errata01-os-complete.html#_Toc442180822)
 
-TinyMqtt is a small, fast and capable Mqtt Broker and Client for Esp8266 / Esp32 / Esp WROOM
+TinyMqtt is a small, fast and capable Mqtt Broker and Client for Esp8266 / Esp32 / Esp WROOM / RP2040
 
 This is an older version (the latest one from the Arduino library manager) modified to allow usage with a W5500 LAN adapter.
 
