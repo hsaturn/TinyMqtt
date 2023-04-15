@@ -22,6 +22,8 @@
   #else
     #include <ESP8266WiFi.h>
   #endif
+#elif defined(ARDUINO_ARCH_RP2040)
+  #include <Ethernet.h> 
 #elif defined(ESP32)
   #include <WiFi.h>
   #ifdef TINY_MQTT_ASYNC
