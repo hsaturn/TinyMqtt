@@ -339,7 +339,7 @@ void MqttClient::clientAlive(uint32_t more_seconds)
 
 void MqttClient::loop()
 {
-  if (keep_alive && (millis() >= alive - 5000))
+  if (keep_alive && (millis() >= alive))
   {
     if (tcp_client && tcp_client->connected())
     {
