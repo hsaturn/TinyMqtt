@@ -11,7 +11,7 @@
 
 TinyMqtt is a small, fast and capable Mqtt Broker and Client for Esp8266 / Esp32 / Esp WROOM / RP2040
 
-## IMPORTANT: This is an older version (the latest one from the Arduino library manager) modified to allow usage with a W5500 LAN adapter. It is not V1.0.0 from the main branch
+## IMPORTANT: This is an older version (the latest one from the Arduino library manager) modified to allow usage with a W5500 LAN adapter. It is not v1.0.0 from the main branch
 
 ### Statuses of all unit tests of TinyMqtt and its dependencies
 
