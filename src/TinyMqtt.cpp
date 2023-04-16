@@ -63,7 +63,7 @@ MqttClient::MqttClient(MqttBroker* local_broker, TcpClient* new_client)
   // client->onConnect() TODO
   // client->onDisconnect() TODO
 #else
-  tcp_client = new WiFiClient(*new_client);
+  tcp_client = new TcpClient(*new_client);
 #endif
 #ifdef EPOXY_DUINO
   alive = millis()+500000;
@@ -211,7 +211,7 @@ void MqttBroker::onClient(void* broker_ptr, TcpClient* client)
 void MqttBroker::loop()
 {
 #ifndef TINY_MQTT_ASYNC
-  WiFiClient client = server->accept();
+  TcpClient client = server->accept();
 
   if (client)
   {
