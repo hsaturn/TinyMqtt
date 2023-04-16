@@ -739,7 +739,7 @@ MqttError MqttClient::publish(const Topic& topic, const char* payload, size_t pa
   {
     return local_broker->publish(this, topic, msg);
   }
-  else if (tcp_client)
+  else if (tcp_client and connected())
     return msg.sendTo(this);
   else
     return MqttNowhereToSend;
