@@ -133,6 +133,7 @@ class MqttMessage
     const char* end() const { return &buffer[0]+buffer.size(); }
     const char* getVHeader() const { return &buffer[vheader]; }
     void complete() { encodeLength(); }
+    void retained() { if ((buffer[0] & 0xF)==Publish) buffer[0] |= 1; }
 
     void reset();
 
@@ -346,7 +347,9 @@ class MqttBroker
     bool connected() const { return remote_broker ? remote_broker->connected() : false; }
 
     size_t clientsCount() const { return clients.size(); }
-    void retain(uint8_t size) { retain_size = size; }
+    uint8_t retain() { return retain_size; }
+    void retain(uint8_t size) { retain_size = size; if (size==0) retained.clear(); }
+    uint8_t retainCount() const { return retained.size(); }
 
     void dump(string indent="")
     {

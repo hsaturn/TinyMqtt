@@ -957,14 +957,19 @@ void MqttBroker::retainDrop()
 
 void MqttBroker::retain(const Topic& topic, const MqttMessage& msg)
 {
-  debug("MqttBroker::retain msg_type=" << _HEX(msg.type()));
+  debug("MqttBroker::retain msg_type=" << _HEX(msg.type()) << ", retain_size=" << retain_size);
   if (retain_size==0 or msg.type() != MqttMessage::Publish) return;
   if (msg.flags() & 1)  // flag RETAIN
   {
     debug("  retaining " << topic.str());
-    if (retained.find(topic) == retained.end()) retainDrop();
+    auto old = retained.find(topic);
+    if (old == retained.end())
+      retainDrop();
+    else
+      retained.erase(old);
     // FIXME if payload size == 0 remove message from retained
     Retain r(micros(), msg);
+    r.msg.retained();
     retained.insert({ topic, std::move(r)});
   }
 }
