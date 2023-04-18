@@ -132,6 +132,8 @@ class MqttMessage
     void add(const Topic& t) { add(t.str()); }
     const char* end() const { return &buffer[0]+buffer.size(); }
     const char* getVHeader() const { return &buffer[vheader]; }
+    const char* PublishID()  // unchecked access - only use for Publish packets
+      const { return &buffer[(static_cast<uint16_t>(buffer[3]) << 8) + static_cast<uint16_t>(buffer[4]) + 5];}
     void complete() { encodeLength(); }
     void retained() { if ((buffer[0] & 0xF)==Publish) buffer[0] |= 1; }
 
