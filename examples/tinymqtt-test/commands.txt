@@ -1,0 +1,39 @@
+// vim: ts=40
+Exemple of commands that can be sent via the serial monitor to tinymqtt-test
+----------------------------------------------------------------------------
+Commands can usually be abbreviated to their first letters.
+ex: cl for client, a / a.con / a.sub / a.p for publish.
+--------
+
+set name value	set variable name to value (later replaced)
+set name	if no value, then var is erased
+set	view all vars
+reserved keywords are forbidden
+
+
+client a	starts a client (not connected no internal broker)
+a.connect [server][port][alive]	connects the client, default port=1883
+a.publish topic [payload]	send a topic with a payload
+a.subscribe topic	subscribes to a topic
+delete a	destroy the client
+
+* note, if 'server' is a number, then it replaces the end of the local ip.
+i.e. if local ip is 192.168.1.10, connect 2.35 becomes 192.168.2.35
+
+--------
+example:
+--------
+
+client c
+c.connect broker.emqx.io
+set topic sensor/temperature
+
+c.subscribe topic
+c.publish topic 15
+c.publish topic 20
+
+macro exansion example
+----------------------
+
+set temp publish sensor/temperature
+c.temp 20	-> c.publish sensor/temperature 20

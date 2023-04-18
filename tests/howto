@@ -1,0 +1,7 @@
+cd TinyMqtt/tests/../..
+git clone https://github.com/hsaturn/EspMock.git
+git clone https://github.com/bxparks/AUnit.git
+git clone https://github.com/bxparks/EpoxyDuino.git
+cd TinyMqtt/tests
+make
+make runtests
