@@ -7,11 +7,8 @@
 
 // TODO Should add a AUnit with both TINY_MQTT_ASYNC and not TINY_MQTT_ASYNC
 // #define TINY_MQTT_ASYNC  // Uncomment this to use ESPAsyncTCP instead of normal cnx
-//  #define USE_ETHERNET     // comment for WiFi
 
-#if defined(USE_ETHERNET)
-  #include <Ethernet.h> 
-#elif defined(ESP8266) || defined(EPOXY_DUINO)
+#if defined(ESP8266) || defined(EPOXY_DUINO)
   #ifdef TINY_MQTT_ASYNC
     #include <ESPAsyncTCP.h>
   #else
@@ -22,8 +19,6 @@
   #ifdef TINY_MQTT_ASYNC
     #include <AsyncTCP.h> // https://github.com/me-no-dev/AsyncTCP
   #endif
-#elif defined(ARDUINO_ARCH_RP2040)
-  #include <WiFi.h>   // works with Raspberry Pi Pico W, earlephilhower
 #endif
 #ifdef EPOXY_DUINO
   #define dbg_ptr uint64_t
@@ -45,9 +40,9 @@
 
 #define TINY_MQTT_DEFAULT_CLIENT_ID "Tiny"
 
-#include "TinyStreaming.h"
+#include <TinyStreaming.h>
 #if TINY_MQTT_DEBUG
-  #include "TinyConsole.h"    // https://github.com/hsaturn/TinyConsole
+  #include <TinyConsole.h>    // https://github.com/hsaturn/TinyConsole
   struct TinyMqtt
   {
     static int debug;
@@ -58,17 +53,12 @@
   #define debug(what) {}
 #endif
 
-#if defined(USE_ETHERNET)
-  using TcpClient = EthernetClient;
-  using TcpServer = EthernetServer;
+#ifdef TINY_MQTT_ASYNC
+  using TcpClient = AsyncClient;
+  using TcpServer = AsyncServer;
 #else
-  #ifdef TINY_MQTT_ASYNC
-    using TcpClient = AsyncClient;
-    using TcpServer = AsyncServer;
-  #else
-    using TcpClient = WiFiClient;
-    using TcpServer = WiFiServer;
-  #endif
+  using TcpClient = WiFiClient;
+  using TcpServer = WiFiServer;
 #endif
 
 enum __attribute__((packed)) MqttError
@@ -142,7 +132,6 @@ class MqttMessage
     void add(const Topic& t) { add(t.str()); }
     const char* end() const { return &buffer[0]+buffer.size(); }
     const char* getVHeader() const { return &buffer[vheader]; }
-    const char* PublishID() const { return &buffer[(static_cast<uint16_t>(buffer[3]) << 8) + static_cast<uint16_t>(buffer[4]) + 5];}
     void complete() { encodeLength(); }
     void retained() { if ((buffer[0] & 0xF)==Publish) buffer[0] |= 1; }
 
@@ -179,6 +168,7 @@ class MqttMessage
       state = m.state;
       return *this;
     }
+
   private:
     void encodeLength();
 
