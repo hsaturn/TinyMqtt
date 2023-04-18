@@ -144,6 +144,93 @@ test(suback)
   assertEqual(MqttClient::counters[MqttMessage::Type::SubAck], 1);
 }
 
+test(remote_client_deletion)
+{
+  assertEqual(MqttClient::instances, 0);
+  {
+    start_many_wifi_esp(3, true);
+    assertEqual(WiFi.status(), WL_CONNECTED);
+
+    MqttBroker broker(1883);
+    broker.begin();
+    IPAddress broker_ip = WiFi.localIP();
+
+    // A first remote client
+    ESP8266WiFiClass::selectInstance(2);
+    MqttClient remote_client;
+    assertEqual(MqttClient::instances, 1);
+
+    remote_client.connect(broker_ip.toString().c_str());
+    broker.loop(); remote_client.loop();
+    assertEqual(MqttClient::instances, 2);  // broker creates a client to manage remote_client
+
+    // A second remote client
+    ESP8266WiFiClass::selectInstance(3);
+    MqttClient secund_client;
+    assertEqual(MqttClient::instances, 3);
+
+    secund_client.connect(broker_ip.toString().c_str());
+    broker.loop(); remote_client.loop();
+    assertEqual(MqttClient::instances, 4);
+
+    // Now disconnect remote clients
+    remote_client.close();
+    broker.loop(); remote_client.loop();
+    assertEqual(MqttClient::instances, 3);
+
+    secund_client.close();
+    broker.loop(); remote_client.loop();
+    assertEqual(MqttClient::instances, 2);  // These instances are in this scope
+
+    // Now simulate that the external client is dead without disconnecting
+    secund_client.connect(broker_ip.toString().c_str());
+    broker.loop(); remote_client.loop();
+    assertEqual(MqttClient::instances, 3);
+
+    WiFi.disconnect();
+    broker.loop(); remote_client.loop();
+    broker.loop(); remote_client.loop();
+    assertEqual(MqttClient::instances, 2);
+
+  }
+
+  assertEqual(MqttClient::instances, 0);
+}
+
+test(broker_connect_and_client_deletion)
+{
+  assertEqual(MqttClient::instances, 0);
+  {
+    start_many_wifi_esp(2, true);
+    assertEqual(WiFi.status(), WL_CONNECTED);
+
+    MqttBroker broker(1883);
+    broker.begin();
+
+    ESP8266WiFiClass::selectInstance(2);
+    MqttBroker remote_broker(1883);
+    remote_broker.begin();
+    IPAddress remote_broker_ip = WiFi.localIP();
+    assertEqual(MqttClient::instances, 0);
+
+    ESP8266WiFiClass::selectInstance(1);
+    broker.connect(remote_broker_ip.toString().c_str());
+    remote_broker.loop();
+    assertEqual(remote_broker.clientsCount(), (size_t)1);
+
+    // Here, we have two MqttClient
+    // The client that connects broker to remote_broker
+    // The client created by remote_broker
+    assertEqual(MqttClient::instances, 2);
+
+    broker.connect("");
+    remote_broker.loop(); broker.loop();
+    remote_broker.loop(); broker.loop();
+    assertEqual(remote_broker.clientsCount(), (size_t)0);
+  }
+  assertEqual(MqttClient::instances, 0);
+}
+
 test(client_keep_alive_high)
 {
   const uint32_t keep_alive=1000;
