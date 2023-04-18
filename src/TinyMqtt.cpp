@@ -550,7 +550,7 @@ void MqttClient::processMessage(MqttMessage* mesg)
       {
         MqttMessage msg(MqttMessage::Type::ConnAck);
         msg.add(0);  // Session present (not implemented)
-        msg.add(0);  // Connection accepted
+        msg.add(0); // Connection accepted
         msg.sendTo(this);
       }
       break;
@@ -645,20 +645,11 @@ void MqttClient::processMessage(MqttMessage* mesg)
       #endif
       if (mqtt_connected() or tcp_client == nullptr)
       {
-        uint8_t qos = (mesg->flags() / 2) && 3;
+        uint8_t qos = mesg->flags();
         payload = header;
         mesg->getString(payload, len);
         Topic published(payload, len);
         payload += len;
-        // 0x40 , 0x02, xx, xx // 0x40 = PubAck, 2 bytes length, xx + xx = MessageID
-        if (qos == 1) 
-        { 
-          auto ID = mesg->PublishID();
-          MqttMessage msg(MqttMessage::Type::PubAck);
-          msg.add(ID[0]);  // MessgaeID high
-          msg.add(ID[1]);  // MessageID low
-          msg.sendTo(this);
-        }        
         #if TINY_MQTT_DEBUG
           Console << "Received Publish (" << published.str().c_str() << ") size=" << (int)len << endl;
         #endif
