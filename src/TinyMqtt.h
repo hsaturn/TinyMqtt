@@ -19,6 +19,8 @@
   #ifdef TINY_MQTT_ASYNC
     #include <AsyncTCP.h> // https://github.com/me-no-dev/AsyncTCP
   #endif
+#elif defined(ARDUINO_ARCH_RP2040)
+  #include <WiFi.h> 
 #endif
 #ifdef EPOXY_DUINO
   #define dbg_ptr uint64_t
