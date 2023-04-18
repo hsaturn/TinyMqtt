@@ -1,5 +1,0 @@
-In TinyString.h the operator
-
-  TinyString& operator +=(int);
-
-may need to be added.
