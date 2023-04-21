@@ -550,7 +550,7 @@ void MqttClient::processMessage(MqttMessage* mesg)
       {
         MqttMessage msg(MqttMessage::Type::ConnAck);
         msg.add(0);  // Session present (not implemented)
-        msg.add(0); // Connection accepted
+        msg.add(0);  // Connection accepted
         msg.sendTo(this);
       }
       break;
