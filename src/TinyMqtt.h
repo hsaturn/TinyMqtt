@@ -8,7 +8,10 @@
 // TODO Should add a AUnit with both TINY_MQTT_ASYNC and not TINY_MQTT_ASYNC
 // #define TINY_MQTT_ASYNC  // Uncomment this to use ESPAsyncTCP instead of normal cnx
 
-#if defined(ESP8266) || defined(EPOXY_DUINO)
+
+#if defined(TINY_MQTT_ETHERNET)
+  #include <Ethernet.h>
+#elif defined(ESP8266) || defined(EPOXY_DUINO)
   #ifdef TINY_MQTT_ASYNC
     #include <ESPAsyncTCP.h>
   #else
@@ -19,6 +22,8 @@
   #ifdef TINY_MQTT_ASYNC
     #include <AsyncTCP.h> // https://github.com/me-no-dev/AsyncTCP
   #endif
+#elif defined(ARDUINO_ARCH_RP2040)
+  #include <WiFi.h>   // works with Raspberry Pi Pico W, earlephilhower
 #endif
 #ifdef EPOXY_DUINO
   #define dbg_ptr uint64_t
@@ -53,12 +58,17 @@
   #define debug(what) {}
 #endif
 
-#ifdef TINY_MQTT_ASYNC
-  using TcpClient = AsyncClient;
-  using TcpServer = AsyncServer;
+#if defined(TINY_MQTT_ETHERNET)
+  using TcpClient = EthernetClient;
+  using TcpServer = EthernetServer;
 #else
-  using TcpClient = WiFiClient;
-  using TcpServer = WiFiServer;
+  #ifdef TINY_MQTT_ASYNC
+    using TcpClient = AsyncClient;
+    using TcpServer = AsyncServer;
+  #else
+    using TcpClient = WiFiClient;
+    using TcpServer = WiFiServer;
+  #endif
 #endif
 
 enum __attribute__((packed)) MqttError

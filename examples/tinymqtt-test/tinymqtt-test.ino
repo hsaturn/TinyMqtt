@@ -432,14 +432,6 @@ void eval(string &cmd)
     if (s.length() == 0)
     {
     }
-    else if (compare(s, "debug"))
-    {
-#if TINY_MQTT_DEBUG
-      TinyMqtt::debug = getint(cmd);
-#else
-      Console << red << "TinyMqtt not compiled in debug" << endl;
-#endif
-    }
     else if (compare(s, "list"))
     {
       Console << "List of free servers" << endl;
