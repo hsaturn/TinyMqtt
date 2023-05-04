@@ -646,6 +646,7 @@ void MqttClient::processMessage(MqttMessage* mesg)
       if (mqtt_connected() or tcp_client == nullptr)
       {
         uint8_t qos = mesg->flags();
+        qos = (qos / 2) & 3;
         payload = header;
         mesg->getString(payload, len);
         Topic published(payload, len);
@@ -655,13 +656,12 @@ void MqttClient::processMessage(MqttMessage* mesg)
         #endif
         // << '(' << string(payload, len).c_str() << ')'  << " msglen=" << mesg->length() << endl;
         if (qos) payload+=2;  // ignore packet identifier if any
-        len=mesg->end()-payload;
-        qos = (qos / 2) && 3;
+        len=mesg->end()-payload;        
         if (qos == 1) 
         { 
           auto ID = mesg->PublishID();
           MqttMessage msg(MqttMessage::Type::PubAck);
-          msg.add(ID[0]);  // MessgaeID high
+          msg.add(ID[0]);  // MessageID high
           msg.add(ID[1]);  // MessageID low
           msg.sendTo(this);
         }        
