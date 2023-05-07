@@ -656,6 +656,11 @@ void MqttClient::processMessage(MqttMessage* mesg)
         #endif
         // << '(' << string(payload, len).c_str() << ')'  << " msglen=" << mesg->length() << endl;
         if (qos) payload+=2;  // ignore packet identifier if any
+        //const char* ID;     // remove PublishID() to avoid misuse
+        //if (qos) {
+        //  ID = payload;
+        //  payload+=2;  // ignore packet identifier if any
+        //}  
         len=mesg->end()-payload;        
         if (qos == 1) 
         { 
