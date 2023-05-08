@@ -655,16 +655,14 @@ void MqttClient::processMessage(MqttMessage* mesg)
           Console << "Received Publish (" << published.str().c_str() << ") size=" << (int)len << endl;
         #endif
         // << '(' << string(payload, len).c_str() << ')'  << " msglen=" << mesg->length() << endl;
-        if (qos) payload+=2;  // ignore packet identifier if any
-        //const char* ID;     // remove PublishID() to avoid misuse
-        //if (qos) {
-        //  ID = payload;
-        //  payload+=2;  // ignore packet identifier if any
-        //}  
+        const char* ID;     // remove PublishID() to avoid misuse
+        if (qos) {
+          ID = payload;
+          payload+=2;  // ignore packet identifier if any
+        }  
         len=mesg->end()-payload;        
         if (qos == 1) 
         { 
-          auto ID = mesg->PublishID();
           MqttMessage msg(MqttMessage::Type::PubAck);
           msg.add(ID[0]);  // MessageID high
           msg.add(ID[1]);  // MessageID low
