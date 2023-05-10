@@ -278,37 +278,41 @@ test(retained_message)
   broker.retain(10);
   IPAddress broker_ip = WiFi.localIP();
 
-  MqttClient local_client(&broker);
+  MqttClient local_client(&broker, "sender");
 
   // Send a retained message
   // No remote client connected
-  local_client.publish("topic", "retained", true);
+  local_client.publish("topic", "retained once", true);
+  for(int i=0; i<2; i++) { broker.loop(); local_client.loop(); };
 
-  for(int i=0; i<2; i++)
-  {
-    broker.loop();
-    local_client.loop();
-  };
+  // Send a second message on the same topic (issue 86)
+  local_client.publish("topic", "retained once", true);
+  for(int i=0; i<2; i++) { broker.loop(); local_client.loop(); };
+
+  // Send a second message on the same topic (issue 86)
+  local_client.publish("topic", "retained last", true);
+  for(int i=0; i<2; i++) { broker.loop(); local_client.loop(); };
 
   // No connect a client from 2nd Esp
   ESP8266WiFiClass::selectInstance(2);
-  MqttClient remote_client;
+  MqttClient remote_client("receiver");
   remote_client.connect(broker_ip, 1883);
   remote_client.setCallback(onPublish);
 
   assertTrue(remote_client.connected());
-  for(int i=0; i<4; i++) { broker.loop(); local_client.loop(); remote_client.loop(); };
+  for(int i=0; i<10; i++) { broker.loop(); local_client.loop(); remote_client.loop(); };
   assertEqual(broker.clientsCount(), (size_t) 2);
 
   // Should not have received anything yet
   assertEqual(published.size(), (size_t)0);
 
   // Now, remote client subscribes to topic
-  remote_client.subscribe("topic");
-  for(int i=0; i<4; i++) { broker.loop(); local_client.loop(); remote_client.loop(); };
+  remote_client.subscribe("#");
+  for(int i=0; i<10; i++) { broker.loop(); local_client.loop(); remote_client.loop(); };
 
-  // Check that the retained message is published
+  // Check that the retained message is published once
   assertEqual(published.size(), (size_t)1);
+  assertEqual(published["receiver"]["topic"], 1);
 
   // FIXME we should check that
   // 1 - Retained message has the retain flag set
