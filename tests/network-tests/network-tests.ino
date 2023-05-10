@@ -349,6 +349,39 @@ test(retained_message)
   assertEqual(published.size(), (size_t)2);
 }
 
+test(retained_payload)  // # issue #84
+{
+  published.clear();
+
+  start_many_wifi_esp(2, true);
+  assertEqual(WiFi.status(), WL_CONNECTED);
+
+  MqttBroker broker(1883);
+  broker.begin();
+  broker.retain(10);
+  IPAddress broker_ip = WiFi.localIP();
+
+  MqttClient local_client(&broker, "sender");
+
+  // Send a retained message
+  // No remote client connected
+  local_client.publish("topic", "retained", true);
+  for(int i=0; i<2; i++) { broker.loop(); local_client.loop(); };
+
+  // No connect a client from 2nd Esp
+  ESP8266WiFiClass::selectInstance(2);
+  MqttClient remote_client("receiver");
+  remote_client.connect(broker_ip, 1883);
+  remote_client.setCallback(onPublish);
+  remote_client.subscribe("#");
+
+  assertTrue(remote_client.connected());
+  for(int i=0; i<10; i++) { broker.loop(); local_client.loop(); remote_client.loop(); };
+
+  // Check that the retained message is published
+  assertEqual(lastPayload, "retained");
+}
+
 test(remote_client_disconnect_reconnect)
 {
   published.clear();
