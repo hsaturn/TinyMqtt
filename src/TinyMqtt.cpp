@@ -654,7 +654,7 @@ void MqttClient::processMessage(MqttMessage* mesg)
         #if TINY_MQTT_DEBUG
           Console << "Received Publish (" << published.str().c_str() << ") size=" << (int)len << endl;
         #endif
-        // << '(' << string(payload, len).c_str() << ')'  << " msglen=" << mesg->length() << endl;
+
         const char* ID;     // remove PublishID() to avoid misuse
         if (qos) {
           ID = payload;
