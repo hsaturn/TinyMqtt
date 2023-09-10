@@ -1,5 +1,11 @@
 #!/bin/bash
 current_version=$(git describe --tags --abbrev=0)
+
+function error
+{
+	echo
+	echo "ERROR *** $1"
+}
 if [ "$1" == "-d" ]; then
   do=0
   shift
@@ -15,9 +21,14 @@ if [ "$1" == "" ]; then
 	echo "  Current version: $current_version"
 	echo
 else
+	tm=$(git status --porcelain -- src/TinyMqtt.h | wc -l)
 	echo "Current version: ($current_version)"
 	echo "New version    : ($1)"
 	echo "Take info from : library.properties"
+	if [ "$tm" == "1" ]; then
+		error "You cannot bump version if TinyMqtt.h is modified"
+		exit
+	fi
 	echo -n "Do you want to proceed ? "
 	read a
 	if [ "$a" == "y" ]; then
@@ -25,6 +36,7 @@ else
 		grep $current_version library.properties
 		if [ "$?" == "0" ]; then
 			sed -i "s/$current_version/$1/" library.properties
+			sed -i "s/#define TINY_MQTT_REVISION/#define TINY_MQTT_REVISION \"$1\"/" src/TinyMqtt.h
 
       cp library.json.skeleton library.json
       while ifs= read -r line; do
@@ -56,7 +68,7 @@ else
         git push --tags
       fi
 		else
-			echo "Current version does not match library.property version, aborting"
+			error "Current version does not match library.property version, aborting"
 		fi
 	fi
 fi

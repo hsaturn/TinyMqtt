@@ -1,6 +1,8 @@
 // vim: ts=2 sw=2 expandtab
 #pragma once
 
+#define TINY_MQTT_REVISION "1.1.2"
+
 #ifndef TINY_MQTT_DEBUG
 #define TINY_MQTT_DEBUG 0
 #endif
