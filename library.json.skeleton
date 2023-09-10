@@ -1,6 +1,6 @@
 {
     "name": "#name",
-    "keywords": "ethernet, mqtt, m2m, iot",
+    "keywords": [ "ethernet, mqtt, m2m, iot" ],
     "description": "#paragraph",
     "repository": {
         "type": "git",

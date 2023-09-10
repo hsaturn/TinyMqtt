@@ -17,6 +17,7 @@ if [ "$1" == "" ]; then
 else
 	echo "Current version: ($current_version)"
 	echo "New version    : ($1)"
+	echo "Take info from : library.properties"
 	echo -n "Do you want to proceed ? "
 	read a
 	if [ "$a" == "y" ]; then
@@ -47,10 +48,10 @@ else
       sed -i "s/'/\"/g" library.json
       if [ "$do" == "1" ]; then
         echo "Pushing all"
+        git commit -m "Release $1 $2"
         git tag $1
         git add library.properties
         git add library.json
-        git commit -m "Release $1 $2"
         git push
         git push --tags
       fi
