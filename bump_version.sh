@@ -60,10 +60,10 @@ else
       sed -i "s/'/\"/g" library.json
       if [ "$do" == "1" ]; then
         echo "Pushing all"
-        git commit -m "Release $1 $2"
-        git tag $1
         git add library.properties
         git add library.json
+        git commit -m "Release $1 $2"
+        git tag $1
         git push
         git push --tags
       fi
