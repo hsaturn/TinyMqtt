@@ -1,14 +1,14 @@
 {
     "name": "TinyMqtt",
-    "keywords": "ethernet, mqtt, m2m, iot",
-    "description": "MQTT is a lightweight messaging protocol. This library allows to host a broker or to use a mqtt client in your ESP 8266 or 32 WROOM. It does support MQTT 3.1.1 with QoS",
+    "keywords": [ "ethernet, mqtt, m2m, iot" ],
+    "description": "A lightweight MQTT library for ESP8266 and ESP32, supporting MQTT 3.1.1 with QoS and allowing to create a Mqtt broker",
     "repository": {
         "type": "git",
         "url": "https://github.com/hsaturn/TinyMqtt.git"
     },
     "dependencies":
     { "hsaturn/TinyConsole" : "*" },
-    "version": "1.0.0",
+    "version": "1.0.1",
     "exclude": "",
     "examples": "examples/*/*.ino",
     "frameworks": "arduino",
