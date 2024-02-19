@@ -1,6 +1,6 @@
 #include "TinyMqtt.h"   // https://github.com/hsaturn/TinyMqtt
 
-const uint16_t PORT 1883;
+const uint16_t PORT = 1883;
 const uint8_t  RETAIN = 10;  // Max retained messages
 
 MqttBroker broker(PORT, RETAIN);
