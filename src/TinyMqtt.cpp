@@ -682,7 +682,7 @@ void MqttClient::processMessage(MqttMessage* mesg)
           #endif
           if (callback and isSubscribedTo(published))
           {
-            callback(this, published, payload, len);
+            callback(this, published, payload, len, userData);
           }
         }
         else if (local_broker) // from outside to inside
