@@ -95,7 +95,7 @@ MqttClient::~MqttClient()
   debug("*** MqttClient delete()");
 }
 
-void MqttClient::close(bool bSendDisconnect)
+void MqttClient::close(bool bSendDisconnect, bool removeFromLocal)
 {
   debug("close " << id().c_str());
   resetFlag(CltFlagConnected);
@@ -110,7 +110,7 @@ void MqttClient::close(bool bSendDisconnect)
     tcp_client->stop();
   }
 
-  if (local_broker)
+  if (local_broker && removeFromLocal)
   {
     local_broker->removeClient(this);
     local_broker = nullptr;
@@ -235,9 +235,14 @@ void MqttBroker::loop()
     else
     {
       debug("Client " << client->id().c_str() << "  Disconnected, local_broker=" << (dbg_ptr)client->local_broker);
-      // Note: deleting a client not added by the broker itself will probably crash later.
-      delete client;
-      break;
+      // Erasing the client before calling delete to ensure
+      // that if the client does a close() we don't get into a state where
+      // we try and access a deleted pointer
+      clients.erase(clients.begin() + i);
+      i--;
+      if (client->cltFlags & MqttClient::CltFlags::CltFlagToDelete) {
+        delete client;
+      }
     }
   }
 }
@@ -698,7 +703,9 @@ void MqttClient::processMessage(MqttMessage* mesg)
       // TODO should discard any will msg
       if (not mqtt_connected()) break;
       resetFlag(CltFlagConnected);
-      close(false);
+      // don't remove from the local broker, let the next loop through the
+      // clients do that, so we can be cleaned up properly
+      close(false, false);
       bclose=false;
       break;
 
